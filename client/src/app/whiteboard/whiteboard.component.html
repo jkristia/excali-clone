@@ -1,0 +1,16 @@
+<div #container class="whiteboard-container" [style.cursor]="cursor()">
+    <canvas #canvas></canvas>
+    <app-inline-editor />
+    <div class="cursor-layer">
+        @for (p of peers(); track p.clientId) {
+            @if (p.cursor; as cursor) {
+                <div class="peer-cursor" [style.transform]="peerTransform(cursor)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" [attr.fill]="p.user.color" stroke="#fff" stroke-width="1.5">
+                        <path d="M4 2 L20 12 L13 13 L11 20 Z" />
+                    </svg>
+                    <span class="peer-label" [style.background]="p.user.color">{{ p.user.name }}</span>
+                </div>
+            }
+        }
+    </div>
+</div>

@@ -1,0 +1,25 @@
+<div class="presence-bar">
+    <div class="room-info">
+        <span class="app-title">Whiteboard</span>
+        <span class="room-name" title="Room. Share the URL to collaborate.">#{{ room }}</span>
+    </div>
+
+    <div class="presence-right">
+        <div class="conn-status" [class]="status()">
+            <span class="conn-dot"></span>
+            {{ statusLabel() }}
+        </div>
+
+        <div class="avatars">
+            <div class="avatar self" [style.background]="identity.color" [title]="identity.name + ' (you)'">
+                {{ selfInitials }}
+            </div>
+            @for (p of visiblePeers(); track p.clientId) {
+                <div class="avatar" [style.background]="p.user.color" [title]="p.user.name">{{ initials(p.user.name) }}</div>
+            }
+            @if (extraPeerCount() > 0) {
+                <div class="avatar more">+{{ extraPeerCount() }}</div>
+            }
+        </div>
+    </div>
+</div>

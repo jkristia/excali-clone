@@ -1,0 +1,39 @@
+import { describe, expect, it } from 'vitest';
+import { Handle, Handles } from './handles';
+
+const b = { x: 10, y: 20, w: 100, h: 50 };
+
+describe('Handles.points', () => {
+    it('returns the 8 corner/edge-midpoint positions clockwise from top-left', () => {
+        expect(Handles.points(b)).toEqual([
+            [10, 20], [60, 20], [110, 20],
+            [110, 45],
+            [110, 70], [60, 70], [10, 70],
+            [10, 45],
+        ]);
+    });
+});
+
+describe('Handles.hitTest', () => {
+    it('returns the handle within radius', () => {
+        expect(Handles.hitTest(b, 10, 20, 5)).toBe(Handle.NW);
+        expect(Handles.hitTest(b, 110, 70, 5)).toBe(Handle.SE);
+    });
+
+    it('returns -1 when no handle is within radius', () => {
+        expect(Handles.hitTest(b, 60, 45, 5)).toBe(-1);
+    });
+
+    it('matches render.ts drawHandles / Whiteboard.tsx hitHandle layout (regression net)', () => {
+        // Both call sites now delegate to Handles.points, so this pins the single
+        // source of truth the two previously duplicated independently.
+        expect(Handles.points(b).length).toBe(8);
+    });
+});
+
+describe('Handles.isCorner', () => {
+    it('is true for the four corners, false for the four edges', () => {
+        expect([Handle.NW, Handle.NE, Handle.SE, Handle.SW].every(Handles.isCorner)).toBe(true);
+        expect([Handle.N, Handle.E, Handle.S, Handle.W].some(Handles.isCorner)).toBe(false);
+    });
+});

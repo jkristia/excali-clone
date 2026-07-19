@@ -1,0 +1,18 @@
+import { InjectionToken } from '@angular/core';
+import type { ShapeRegistry } from '../shapes/shapeRegistry';
+import type { ToolRegistry } from '../tools/toolRegistry';
+import type { UIStore } from '../state/uiStore';
+import type { CanvasDocument } from '../document/canvasDocument';
+import type { SceneRenderer } from '../canvas/render';
+
+/**
+ * DI tokens for the framework-agnostic singletons. They are instantiated once in
+ * `main.ts` (the composition root) and provided as values, so the Angular layer
+ * `inject()`s them instead of importing module-level globals. This is the only
+ * place the `app/` shell learns about those plain-TS classes.
+ */
+export const SHAPE_REGISTRY = new InjectionToken<ShapeRegistry>('SHAPE_REGISTRY');
+export const TOOL_REGISTRY = new InjectionToken<ToolRegistry>('TOOL_REGISTRY');
+export const UI_STORE = new InjectionToken<UIStore>('UI_STORE');
+export const CANVAS_DOCUMENT = new InjectionToken<CanvasDocument>('CANVAS_DOCUMENT');
+export const SCENE_RENDERER = new InjectionToken<SceneRenderer>('SCENE_RENDERER');

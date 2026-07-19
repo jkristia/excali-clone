@@ -1,0 +1,38 @@
+@if (shape(); as shape) {
+    @if (shape.type === 'text') {
+        <textarea
+            #ta
+            class="inline-editor text"
+            spellcheck="false"
+            [value]="shape.text"
+            (input)="onChangeText(shape, $event)"
+            (blur)="commit(shape)"
+            (keydown)="onKeyDown($event, shape)"
+            [style.left.px]="pos().x"
+            [style.top.px]="pos().y"
+            style="position:absolute; transform-origin: top left;"
+            [style.transform]="'scale(' + camera().zoom + ')'"
+            [style.font]="shape.fontSize + 'px Inter, system-ui, sans-serif'"
+            [style.line-height]="lineHeight"
+            [style.color]="shape.color"
+            [style.width.px]="Math.max(40, shape.w + 8)"
+        ></textarea>
+    } @else if (shape.type === 'note') {
+        <textarea
+            #ta
+            class="inline-editor note"
+            spellcheck="false"
+            [value]="shape.text"
+            (input)="onChangeNote(shape, $event)"
+            (blur)="commit(shape)"
+            (keydown)="onKeyDown($event, shape)"
+            [style.left.px]="pos().x"
+            [style.top.px]="pos().y"
+            style="position:absolute; transform-origin: top left;"
+            [style.transform]="'scale(' + camera().zoom + ')'"
+            [style.width.px]="shape.w"
+            [style.height.px]="shape.h"
+            [style.background]="shape.fill"
+        ></textarea>
+    }
+}

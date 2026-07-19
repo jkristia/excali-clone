@@ -1,0 +1,117 @@
+.properties-panel {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+    transform: translateY(-50%);
+    background: var(--panel);
+    padding: 14px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    z-index: 10;
+    width: 172px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.prop-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.prop-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+}
+
+.swatch-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.swatch.active {
+    border-color: var(--accent);
+}
+
+.swatch.transparent {
+    background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 12px 12px;
+}
+
+.width-row {
+    display: flex;
+    gap: 6px;
+}
+
+.width-btn {
+    flex: 1;
+    height: 30px;
+    border: 1px solid var(--panel-border);
+    border-radius: 7px;
+    background: #fff;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+}
+
+.width-btn.active {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.width-btn span {
+    width: 60%;
+    background: var(--text);
+    border-radius: 4px;
+}
+
+/* Endpoint-cap selector reuses .width-btn but shows a glyph, not a bar. */
+.width-btn .cap-icon {
+    width: auto;
+    background: none;
+    border-radius: 0;
+    font-size: 15px;
+    line-height: 1;
+    color: var(--text);
+}
+
+.layer-row {
+    display: flex;
+    gap: 6px;
+}
+
+.layer-btn {
+    flex: 1;
+    height: 34px;
+    border: none;
+    border-radius: 8px;
+    background: #f1f3f5;
+    color: var(--text);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: background 0.12s, color 0.12s;
+}
+
+.layer-btn:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+.layer-btn:active {
+    transform: translateY(1px);
+}

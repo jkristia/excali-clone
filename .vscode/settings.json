@@ -1,0 +1,13 @@
+{
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "server/.data": true
+  },
+  "files.exclude": {
+    "**/.DS_Store": true
+  },
+  "editor.tabSize": 2
+}

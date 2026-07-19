@@ -1,0 +1,97 @@
+@if (visible()) {
+    <div class="properties-panel">
+        @if (flags().stroke) {
+            <div class="prop-section">
+                <div class="prop-label">Stroke</div>
+                <div class="swatch-row">
+                    @for (c of strokeColors; track c) {
+                        <button
+                            class="swatch"
+                            [class.active]="style().stroke === c"
+                            [class.transparent]="c === 'transparent'"
+                            [style.background]="c === 'transparent' ? null : c"
+                            (click)="applyStroke(c)"
+                        ></button>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (flags().fill) {
+            <div class="prop-section">
+                <div class="prop-label">Fill</div>
+                <div class="swatch-row">
+                    @for (c of fillColors; track c) {
+                        <button
+                            class="swatch"
+                            [class.active]="style().fill === c"
+                            [class.transparent]="c === 'transparent'"
+                            [style.background]="c === 'transparent' ? null : c"
+                            (click)="applyFill(c)"
+                        ></button>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (flags().width) {
+            <div class="prop-section">
+                <div class="prop-label">Width</div>
+                <div class="width-row">
+                    @for (w of widths; track w) {
+                        <button class="width-btn" [class.active]="style().strokeWidth === w" (click)="applyWidth(w)">
+                            <span [style.height.px]="w"></span>
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (flags().ends) {
+            <div class="prop-section">
+                <div class="prop-label">Start</div>
+                <div class="width-row">
+                    @for (c of caps; track c.cap) {
+                        <button class="width-btn" [class.active]="style().startCap === c.cap" [title]="c.label" (click)="applyStartCap(c.cap)">
+                            <span class="cap-icon">{{ c.icon }}</span>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="prop-section">
+                <div class="prop-label">End</div>
+                <div class="width-row">
+                    @for (c of caps; track c.cap) {
+                        <button class="width-btn" [class.active]="style().endCap === c.cap" [title]="c.label" (click)="applyEndCap(c.cap)">
+                            <span class="cap-icon">{{ c.icon }}</span>
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (flags().note) {
+            <div class="prop-section">
+                <div class="prop-label">Note</div>
+                <div class="swatch-row">
+                    @for (c of noteColors; track c) {
+                        <button class="swatch" [class.active]="style().noteFill === c" [style.background]="c" (click)="applyNoteFill(c)"></button>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (hasSelection()) {
+            <div class="prop-section">
+                <div class="prop-label">Layers</div>
+                <div class="layer-row">
+                    @for (o of layerOps; track o.op) {
+                        <button class="layer-btn" [title]="o.label + ' (' + o.shortcut + ')'" (click)="reorder(o.op)">
+                            <app-layer-icon [op]="o.op" />
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}

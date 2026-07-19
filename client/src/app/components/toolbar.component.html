@@ -1,0 +1,30 @@
+<div class="toolbar">
+    <div class="toolbar-group">
+        @for (t of tools; track t.tool) {
+            <button
+                class="tool-btn"
+                [class.active]="activeTool() === t.tool"
+                [title]="t.label + ' (' + t.key + ')'"
+                (click)="setTool(t.tool)"
+            >
+                <span class="tool-icon">{{ t.icon }}</span>
+            </button>
+        }
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <div class="toolbar-group">
+        <button class="tool-btn" title="Undo (Ctrl+Z)" [disabled]="!undoRedo().canUndo" (click)="collab.undo()">↶</button>
+        <button class="tool-btn" title="Redo (Ctrl+Shift+Z)" [disabled]="!undoRedo().canRedo" (click)="collab.redo()">↷</button>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <div class="toolbar-group zoom-group">
+        <button class="tool-btn" title="Zoom out" (click)="setZoom(camera().zoom / 1.2)">−</button>
+        <button class="zoom-label" title="Reset zoom" (click)="setZoom(1)">{{ zoomPct() }}%</button>
+        <button class="tool-btn" title="Zoom in" (click)="setZoom(camera().zoom * 1.2)">+</button>
+        <button class="tool-btn" title="Zoom to fit (Shift+1)" (click)="zoomToFit()">⤢</button>
+    </div>
+</div>

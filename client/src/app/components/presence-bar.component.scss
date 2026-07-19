@@ -1,0 +1,108 @@
+.presence-bar {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.presence-bar > * {
+    pointer-events: auto;
+}
+
+.room-info {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    background: var(--panel);
+    padding: 8px 14px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.app-title {
+    font-weight: 700;
+    font-size: 15px;
+}
+
+.room-name {
+    color: var(--muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.presence-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.conn-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--panel);
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.conn-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+}
+
+.conn-status.connected .conn-dot {
+    background: #2f9e44;
+    box-shadow: 0 0 0 3px rgba(47, 158, 68, 0.2);
+}
+
+.conn-status.connecting .conn-dot {
+    background: #f08c00;
+}
+
+.conn-status.disconnected .conn-dot {
+    background: #e03131;
+}
+
+.avatars {
+    display: flex;
+    align-items: center;
+    background: var(--panel);
+    padding: 6px 8px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    border: 2px solid var(--panel);
+    margin-left: -8px;
+}
+
+.avatar:first-child {
+    margin-left: 0;
+}
+
+.avatar.self {
+    box-shadow: 0 0 0 2px var(--accent);
+}
+
+.avatar.more {
+    background: var(--muted);
+}
