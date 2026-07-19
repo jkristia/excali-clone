@@ -1,4 +1,4 @@
-import type { EndpointCap } from '../model/types';
+import type { EndpointCap, TextAlign } from '../model/types';
 import { ToolRegistry } from '../tools/toolRegistry';
 import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS } from '../util/palette';
 
@@ -15,21 +15,22 @@ export interface Style {
     fill: string;
     strokeWidth: number;
     fontSize: number;
+    textAlign: TextAlign;
     noteFill: string;
     startCap: EndpointCap;
     endCap: EndpointCap;
 }
 
 export interface UIState {
-    tool: Tool;
+    readonly tool: Tool;
     /** true while Space is held — used to show the pan tool as active in the toolbar. */
-    spacePan: boolean;
-    camera: Camera;
-    style: Style;
+    readonly spacePan: boolean;
+    readonly camera: Camera;
+    readonly style: Style;
     /** ids of locally-selected shapes. */
-    selection: string[];
+    readonly selection: string[];
     /** id of the text/note currently being edited inline, if any. */
-    editingId: string | null;
+    readonly editingId: string | null;
 
     setTool: (tool: Tool) => void;
     setSpacePan: (active: boolean) => void;
@@ -67,6 +68,7 @@ export class UIStore {
                 fill: FILL_COLORS[0],
                 strokeWidth: 2,
                 fontSize: 20,
+                textAlign: 'left',
                 noteFill: NOTE_COLORS[0],
                 startCap: 'none',
                 endCap: 'arrow',

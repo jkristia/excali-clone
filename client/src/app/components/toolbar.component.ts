@@ -4,25 +4,7 @@ import { CollabService } from '../collab/collab.service';
 import { CameraMath } from '../../canvas/camera';
 import { SHAPE_REGISTRY } from '../di-tokens';
 import type { Tool } from '../../state/uiStore';
-
-interface ToolDef {
-    tool: Tool;
-    label: string;
-    icon: string;
-    key: string;
-}
-
-const TOOLS: ToolDef[] = [
-    { tool: 'select', label: 'Select', icon: '⬚', key: 'V' },
-    { tool: 'pan', label: 'Pan (or hold Space)', icon: '✋', key: 'H' },
-    { tool: 'rectangle', label: 'Rectangle', icon: '▭', key: 'R' },
-    { tool: 'ellipse', label: 'Ellipse', icon: '◯', key: 'O' },
-    { tool: 'line', label: 'Line', icon: '╱', key: 'L' },
-    { tool: 'arrow', label: 'Arrow', icon: '↗', key: 'A' },
-    { tool: 'draw', label: 'Draw', icon: '✎', key: 'P' },
-    { tool: 'text', label: 'Text', icon: 'T', key: 'X' },
-    { tool: 'note', label: 'Sticky note', icon: '▢', key: 'N' },
-];
+import { TOOL_DEFS } from '../../tools/toolDefs';
 
 @Component({
     selector: 'app-toolbar',
@@ -35,7 +17,7 @@ export class ToolbarComponent {
     protected readonly collab = inject(CollabService);
     private readonly shapeRegistry = inject(SHAPE_REGISTRY);
 
-    protected readonly tools = TOOLS;
+    protected readonly tools = TOOL_DEFS;
     protected readonly tool = this.ui.select((s) => s.tool);
     protected readonly spacePan = this.ui.select((s) => s.spacePan);
     protected readonly camera = this.ui.select((s) => s.camera);

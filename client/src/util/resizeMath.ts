@@ -1,3 +1,4 @@
+import type { ShapeType } from '../model/types';
 import { Handle, Handles } from './handles';
 
 export interface ResizeOrigin {
@@ -5,7 +6,7 @@ export interface ResizeOrigin {
     y: number;
     w: number;
     h: number;
-    type: 'rectangle' | 'ellipse';
+    type: ShapeType;
 }
 
 export interface ResizeGeometry {

@@ -26,12 +26,13 @@ export class SelectTool implements Tool {
                         origX: selShape.x, origY: selShape.y, origDx: selShape.dx, origDy: selShape.dy,
                     };
                 }
-            } else if (selShape && (selShape.type === 'rectangle' || selShape.type === 'ellipse')) {
-                const hIdx = Handles.hitTest(this.shapeRegistry.getBounds(selShape), p.x, p.y, ArrowEndpoints.HIT_RADIUS / ctx.camera().zoom);
+            } else if (selShape && this.shapeRegistry.isResizable(selShape)) {
+                const bounds = this.shapeRegistry.getBounds(selShape);
+                const hIdx = Handles.hitTest(bounds, p.x, p.y, ArrowEndpoints.HIT_RADIUS / ctx.camera().zoom);
                 if (hIdx !== -1) {
                     return {
                         kind: 'resize', id: selShape.id, handle: hIdx,
-                        orig: { x: selShape.x, y: selShape.y, w: selShape.w, h: selShape.h, type: selShape.type },
+                        orig: { ...bounds, type: selShape.type },
                     };
                 }
             }

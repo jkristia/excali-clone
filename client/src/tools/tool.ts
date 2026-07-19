@@ -34,5 +34,5 @@ export interface Tool {
 }
 
 export const NO_PANEL_CAPABILITIES: ShapeCapabilities = {
-    stroke: false, fill: false, width: false, ends: false, note: false,
+    stroke: false, fill: false, width: false, ends: false, note: false, text: false,
 };

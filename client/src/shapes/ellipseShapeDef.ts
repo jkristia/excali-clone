@@ -4,7 +4,8 @@ import { Geometry } from '../util/geometry';
 import { CanvasDraw } from '../util/canvasDraw';
 
 export class EllipseShapeDef implements ShapeDefinition<EllipseShape> {
-    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false, note: false };
+    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false };
+    public readonly resizable = true;
 
     public getBounds(shape: EllipseShape): Bounds {
         return Geometry.normalizeRect(shape.x, shape.y, shape.w, shape.h);

@@ -59,7 +59,7 @@ npm start            # run the built server (after npm run build)
 | Key | Action | Key | Action |
 | --- | ------ | --- | ------ |
 | `V` | Select | `P` | Pen (draw) |
-| `H` / hold `Space` | Pan | `X` | Text |
+| `H` / hold `Space` | Pan | `T` | Text |
 | `R` | Rectangle | `N` | Sticky note |
 | `O` | Ellipse | `Ctrl/⌘ + Z` | Undo |
 | `L` | Line | `Ctrl/⌘ + Shift + Z` | Redo |

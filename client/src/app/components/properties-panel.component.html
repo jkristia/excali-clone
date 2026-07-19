@@ -81,6 +81,29 @@
             </div>
         }
 
+        @if (flags().text) {
+            <div class="prop-section">
+                <div class="prop-label">Font size</div>
+                <div class="width-row">
+                    @for (f of fontSizes; track f.size) {
+                        <button class="width-btn" [class.active]="style().fontSize === f.size" [title]="f.label" (click)="applyFontSize(f.size)">
+                            <span class="cap-icon">{{ f.label }}</span>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="prop-section">
+                <div class="prop-label">Text align</div>
+                <div class="width-row">
+                    @for (a of textAligns; track a.align) {
+                        <button class="width-btn" [class.active]="style().textAlign === a.align" [title]="a.label" (click)="applyTextAlign(a.align)">
+                            <span class="cap-icon"><app-align-icon [align]="a.align" /></span>
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+
         @if (hasSelection()) {
             <div class="prop-section">
                 <div class="prop-label">Layers</div>

@@ -9,7 +9,7 @@ function makeStore(overrides: Partial<InteractionStore> = {}): InteractionStore 
     return {
         tool: 'select',
         style: {
-            stroke: '#000', fill: 'transparent', strokeWidth: 2, fontSize: 20,
+            stroke: '#000', fill: 'transparent', strokeWidth: 2, fontSize: 20, textAlign: 'left',
             noteFill: '#fff', startCap: 'none', endCap: 'arrow',
         },
         camera: { x: 0, y: 0, zoom: 1 },

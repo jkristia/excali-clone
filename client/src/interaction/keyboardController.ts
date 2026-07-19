@@ -1,17 +1,10 @@
 import { UIStore, type Tool } from '../state/uiStore';
 import { CanvasDocument, type ReorderOp } from '../document/canvasDocument';
+import { TOOL_DEFS } from '../tools/toolDefs';
 
-const SHORTCUTS: Record<string, Tool> = {
-    v: 'select',
-    h: 'pan',
-    r: 'rectangle',
-    o: 'ellipse',
-    l: 'line',
-    a: 'arrow',
-    p: 'draw',
-    x: 'text',
-    n: 'note',
-};
+const SHORTCUTS: Record<string, Tool> = Object.fromEntries(
+    TOOL_DEFS.map((t) => [t.key.toLowerCase(), t.tool]),
+);
 
 /**
  * Shortcut -> command map, extracted from App.tsx so it's testable and reusable

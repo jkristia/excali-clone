@@ -3,11 +3,13 @@ import { UiStoreService } from '../state/ui-store.service';
 import { CollabService } from '../collab/collab.service';
 import { CANVAS_DOCUMENT, SHAPE_REGISTRY, TOOL_REGISTRY } from '../di-tokens';
 import type { ReorderOp } from '../../document/canvasDocument';
-import type { EndpointCap, Shape } from '../../model/types';
+import type { EndpointCap, Shape, TextAlign } from '../../model/types';
 import type { Style } from '../../state/uiStore';
 import { panelFlags } from '../../util/panelCapabilities';
-import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS, WIDTHS, CAPS } from '../../util/palette';
+import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS, WIDTHS, CAPS, FONT_SIZES, TEXT_ALIGNS } from '../../util/palette';
 import { LayerIconComponent } from './layer-icon.component';
+import { AlignIconComponent } from './align-icon.component';
+import { measureText } from './inline-editor.component';
 
 const LAYER_OPS: { op: ReorderOp; label: string; shortcut: string }[] = [
     { op: 'toBack', label: 'Send to back', shortcut: 'Ctrl+Shift+[' },
@@ -19,7 +21,7 @@ const LAYER_OPS: { op: ReorderOp; label: string; shortcut: string }[] = [
 @Component({
     selector: 'app-properties-panel',
     standalone: true,
-    imports: [LayerIconComponent],
+    imports: [LayerIconComponent, AlignIconComponent],
     templateUrl: './properties-panel.component.html',
     styleUrl: './properties-panel.component.scss',
 })
@@ -35,6 +37,8 @@ export class PropertiesPanelComponent {
     protected readonly noteColors = NOTE_COLORS;
     protected readonly widths = WIDTHS;
     protected readonly caps = CAPS;
+    protected readonly fontSizes = FONT_SIZES;
+    protected readonly textAligns = TEXT_ALIGNS;
     protected readonly layerOps = LAYER_OPS;
 
     protected readonly tool = this.ui.select((s) => s.tool);
@@ -50,7 +54,7 @@ export class PropertiesPanelComponent {
     protected readonly hasSelection = computed(() => this.selected().length > 0);
     protected readonly visible = computed(() => {
         const f = this.flags();
-        return this.hasSelection() || f.stroke || f.fill || f.width || f.ends || f.note;
+        return this.hasSelection() || f.stroke || f.fill || f.width || f.ends || f.note || f.text;
     });
 
     private apply(patch: Partial<Style>, shapePatch: (s: Shape) => Partial<Shape> | null): void {
@@ -81,6 +85,20 @@ export class PropertiesPanelComponent {
     }
     protected applyNoteFill(c: string): void {
         this.apply({ noteFill: c }, (s) => (s.type === 'note' ? { fill: c } : null));
+    }
+    protected applyFontSize(size: number): void {
+        // Text auto-sizes to its content, so its box (w/h) must be re-measured — the same
+        // measureText the inline editor runs on every keystroke. Notes keep their fixed box.
+        this.apply({ fontSize: size }, (s) => {
+            if (s.type === 'text') {
+                const { w, h } = measureText(s.text, size);
+                return { fontSize: size, w, h };
+            }
+            return s.type === 'note' ? { fontSize: size } : null;
+        });
+    }
+    protected applyTextAlign(a: TextAlign): void {
+        this.apply({ textAlign: a }, (s) => (s.type === 'text' || s.type === 'note' ? { textAlign: a } : null));
     }
     protected reorder(op: ReorderOp): void {
         this.canvasDocument.reorderShapes(this.selection(), op);

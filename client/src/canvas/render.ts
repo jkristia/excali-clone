@@ -63,12 +63,15 @@ export class SceneRenderer {
 
         // Local selection with handles.
         const selected = input.selection.map((id) => selById.get(id)).filter(Boolean) as Shape[];
-        for (const s of selected) this.drawOutline(ctx, this.shapeRegistry.getBounds(s), SceneRenderer.SELECT_COLOR, camera.zoom, 2);
+        for (const s of selected) {
+            if (s.id === input.editingId) continue; // no selection rect while inline-editing
+            this.drawOutline(ctx, this.shapeRegistry.getBounds(s), SceneRenderer.SELECT_COLOR, camera.zoom, 2);
+        }
         if (selected.length === 1) {
             const s = selected[0];
             if (s.type === 'arrow') {
                 this.drawArrowHandles(ctx, s.x, s.y, s.x + s.dx, s.y + s.dy, camera.zoom);
-            } else {
+            } else if (this.shapeRegistry.isResizable(s)) {
                 this.drawHandles(ctx, this.shapeRegistry.getBounds(s), camera.zoom);
             }
         }

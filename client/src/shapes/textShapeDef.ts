@@ -7,7 +7,8 @@ import { Geometry } from '../util/geometry';
 export const TEXT_LINE_HEIGHT = 1.25;
 
 export class TextShapeDef implements ShapeDefinition<TextShape> {
-    public readonly capabilities = { stroke: true, fill: false, width: false, ends: false, note: false };
+    public readonly capabilities = { stroke: true, fill: false, width: false, ends: false, text: true };
+    public readonly resizable = false;
 
     public getBounds(shape: TextShape): Bounds {
         // shape.y is the line-box top and h spans full 1.25 line boxes, so the box
@@ -23,6 +24,11 @@ export class TextShapeDef implements ShapeDefinition<TextShape> {
         ctx.fillStyle = shape.color;
         ctx.font = `${shape.fontSize}px Inter, system-ui, sans-serif`;
         ctx.textBaseline = 'alphabetic';
+        // Anchor each line horizontally within the measured box (shape.w) so shorter
+        // lines align the same way the inline <textarea>'s text-align does.
+        const align = shape.textAlign ?? 'left';
+        ctx.textAlign = align;
+        const anchorX = align === 'center' ? shape.x + shape.w / 2 : align === 'right' ? shape.x + shape.w : shape.x;
         // Match the DOM <textarea> box model so text does not jump between the
         // rendered canvas and the inline editor. shape.y is the line-box top (the
         // textarea's top edge); place each line's alphabetic baseline exactly where
@@ -31,7 +37,7 @@ export class TextShapeDef implements ShapeDefinition<TextShape> {
         const m = ctx.measureText('Mg');
         const baseline = lineBox / 2 + (m.fontBoundingBoxAscent - m.fontBoundingBoxDescent) / 2;
         shape.text.split('\n').forEach((line, i) => {
-            ctx.fillText(line, shape.x, shape.y + i * lineBox + baseline);
+            ctx.fillText(line, anchorX, shape.y + i * lineBox + baseline);
         });
     }
 }

@@ -4,7 +4,8 @@ import { Geometry } from '../util/geometry';
 import { CanvasDraw } from '../util/canvasDraw';
 
 export class DrawShapeDef implements ShapeDefinition<DrawShape> {
-    public readonly capabilities = { stroke: true, fill: false, width: true, ends: false, note: false };
+    public readonly capabilities = { stroke: true, fill: false, width: true, ends: false };
+    public readonly resizable = false;
 
     public getBounds(shape: DrawShape): Bounds {
         let minX = Infinity;

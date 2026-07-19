@@ -15,6 +15,7 @@
             [style.font]="shape.fontSize + 'px Inter, system-ui, sans-serif'"
             [style.line-height]="lineHeight"
             [style.color]="shape.color"
+            [style.text-align]="shape.textAlign"
             [style.width.px]="Math.max(40, shape.w + 8)"
         ></textarea>
     } @else if (shape.type === 'note') {
@@ -32,6 +33,8 @@
             [style.transform]="'scale(' + camera().zoom + ')'"
             [style.width.px]="shape.w"
             [style.height.px]="shape.h"
+            [style.font-size.px]="shape.fontSize"
+            [style.text-align]="shape.textAlign"
             [style.background]="shape.fill"
         ></textarea>
     }

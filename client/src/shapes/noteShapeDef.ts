@@ -4,7 +4,8 @@ import { Geometry } from '../util/geometry';
 import { CanvasDraw } from '../util/canvasDraw';
 
 export class NoteShapeDef implements ShapeDefinition<NoteShape> {
-    public readonly capabilities = { stroke: false, fill: false, width: false, ends: false, note: true };
+    public readonly capabilities = { stroke: false, fill: false, width: false, ends: false, note: true, text: true };
+    public readonly resizable = false;
 
     public getBounds(shape: NoteShape): Bounds {
         return Geometry.normalizeRect(shape.x, shape.y, shape.w, shape.h);
@@ -27,8 +28,8 @@ export class NoteShapeDef implements ShapeDefinition<NoteShape> {
 
         ctx.fillStyle = '#1e1e1e';
         ctx.textBaseline = 'top';
-        const fs = 16;
+        const fs = shape.fontSize ?? 16;
         ctx.font = `${fs}px Inter, system-ui, sans-serif`;
-        CanvasDraw.wrapText(ctx, shape.text, shape.x + 12, shape.y + 12, shape.w - 24, fs * 1.3);
+        CanvasDraw.wrapText(ctx, shape.text, shape.x + 12, shape.y + 12, shape.w - 24, fs * 1.3, shape.textAlign ?? 'left');
     }
 }

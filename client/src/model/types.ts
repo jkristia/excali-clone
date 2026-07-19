@@ -60,11 +60,14 @@ export interface DrawShape extends BaseShape {
     strokeWidth: number;
 }
 
+export type TextAlign = 'left' | 'center' | 'right';
+
 export interface TextShape extends BaseShape {
     type: 'text';
     text: string;
     fontSize: number;
     color: string;
+    textAlign: TextAlign;
     /** measured width/height, kept for hit-testing. */
     w: number;
     h: number;
@@ -75,6 +78,8 @@ export interface NoteShape extends BaseShape {
     w: number;
     h: number;
     text: string;
+    fontSize: number;
+    textAlign: TextAlign;
     /** background color of the sticky note. */
     fill: string;
 }

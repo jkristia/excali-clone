@@ -27,6 +27,11 @@ export class ShapeRegistry {
         return this.definitions[type].capabilities;
     }
 
+    /** Whether the select tool shows drag-to-resize box handles for this shape. */
+    public isResizable(shape: Shape): boolean {
+        return this.getDefinition(shape).resizable;
+    }
+
     /** Axis-aligned bounding box of a shape in world coordinates. */
     public getBounds(shape: Shape): Bounds {
         return this.getDefinition(shape).getBounds(shape);

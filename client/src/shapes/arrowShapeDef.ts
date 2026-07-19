@@ -5,7 +5,8 @@ import { CanvasDraw } from '../util/canvasDraw';
 
 /** Covers both arrows and lines — a line is an arrow with both caps 'none'. */
 export class ArrowShapeDef implements ShapeDefinition<ArrowShape> {
-    public readonly capabilities = { stroke: true, fill: false, width: true, ends: true, note: false };
+    public readonly capabilities = { stroke: true, fill: false, width: true, ends: true };
+    public readonly resizable = false;
 
     public getBounds(shape: ArrowShape): Bounds {
         return Geometry.normalizeRect(shape.x, shape.y, shape.dx, shape.dy);

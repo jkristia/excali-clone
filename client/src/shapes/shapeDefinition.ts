@@ -6,7 +6,9 @@ export interface ShapeCapabilities {
     fill: boolean;
     width: boolean;
     ends: boolean;
-    note: boolean;
+    note?: boolean;
+    /** Font-size + text-align controls (text shapes and sticky notes). */
+    text?: boolean;
 }
 
 /**
@@ -17,6 +19,9 @@ export interface ShapeCapabilities {
 export interface ShapeDefinition<S extends Shape = Shape> {
     /** Which properties-panel sections apply when this type is selected. */
     readonly capabilities: ShapeCapabilities;
+    /** Whether the select tool shows drag-to-resize box handles. Arrow has its own
+     *  endpoint handles and is not "resizable" in this box-handle sense. */
+    readonly resizable: boolean;
     getBounds(shape: S): Bounds;
     hitTest(shape: S, px: number, py: number, tol: number): boolean;
     draw(ctx: CanvasRenderingContext2D, shape: S): void;

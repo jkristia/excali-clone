@@ -81,7 +81,10 @@ export class CanvasDraw {
         y: number,
         maxWidth: number,
         lineHeight: number,
+        align: CanvasTextAlign = 'left',
     ) {
+        ctx.textAlign = align;
+        const anchorX = align === 'center' ? x + maxWidth / 2 : align === 'right' ? x + maxWidth : x;
         let cursorY = y;
         for (const paragraph of text.split('\n')) {
             const words = paragraph.split(' ');
@@ -89,7 +92,7 @@ export class CanvasDraw {
             for (const word of words) {
                 const test = line ? `${line} ${word}` : word;
                 if (ctx.measureText(test).width > maxWidth && line) {
-                    ctx.fillText(line, x, cursorY);
+                    ctx.fillText(line, anchorX, cursorY);
                     line = word;
                     cursorY += lineHeight;
                 } else {
@@ -97,7 +100,7 @@ export class CanvasDraw {
                 }
             }
             if (line) {
-                ctx.fillText(line, x, cursorY);
+                ctx.fillText(line, anchorX, cursorY);
                 cursorY += lineHeight;
             }
         }

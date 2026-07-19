@@ -13,14 +13,14 @@ describe('ToolRegistry', () => {
 
     it('line tool defaultStyle forces both caps to none', () => {
         const registry = new ToolRegistry(new ShapeRegistry());
-        const style = { stroke: '#000', fill: '#fff', strokeWidth: 2, fontSize: 20, noteFill: '#fff', startCap: 'arrow', endCap: 'arrow' } as const;
+        const style = { stroke: '#000', fill: '#fff', strokeWidth: 2, fontSize: 20, textAlign: 'left', noteFill: '#fff', startCap: 'arrow', endCap: 'arrow' } as const;
         const patch = registry.get('line').defaultStyle?.(style);
         expect(patch).toMatchObject({ startCap: 'none', endCap: 'none' });
     });
 
     it('arrow tool defaultStyle forces start none / end arrow', () => {
         const registry = new ToolRegistry(new ShapeRegistry());
-        const style = { stroke: '#000', fill: '#fff', strokeWidth: 2, fontSize: 20, noteFill: '#fff', startCap: 'arrow', endCap: 'none' } as const;
+        const style = { stroke: '#000', fill: '#fff', strokeWidth: 2, fontSize: 20, textAlign: 'left', noteFill: '#fff', startCap: 'arrow', endCap: 'none' } as const;
         const patch = registry.get('arrow').defaultStyle?.(style);
         expect(patch).toMatchObject({ startCap: 'none', endCap: 'arrow' });
     });
