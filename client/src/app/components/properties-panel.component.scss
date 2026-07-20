@@ -8,7 +8,9 @@
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     z-index: 10;
-    width: 172px;
+    width: 180px;
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 14px;

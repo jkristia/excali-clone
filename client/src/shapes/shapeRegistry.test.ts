@@ -4,8 +4,8 @@ import { RectangleShapeDef } from './rectangleShapeDef';
 import { NoteShapeDef } from './noteShapeDef';
 import type { Shape } from '../model/types';
 
-function rect(): Shape {
-    return { id: 'a', type: 'rectangle', x: 0, y: 0, z: 0, w: 10, h: 10, fill: '#fff', stroke: '#000', strokeWidth: 1, createdBy: 'x' };
+function rect(over: Partial<Extract<Shape, { type: 'rectangle' }>> = {}): Shape {
+    return { id: 'a', type: 'rectangle', x: 0, y: 0, z: 0, w: 10, h: 10, fill: '#fff', stroke: '#000', strokeWidth: 1, createdBy: 'x', ...over };
 }
 
 describe('ShapeRegistry', () => {
@@ -25,5 +25,23 @@ describe('ShapeRegistry', () => {
         expect(registry.isKnownType('note')).toBe(true);
         expect(registry.isKnownType('bogus')).toBe(false);
         expect(registry.isKnownType('toString')).toBe(false); // not tricked by prototype members
+    });
+
+    it('unionBounds spans only the given (e.g. selected) subset of shapes', () => {
+        const registry = new ShapeRegistry();
+        // A far-away shape that must NOT influence the bounds when it isn't in the subset.
+        const shapes = [
+            rect({ id: 'a', x: 0, y: 0, w: 10, h: 10 }),
+            rect({ id: 'b', x: 100, y: 40, w: 20, h: 10 }),
+            rect({ id: 'far', x: 1000, y: 1000, w: 10, h: 10 }),
+        ];
+        const selected = new Set(['a', 'b']);
+        const subset = shapes.filter((s) => selected.has(s.id));
+        expect(registry.unionBounds(subset)).toEqual({ x: 0, y: 0, w: 120, h: 50 });
+    });
+
+    it('unionBounds returns null for an empty subset (empty selection is a no-op)', () => {
+        const registry = new ShapeRegistry();
+        expect(registry.unionBounds([])).toBeNull();
     });
 });

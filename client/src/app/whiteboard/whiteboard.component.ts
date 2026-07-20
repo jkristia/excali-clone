@@ -158,6 +158,13 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
                 if (bounds) {
                     this.ui.snapshot.setCamera(CameraMath.fitBounds(bounds, this.size.width, this.size.height));
                 }
+            } else if (e.shiftKey && e.code === 'Digit2') {
+                const ids = new Set(this.ui.snapshot.selection);
+                const selected = this.shapesLatest.filter((s) => ids.has(s.id));
+                const bounds = this.shapeRegistry.unionBounds(selected);
+                if (bounds) {
+                    this.ui.snapshot.setCamera(CameraMath.fitBounds(bounds, this.size.width, this.size.height));
+                }
             } else if (e.key === 'v' || e.key === '1') {
                 this.ui.snapshot.setTool('select');
             }
@@ -180,7 +187,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
             const rect = canvas.getBoundingClientRect();
             const cam = this.ui.snapshot.camera;
             const world = CameraMath.screenToWorld(e.clientX - rect.left, e.clientY - rect.top, cam);
-            return { x: world.x, y: world.y, clientX: e.clientX, clientY: e.clientY, button: e.button, shiftKey: e.shiftKey };
+            return { x: world.x, y: world.y, clientX: e.clientX, clientY: e.clientY, button: e.button, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey };
         };
 
         const onPointerDown = (e: PointerEvent) => {

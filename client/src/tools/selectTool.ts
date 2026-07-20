@@ -1,4 +1,4 @@
-import type { Interaction, PointerInfo } from '../interaction/interaction';
+import type { Interaction, MarqueeMode, PointerInfo } from '../interaction/interaction';
 import type { Tool, ToolContext } from './tool';
 import { NO_PANEL_CAPABILITIES } from './tool';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
@@ -81,8 +81,11 @@ export class SelectTool implements Tool {
             return this.startMove(ctx, [hit.id], p);
         }
 
-        if (!p.shiftKey) ctx.setSelection([]);
-        return { kind: 'marquee', startX: p.x, startY: p.y, curX: p.x, curY: p.y };
+        const mode: MarqueeMode = p.shiftKey ? 'add' : p.ctrlKey || p.metaKey ? 'subtract' : 'replace';
+        // Only a plain (replace) drag clears up front; add/subtract keep the
+        // existing selection so pointer-up can combine against it.
+        if (mode === 'replace') ctx.setSelection([]);
+        return { kind: 'marquee', startX: p.x, startY: p.y, curX: p.x, curY: p.y, mode };
     }
 
     private startMove(ctx: ToolContext, ids: string[], p: PointerInfo, pendingSelect?: string): Interaction {

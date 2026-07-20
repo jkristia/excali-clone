@@ -25,7 +25,7 @@ function makeStore(overrides: Partial<InteractionStore> = {}): InteractionStore 
 }
 
 function pointer(x: number, y: number, extra: Partial<PointerInfo> = {}): PointerInfo {
-    return { x, y, clientX: x, clientY: y, button: 0, shiftKey: false, ...extra };
+    return { x, y, clientX: x, clientY: y, button: 0, shiftKey: false, ctrlKey: false, metaKey: false, ...extra };
 }
 
 const rect: Shape = {
@@ -132,6 +132,42 @@ describe('InteractionController', () => {
         controller.onPointerMove(pointer(200, 200), false);
         controller.onPointerUp();
         expect(selected).toEqual(['r1']);
+    });
+
+    describe('modifier marquee combines with the existing selection', () => {
+        // r2 sits far from r1, so a marquee over r1 never encloses it.
+        const far: Shape = { ...rect, id: 'r2', x: 300, y: 300 };
+        let selected: string[] | null;
+
+        beforeEach(() => {
+            shapes = [rect, far];
+            selected = null;
+            store.setSelection = (ids) => { selected = ids; };
+        });
+
+        it('shift-drag adds the enclosed shape to the existing selection', () => {
+            store.selection = ['r2'];
+            controller.onPointerDown(pointer(-10, -10, { shiftKey: true }), false);
+            controller.onPointerMove(pointer(200, 200), false);
+            controller.onPointerUp();
+            expect(selected).toEqual(['r2', 'r1']);
+        });
+
+        it('shift-drag does not duplicate an already-selected enclosed shape', () => {
+            store.selection = ['r1', 'r2'];
+            controller.onPointerDown(pointer(-10, -10, { shiftKey: true }), false);
+            controller.onPointerMove(pointer(200, 200), false);
+            controller.onPointerUp();
+            expect(selected).toEqual(['r1', 'r2']);
+        });
+
+        it('ctrl-drag removes the enclosed shape from the existing selection', () => {
+            store.selection = ['r1', 'r2'];
+            controller.onPointerDown(pointer(-10, -10, { ctrlKey: true }), false);
+            controller.onPointerMove(pointer(200, 200), false);
+            controller.onPointerUp();
+            expect(selected).toEqual(['r2']);
+        });
     });
 
     it('select tool: resize handle drag patches the shape via ResizeMath', () => {

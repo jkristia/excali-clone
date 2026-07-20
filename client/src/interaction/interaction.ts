@@ -1,6 +1,12 @@
 import type { Shape, ShapeType } from '../model/types';
 import type { Handle } from '../util/handles';
 
+/**
+ * How a marquee drag combines its enclosed shapes with the existing selection,
+ * decided from the modifier keys held when the drag begins.
+ */
+export type MarqueeMode = 'replace' | 'add' | 'subtract';
+
 /** The whiteboard's pointer-interaction state machine, extracted from Whiteboard.tsx. */
 export type Interaction =
     | { kind: 'none' }
@@ -8,7 +14,7 @@ export type Interaction =
     | { kind: 'create'; draft: Shape; startX: number; startY: number }
     | { kind: 'draw'; draft: Extract<Shape, { type: 'draw' }>; startX: number; startY: number }
     | { kind: 'move'; ids: string[]; startX: number; startY: number; origins: Map<string, { x: number; y: number }>; moved: boolean; pendingSelect?: string }
-    | { kind: 'marquee'; startX: number; startY: number; curX: number; curY: number }
+    | { kind: 'marquee'; startX: number; startY: number; curX: number; curY: number; mode: MarqueeMode }
     | { kind: 'resize'; id: string; handle: Handle; orig: { x: number; y: number; w: number; h: number; type: ShapeType; rotation: number } }
     | { kind: 'rotate'; id: string; cx: number; cy: number; startPointerAngle: number; origRotation: number }
     | { kind: 'arrow-endpoint'; id: string; endpoint: 0 | 1; origX: number; origY: number; origDx: number; origDy: number };
@@ -21,4 +27,6 @@ export interface PointerInfo {
     clientY: number; // screen
     button: number;
     shiftKey: boolean;
+    ctrlKey: boolean;
+    metaKey: boolean;
 }
