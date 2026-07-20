@@ -35,7 +35,7 @@ function makeCtx(shapes: Shape[], selection: string[] = [], zoom = 1): { ctx: To
 }
 
 function pointer(x: number, y: number, extra: Partial<PointerInfo> = {}): PointerInfo {
-    return { x, y, clientX: x, clientY: y, button: 0, shiftKey: false, ...extra };
+    return { x, y, clientX: x, clientY: y, button: 0, shiftKey: false, ctrlKey: false, metaKey: false, ...extra };
 }
 
 // 100x50 rectangle anchored at the origin, so bounds center is (50, 25) and its
@@ -158,18 +158,32 @@ describe('SelectTool', () => {
     });
 
     describe('empty-space clicks start a marquee', () => {
-        it('clears the selection on a plain click', () => {
+        it('clears the selection and marks replace mode on a plain click', () => {
             const { ctx, state } = makeCtx([rect()], ['r1']);
             const result = tool().onPointerDown(ctx, pointer(-50, -50));
             expect(state.setSelectionCalls).toEqual([[]]);
-            expect(result).toEqual({ kind: 'marquee', startX: -50, startY: -50, curX: -50, curY: -50 });
+            expect(result).toEqual({ kind: 'marquee', startX: -50, startY: -50, curX: -50, curY: -50, mode: 'replace' });
         });
 
-        it('keeps the selection when shift is held', () => {
+        it('keeps the selection and marks add mode when shift is held', () => {
             const { ctx, state } = makeCtx([rect()], ['r1']);
             const result = tool().onPointerDown(ctx, pointer(-50, -50, { shiftKey: true }));
             expect(state.setSelectionCalls).toEqual([]);
-            expect(result?.kind).toBe('marquee');
+            expect(result).toMatchObject({ kind: 'marquee', mode: 'add' });
+        });
+
+        it('keeps the selection and marks subtract mode when ctrl is held', () => {
+            const { ctx, state } = makeCtx([rect()], ['r1']);
+            const result = tool().onPointerDown(ctx, pointer(-50, -50, { ctrlKey: true }));
+            expect(state.setSelectionCalls).toEqual([]);
+            expect(result).toMatchObject({ kind: 'marquee', mode: 'subtract' });
+        });
+
+        it('marks subtract mode when meta (cmd) is held', () => {
+            const { ctx, state } = makeCtx([rect()], ['r1']);
+            const result = tool().onPointerDown(ctx, pointer(-50, -50, { metaKey: true }));
+            expect(state.setSelectionCalls).toEqual([]);
+            expect(result).toMatchObject({ kind: 'marquee', mode: 'subtract' });
         });
     });
 });

@@ -1,7 +1,7 @@
 import { nanoid } from 'nanoid';
 import type { ArrowShape, Bounds, Shape } from '../model/types';
 import type { Camera, Style, Tool as ToolName } from '../state/uiStore';
-import type { Interaction, PointerInfo } from './interaction';
+import type { Interaction, MarqueeMode, PointerInfo } from './interaction';
 import type { ToolContext } from '../tools/tool';
 import { ToolRegistry } from '../tools/toolRegistry';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
@@ -273,7 +273,7 @@ export class InteractionController {
             };
             if (Math.abs(rect.w) > 3 || Math.abs(rect.h) > 3) {
                 const inside = this.shapeRegistry.shapesInRect(this.deps.shapes(), rect).map((s) => s.id);
-                store.setSelection(inside);
+                store.setSelection(this.combineMarquee(inter.mode, store.selection, inside));
             }
         } else if (inter.kind === 'move') {
             // A deferred (overlap) selection switch: apply it only if this was a
@@ -288,6 +288,18 @@ export class InteractionController {
 
     public onPointerLeave(): void {
         this.cursor = null;
+    }
+
+    /** Combine the marquee-enclosed ids with the prior selection per the drag's modifier mode. */
+    private combineMarquee(mode: MarqueeMode, prior: string[], inside: string[]): string[] {
+        switch (mode) {
+            case 'replace':
+                return inside;
+            case 'add':
+                return [...prior, ...inside.filter((id) => !prior.includes(id))];
+            case 'subtract':
+                return prior.filter((id) => !inside.includes(id));
+        }
     }
 
     public boundsOfDraft(d: Shape): Bounds {
