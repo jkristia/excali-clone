@@ -14,6 +14,7 @@ Edits sync in real time using [Yjs](https://yjs.dev), so people can draw at the 
 - Tools: select, pan, rectangle, ellipse, line, arrow, freehand pen, text, sticky notes
 - Infinite canvas with pan & zoom
 - Undo/redo (only undoes your own edits)
+- Copy/paste shapes (pastes at the pointer)
 - Boards can persist across server restarts
 
 For how it's built under the hood, see [DESIGN.md](DESIGN.md).
@@ -67,7 +68,8 @@ npm start            # run the built server (after npm run build)
 | `L` | Line | `Ctrl/⌘ + Shift + Z` | Redo |
 | `A` | Arrow | `Shift + 1` | Zoom to fit |
 | `Del` / `Backspace` | Delete selection | scroll / `Shift`+scroll | Pan / Pan horizontally |
-| | | `Ctrl`+scroll | Zoom |
+| `Ctrl/⌘ + C` | Copy selection | `Ctrl`+scroll | Zoom |
+| `Ctrl/⌘ + V` | Paste at pointer | | |
 
 ## License
 

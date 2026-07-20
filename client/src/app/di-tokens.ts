@@ -5,6 +5,7 @@ import type { UIStore } from '../state/uiStore';
 import type { CanvasDocument } from '../document/canvasDocument';
 import type { SceneRenderer } from '../canvas/render';
 import type { TextMeasure } from '../util/textMeasure';
+import type { ClipboardController } from '../interaction/clipboardController';
 
 /**
  * DI tokens for the framework-agnostic singletons. They are instantiated once in
@@ -18,3 +19,4 @@ export const UI_STORE = new InjectionToken<UIStore>('UI_STORE');
 export const CANVAS_DOCUMENT = new InjectionToken<CanvasDocument>('CANVAS_DOCUMENT');
 export const SCENE_RENDERER = new InjectionToken<SceneRenderer>('SCENE_RENDERER');
 export const TEXT_MEASURE = new InjectionToken<TextMeasure>('TEXT_MEASURE');
+export const CLIPBOARD_CONTROLLER = new InjectionToken<ClipboardController>('CLIPBOARD_CONTROLLER');

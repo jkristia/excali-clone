@@ -4,9 +4,12 @@ import { CollabService } from '../collab/collab.service';
 import { InlineEditorComponent } from '../components/inline-editor.component';
 import type { Bounds, PeerPresence, Shape } from '../../model/types';
 import { CameraMath } from '../../canvas/camera';
-import { SCENE_RENDERER, CANVAS_DOCUMENT, TOOL_REGISTRY, SHAPE_REGISTRY } from '../di-tokens';
+import { SCENE_RENDERER, CANVAS_DOCUMENT, TOOL_REGISTRY, SHAPE_REGISTRY, CLIPBOARD_CONTROLLER } from '../di-tokens';
 import { InteractionController } from '../../interaction/interactionController';
 import type { PointerInfo } from '../../interaction/interaction';
+
+/** World-space offset applied to each duplicate, down-right from its source. */
+const DUPLICATE_OFFSET = 20;
 
 @Component({
     selector: 'app-whiteboard',
@@ -24,6 +27,8 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
     private readonly shapeRegistry = inject(SHAPE_REGISTRY);
 
     private readonly author = () => String(this.canvasDocument.awareness.clientID);
+
+    private readonly clipboard = inject(CLIPBOARD_CONTROLLER);
 
     private readonly canvasRef = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
     private readonly containerRef = viewChild.required<ElementRef<HTMLDivElement>>('container');
@@ -60,6 +65,10 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
     }, this.toolRegistry, this.shapeRegistry);
 
     private spaceDown = false;
+    /** Last pointer position over the canvas, in screen (CSS) pixels — the paste anchor.
+     *  Stored as screen coords (not world) so paste follows the pointer even after a
+     *  wheel zoom/pan that moved the world point under a stationary cursor. */
+    private lastPointerScreen: { x: number; y: number } | null = null;
     private size = { width: 0, height: 0, dpr: 1 };
     private rafScheduled = false;
     private ro: ResizeObserver | null = null;
@@ -118,6 +127,23 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
             const typing = target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || editing;
             if (typing) return;
 
+            const mod = e.ctrlKey || e.metaKey;
+            if (mod && e.key.toLowerCase() === 'c') {
+                e.preventDefault();
+                this.clipboard.copy();
+                return;
+            }
+            if (mod && e.key.toLowerCase() === 'v') {
+                e.preventDefault();
+                this.pasteAtPointer();
+                return;
+            }
+            if (mod && e.key.toLowerCase() === 'd') {
+                e.preventDefault();
+                this.clipboard.duplicate(DUPLICATE_OFFSET, DUPLICATE_OFFSET);
+                return;
+            }
+
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 const sel = this.ui.snapshot.selection;
                 if (sel.length) {
@@ -164,6 +190,8 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
         };
         const onPointerMove = (e: PointerEvent) => {
             const p = toPointerInfo(e);
+            const rect = canvas.getBoundingClientRect();
+            this.lastPointerScreen = { x: e.clientX - rect.left, y: e.clientY - rect.top };
             this.canvasDocument.awareness.setLocalStateField('cursor', { x: p.x, y: p.y });
             this.controller.onPointerMove(p, e.shiftKey);
             this.handleCursor.set(this.controller.getCursor());
@@ -236,6 +264,13 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
     public ngOnDestroy(): void {
         this.ro?.disconnect();
         for (const cleanup of this.cleanups) cleanup();
+    }
+
+    /** Paste at the pointer, or the viewport center if the pointer hasn't been over the canvas yet. */
+    private pasteAtPointer(): void {
+        const screen = this.lastPointerScreen ?? { x: this.size.width / 2, y: this.size.height / 2 };
+        const world = CameraMath.screenToWorld(screen.x, screen.y, this.ui.snapshot.camera);
+        this.clipboard.paste(world.x, world.y);
     }
 
     protected peerTransform(cursor: { x: number; y: number }): string {
