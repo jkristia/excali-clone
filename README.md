@@ -2,6 +2,8 @@
 
 A hobby project — basically an Excalidraw clone where multiple people can draw on the same board at the same time and see each other's cursors live. Built mostly with Claude Opus.
 
+![alt text](images/app.png)
+
 Edits sync in real time using [Yjs](https://yjs.dev), so people can draw at the same time (even offline) without stepping on each other's changes.
 
 ## Features
