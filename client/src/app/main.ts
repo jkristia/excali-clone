@@ -8,7 +8,8 @@ import { CanvasDocument } from '../document/canvasDocument';
 import { IdentityStore } from '../document/identity';
 import { SceneRenderer } from '../canvas/render';
 import { TextMeasure } from '../util/textMeasure';
-import { SHAPE_REGISTRY, TOOL_REGISTRY, UI_STORE, CANVAS_DOCUMENT, SCENE_RENDERER, TEXT_MEASURE } from './di-tokens';
+import { ClipboardController } from '../interaction/clipboardController';
+import { SHAPE_REGISTRY, TOOL_REGISTRY, UI_STORE, CANVAS_DOCUMENT, SCENE_RENDERER, TEXT_MEASURE, CLIPBOARD_CONTROLLER } from './di-tokens';
 import '../index.css';
 
 // Composition root: build the object graph once, in dependency order, then hand
@@ -19,6 +20,12 @@ const uiStore = new UIStore(toolRegistry);
 const canvasDocument = new CanvasDocument(new IdentityStore());
 const sceneRenderer = new SceneRenderer(shapeRegistry);
 const textMeasure = new TextMeasure();
+const clipboardController = new ClipboardController(
+    uiStore,
+    canvasDocument,
+    shapeRegistry,
+    () => String(canvasDocument.awareness.clientID),
+);
 
 bootstrapApplication(AppComponent, {
     providers: [
@@ -28,5 +35,6 @@ bootstrapApplication(AppComponent, {
         { provide: CANVAS_DOCUMENT, useValue: canvasDocument },
         { provide: SCENE_RENDERER, useValue: sceneRenderer },
         { provide: TEXT_MEASURE, useValue: textMeasure },
+        { provide: CLIPBOARD_CONTROLLER, useValue: clipboardController },
     ],
 }).catch((err) => console.error(err));

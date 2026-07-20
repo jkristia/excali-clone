@@ -90,10 +90,17 @@ export class CanvasDocument {
     }
 
     public addShape(shape: Shape): void {
+        this.addShapes([shape]);
+    }
+
+    /** Add several shapes in one transaction, so they undo/redo as a single step. */
+    public addShapes(shapes: Shape[]): void {
         this.transact(() => {
-            const ym = new Y.Map<unknown>();
-            for (const [k, v] of Object.entries(shape)) ym.set(k, v);
-            this.yShapes.set(shape.id, ym);
+            for (const shape of shapes) {
+                const ym = new Y.Map<unknown>();
+                for (const [k, v] of Object.entries(shape)) ym.set(k, v);
+                this.yShapes.set(shape.id, ym);
+            }
         });
     }
 

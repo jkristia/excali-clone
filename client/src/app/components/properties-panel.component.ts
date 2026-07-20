@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { UiStoreService } from '../state/ui-store.service';
 import { CollabService } from '../collab/collab.service';
-import { CANVAS_DOCUMENT, SHAPE_REGISTRY, TOOL_REGISTRY, TEXT_MEASURE } from '../di-tokens';
+import { CANVAS_DOCUMENT, SHAPE_REGISTRY, TOOL_REGISTRY, TEXT_MEASURE, CLIPBOARD_CONTROLLER } from '../di-tokens';
 import type { ReorderOp } from '../../document/canvasDocument';
 import type { CornerStyle, EndpointCap, Shape, StrokeStyle, TextAlign } from '../../model/types';
 import type { Style } from '../../state/uiStore';
@@ -10,7 +10,11 @@ import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS, WIDTHS, CAPS, FONT_SIZES, TEXT
 import { LayerIconComponent } from './layer-icon.component';
 import { AlignIconComponent } from './align-icon.component';
 import { AlignShapesIconComponent } from './align-shapes-icon.component';
+import { DuplicateIconComponent } from './duplicate-icon.component';
 import { ShapeAligner, type AlignOp } from '../../util/shapeAligner';
+
+/** World-space offset applied to each duplicate, down-right from its source. */
+const DUPLICATE_OFFSET = 20;
 
 const LAYER_OPS: { op: ReorderOp; label: string; shortcut: string }[] = [
     { op: 'toBack', label: 'Send to back', shortcut: 'Ctrl+Shift+[' },
@@ -31,7 +35,7 @@ const ALIGN_OPS: { op: AlignOp; label: string }[] = [
 @Component({
     selector: 'app-properties-panel',
     standalone: true,
-    imports: [LayerIconComponent, AlignIconComponent, AlignShapesIconComponent],
+    imports: [LayerIconComponent, AlignIconComponent, AlignShapesIconComponent, DuplicateIconComponent],
     templateUrl: './properties-panel.component.html',
     styleUrl: './properties-panel.component.scss',
 })
@@ -42,6 +46,7 @@ export class PropertiesPanelComponent {
     private readonly toolRegistry = inject(TOOL_REGISTRY);
     private readonly shapeRegistry = inject(SHAPE_REGISTRY);
     private readonly textMeasure = inject(TEXT_MEASURE);
+    private readonly clipboard = inject(CLIPBOARD_CONTROLLER);
     private readonly aligner = new ShapeAligner(this.shapeRegistry);
 
     protected readonly strokeColors = STROKE_COLORS;
@@ -129,5 +134,8 @@ export class PropertiesPanelComponent {
     protected align(op: AlignOp): void {
         const patches = this.aligner.align(this.selected(), op);
         if (patches.length) this.canvasDocument.updateShapes(patches);
+    }
+    protected duplicate(): void {
+        this.clipboard.duplicate(DUPLICATE_OFFSET, DUPLICATE_OFFSET);
     }
 }

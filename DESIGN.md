@@ -104,7 +104,7 @@ That's it — `getBounds`/`hitTest`/`drawShape`, resize handles, and the propert
 3. `app/components/toolbar.component.html` — add a toolbar entry (icon + shortcut key label).
 4. `interaction/keyboardController.ts` — add the shortcut key to `SHORTCUTS` if it needs a letter shortcut.
 
-Global shortcuts (undo/redo, layers `Ctrl+[`/`]`, tool letters) live in `interaction/keyboardController.ts`, wired up once in `app/app.component.ts`. Canvas-focused ones (delete, escape, space-pan) live in `app/whiteboard/whiteboard.component.ts`.
+Global shortcuts (undo/redo, layers `Ctrl+[`/`]`, tool letters) live in `interaction/keyboardController.ts`, wired up once in `app/app.component.ts`. Canvas-focused ones (delete, escape, space-pan, copy/paste — paste needs the pointer position) live in `app/whiteboard/whiteboard.component.ts`, with the copy/paste logic itself in the framework-agnostic `interaction/clipboardController.ts`.
 
 ## Verification / testing pattern
 
