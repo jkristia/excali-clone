@@ -90,9 +90,14 @@ export class SelectTool implements Tool {
 
     private startMove(ctx: ToolContext, ids: string[], p: PointerInfo, pendingSelect?: string): Interaction {
         const origins = new Map<string, { x: number; y: number }>();
-        for (const s of ctx.shapes()) {
-            if (ids.includes(s.id)) origins.set(s.id, { x: s.x, y: s.y });
-        }
-        return { kind: 'move', ids, startX: p.x, startY: p.y, origins, moved: false, pendingSelect };
+        const moved = ctx.shapes().filter((s) => ids.includes(s.id));
+        for (const s of moved) origins.set(s.id, { x: s.x, y: s.y });
+        // The group's bounding-box origin so snap-to-grid can align the whole
+        // selection as a unit rather than each shape's anchor.
+        const group = this.shapeRegistry.unionBounds(moved);
+        return {
+            kind: 'move', ids, startX: p.x, startY: p.y, origins, moved: false, pendingSelect,
+            groupX: group?.x ?? p.x, groupY: group?.y ?? p.y,
+        };
     }
 }

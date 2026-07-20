@@ -38,6 +38,13 @@ export class KeyboardController {
             return;
         }
 
+        // Snap-to-grid toggle (match Excalidraw's Ctrl+'). Not while typing.
+        if (!typing && mod && e.key === "'") {
+            e.preventDefault();
+            this.uiStore.getState().toggleSnapToGrid();
+            return;
+        }
+
         // Layer / z-order shortcuts (match Excalidraw).
         if (mod && (e.key === ']' || e.key === '[')) {
             e.preventDefault();

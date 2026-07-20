@@ -123,6 +123,7 @@ describe('SelectTool', () => {
             expect(result).toEqual({
                 kind: 'move', ids: ['r1'], startX: 50, startY: 25,
                 origins: new Map([['r1', { x: 0, y: 0 }]]), moved: false,
+                groupX: 0, groupY: 0,
             });
         });
 
@@ -141,6 +142,7 @@ describe('SelectTool', () => {
             expect(result).toEqual({
                 kind: 'move', ids: ['r2', 'r1'], startX: 50, startY: 25,
                 origins: new Map([['r2', { x: 300, y: 300 }], ['r1', { x: 0, y: 0 }]]), moved: false,
+                groupX: 0, groupY: 0,
             });
         });
     });
