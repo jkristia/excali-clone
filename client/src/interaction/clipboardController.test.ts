@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ClipboardController } from './clipboardController';
 import { UIStore } from '../state/uiStore';
 import { ToolRegistry } from '../tools/toolRegistry';
@@ -29,15 +29,33 @@ class FakeDoc {
     }
 }
 
+/** In-memory stand-in for the OS clipboard, installed as `navigator.clipboard`. The
+ *  same instance shared by two controllers models two tabs backed by one OS clipboard. */
+class FakeClipboard {
+    public text = '';
+    public failWrite = false;
+    public failRead = false;
+
+    public async writeText(text: string): Promise<void> {
+        if (this.failWrite) throw new Error('clipboard write denied');
+        this.text = text;
+    }
+    public async readText(): Promise<string> {
+        if (this.failRead) throw new Error('clipboard read denied');
+        return this.text;
+    }
+}
+
 const shapeRegistry = new ShapeRegistry();
 let uiStore: UIStore;
 let doc: FakeDoc;
 let clipboard: ClipboardController;
+let fakeClipboard: FakeClipboard;
 
-function makeClipboard(author = 'me'): ClipboardController {
+function makeClipboard(author = 'me', docArg: FakeDoc = doc, store: UIStore = uiStore): ClipboardController {
     return new ClipboardController(
-        uiStore,
-        doc as unknown as CanvasDocument,
+        store,
+        docArg as unknown as CanvasDocument,
         shapeRegistry,
         () => author,
     );
@@ -47,6 +65,12 @@ beforeEach(() => {
     uiStore = new UIStore(new ToolRegistry(shapeRegistry));
     doc = new FakeDoc();
     clipboard = makeClipboard();
+    fakeClipboard = new FakeClipboard();
+    vi.stubGlobal('navigator', { clipboard: fakeClipboard });
+});
+
+afterEach(() => {
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
 });
 
@@ -55,34 +79,34 @@ describe('ClipboardController', () => {
         expect(clipboard.hasContents()).toBe(false);
     });
 
-    it('copies the current selection', () => {
+    it('copies the current selection', async () => {
         doc.seed([rect({ id: 'r1' })]);
         uiStore.getState().setSelection(['r1']);
-        clipboard.copy();
+        await clipboard.copy();
         expect(clipboard.hasContents()).toBe(true);
     });
 
-    it('an empty-selection copy keeps previous contents', () => {
+    it('an empty-selection copy keeps previous contents', async () => {
         doc.seed([rect({ id: 'r1' })]);
         uiStore.getState().setSelection(['r1']);
-        clipboard.copy();
+        await clipboard.copy();
         uiStore.getState().clearSelection();
-        clipboard.copy();
+        await clipboard.copy();
         expect(clipboard.hasContents()).toBe(true);
     });
 
-    it('paste is a no-op when nothing was copied', () => {
-        clipboard.paste(0, 0);
+    it('paste is a no-op when nothing was copied', async () => {
+        await clipboard.paste(0, 0);
         expect(doc.added).toHaveLength(0);
     });
 
-    it('centers the pasted group at the anchor and assigns fresh ids', () => {
+    it('centers the pasted group at the anchor and assigns fresh ids', async () => {
         // A 20x20 rect at (10,10) — bounds center (20,20).
         doc.seed([rect({ id: 'r1', x: 10, y: 10, w: 20, h: 20 })]);
         uiStore.getState().setSelection(['r1']);
-        clipboard.copy();
+        await clipboard.copy();
 
-        clipboard.paste(100, 100);
+        await clipboard.paste(100, 100);
 
         expect(doc.added).toHaveLength(1);
         const pasted = doc.added[0];
@@ -93,14 +117,14 @@ describe('ClipboardController', () => {
         expect(pasted[0].y).toBe(90);
     });
 
-    it('preserves relative offsets and z-order across a multi-shape paste', () => {
+    it('preserves relative offsets and z-order across a multi-shape paste', async () => {
         const a = rect({ id: 'r1', x: 0, y: 0, w: 20, h: 20, z: 1 });
         const b = ellipse({ id: 'e1', x: 40, y: 0, w: 20, h: 20, z: 2 });
         doc.seed([a, b]);
         uiStore.getState().setSelection(['r1', 'e1']);
-        clipboard.copy();
+        await clipboard.copy();
 
-        clipboard.paste(0, 0);
+        await clipboard.paste(0, 0);
 
         const pasted = doc.added[0];
         // group bounds: x 0..60, y 0..20 -> center (30,10); anchor (0,0) => offset (-30,-10).
@@ -110,27 +134,27 @@ describe('ClipboardController', () => {
         expect(pastedRect.z).toBeLessThan(pastedEllipse.z); // z-order preserved
     });
 
-    it('stacks pastes on top with increasing z', () => {
+    it('stacks pastes on top with increasing z', async () => {
         doc.seed([rect({ id: 'r1', z: 5 })]);
         uiStore.getState().setSelection(['r1']);
-        clipboard.copy();
+        await clipboard.copy();
 
-        clipboard.paste(0, 0);
+        await clipboard.paste(0, 0);
         const firstZ = doc.added[0][0].z;
-        clipboard.paste(0, 0);
+        await clipboard.paste(0, 0);
         const secondZ = doc.added[1][0].z;
 
         expect(firstZ).toBeGreaterThan(5);
         expect(secondZ).toBeGreaterThan(firstZ);
     });
 
-    it('tags pasted shapes with the current author and selects them', () => {
+    it('tags pasted shapes with the current author and selects them', async () => {
         clipboard = makeClipboard('author-2');
         doc.seed([rect({ id: 'r1', createdBy: 'someone-else' })]);
         uiStore.getState().setSelection(['r1']);
-        clipboard.copy();
+        await clipboard.copy();
 
-        clipboard.paste(0, 0);
+        await clipboard.paste(0, 0);
 
         const pasted = doc.added[0];
         expect(pasted[0].createdBy).toBe('author-2');
@@ -173,20 +197,107 @@ describe('ClipboardController', () => {
         expect(second.y).toBe(40);
     });
 
-    it('duplicate does not disturb the copy/paste clipboard buffer', () => {
+    it('duplicate does not disturb the copy/paste clipboard buffer', async () => {
         doc.seed([rect({ id: 'r1', x: 0, y: 0, w: 20, h: 20 }), rect({ id: 'r2', x: 100, y: 100, w: 20, h: 20 })]);
         // Copy r1, then duplicate a different selection (r2).
         uiStore.getState().setSelection(['r1']);
-        clipboard.copy();
+        await clipboard.copy();
         uiStore.getState().setSelection(['r2']);
         clipboard.duplicate(20, 20);
 
         // Paste should still reproduce r1 (the copied shape), not r2.
-        clipboard.paste(0, 0);
+        await clipboard.paste(0, 0);
         const pasted = doc.added[doc.added.length - 1];
         expect(pasted).toHaveLength(1);
         // r1's 20x20 box centered at (0,0) => top-left (-10,-10).
         expect(pasted[0].x).toBe(-10);
         expect(pasted[0].y).toBe(-10);
+    });
+
+    describe('OS clipboard (cross-tab)', () => {
+        it('writes a tagged envelope of the copied shapes to the OS clipboard', async () => {
+            doc.seed([rect({ id: 'r1', x: 10, y: 10, w: 20, h: 20 })]);
+            uiStore.getState().setSelection(['r1']);
+            await clipboard.copy();
+
+            const envelope = JSON.parse(fakeClipboard.text);
+            expect(envelope.kind).toBe('whiteboard/shapes@1');
+            expect(envelope.shapes).toHaveLength(1);
+            expect(envelope.shapes[0].id).toBe('r1');
+        });
+
+        it('pastes shapes copied in another instance via the shared OS clipboard', async () => {
+            // Instance A copies into the shared (stubbed) OS clipboard.
+            doc.seed([rect({ id: 'r1', x: 10, y: 10, w: 20, h: 20, createdBy: 'author-A' })]);
+            uiStore.getState().setSelection(['r1']);
+            await clipboard.copy();
+
+            // Instance B is a fresh controller with its own empty doc and buffer.
+            const docB = new FakeDoc();
+            const storeB = new UIStore(new ToolRegistry(shapeRegistry));
+            const clipboardB = makeClipboard('author-B', docB, storeB);
+            expect(clipboardB.hasContents()).toBe(false); // nothing copied locally in B
+
+            await clipboardB.paste(100, 100);
+
+            expect(docB.added).toHaveLength(1);
+            const pasted = docB.added[0];
+            expect(pasted).toHaveLength(1);
+            expect(pasted[0].id).not.toBe('r1'); // fresh id, no cross-tab collision
+            expect(pasted[0].createdBy).toBe('author-B');
+            expect(pasted[0].x).toBe(90); // center (20,20) -> anchor (100,100)
+            expect(pasted[0].y).toBe(90);
+        });
+
+        it('falls back to the in-memory buffer when the clipboard holds foreign text', async () => {
+            doc.seed([rect({ id: 'r1', x: 0, y: 0, w: 20, h: 20 })]);
+            uiStore.getState().setSelection(['r1']);
+            await clipboard.copy();
+
+            fakeClipboard.text = 'not our json';
+            await clipboard.paste(0, 0);
+
+            const pasted = doc.added[doc.added.length - 1];
+            expect(pasted).toHaveLength(1);
+            expect(pasted[0].x).toBe(-10); // reproduces r1 from the in-memory buffer
+        });
+
+        it('falls back to the in-memory buffer when the clipboard holds a wrong-kind envelope', async () => {
+            doc.seed([rect({ id: 'r1', x: 0, y: 0, w: 20, h: 20 })]);
+            uiStore.getState().setSelection(['r1']);
+            await clipboard.copy();
+
+            fakeClipboard.text = JSON.stringify({ kind: 'something/else', shapes: [] });
+            await clipboard.paste(0, 0);
+
+            const pasted = doc.added[doc.added.length - 1];
+            expect(pasted[0].x).toBe(-10); // still reproduces r1
+        });
+
+        it('falls back to the in-memory buffer when reading the clipboard is denied', async () => {
+            doc.seed([rect({ id: 'r1', x: 0, y: 0, w: 20, h: 20 })]);
+            uiStore.getState().setSelection(['r1']);
+            await clipboard.copy();
+
+            fakeClipboard.failRead = true;
+            await clipboard.paste(0, 0);
+
+            const pasted = doc.added[doc.added.length - 1];
+            expect(pasted[0].x).toBe(-10); // reproduces r1 from the in-memory buffer
+        });
+
+        it('a denied clipboard write does not throw and keeps the in-memory buffer usable', async () => {
+            fakeClipboard.failWrite = true;
+            doc.seed([rect({ id: 'r1', x: 0, y: 0, w: 20, h: 20 })]);
+            uiStore.getState().setSelection(['r1']);
+
+            await expect(clipboard.copy()).resolves.toBeUndefined();
+            expect(clipboard.hasContents()).toBe(true);
+
+            // Clipboard read yields the failed-write's stale empty text -> foreign -> fallback.
+            await clipboard.paste(0, 0);
+            const pasted = doc.added[doc.added.length - 1];
+            expect(pasted[0].x).toBe(-10);
+        });
     });
 });

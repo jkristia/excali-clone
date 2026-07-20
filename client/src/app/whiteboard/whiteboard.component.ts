@@ -130,7 +130,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
             const mod = e.ctrlKey || e.metaKey;
             if (mod && e.key.toLowerCase() === 'c') {
                 e.preventDefault();
-                this.clipboard.copy();
+                void this.clipboard.copy();
                 return;
             }
             if (mod && e.key.toLowerCase() === 'v') {
@@ -266,11 +266,13 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
         for (const cleanup of this.cleanups) cleanup();
     }
 
-    /** Paste at the pointer, or the viewport center if the pointer hasn't been over the canvas yet. */
+    /** Paste at the pointer, or the viewport center if the pointer hasn't been over the canvas yet.
+     *  The world anchor is captured synchronously (before the async clipboard read) so paste lands
+     *  where the pointer was at keypress. */
     private pasteAtPointer(): void {
         const screen = this.lastPointerScreen ?? { x: this.size.width / 2, y: this.size.height / 2 };
         const world = CameraMath.screenToWorld(screen.x, screen.y, this.ui.snapshot.camera);
-        this.clipboard.paste(world.x, world.y);
+        void this.clipboard.paste(world.x, world.y);
     }
 
     protected peerTransform(cursor: { x: number; y: number }): string {

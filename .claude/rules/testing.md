@@ -1,6 +1,6 @@
 # Testing rules
 
-Client: Vitest (`npm run test`, core logic only) + Playwright (`npm run test:e2e`, real app), both from `client/`. See DESIGN.md's "Verification / testing pattern".
+Client: Vitest (`npm run test`, core logic only) + Playwright (`npm run test:e2e`, real app), both from `client/`. See docs/DESIGN.md's "Verification / testing pattern".
 
 ## Coverage
 

@@ -17,7 +17,7 @@ Edits sync in real time using [Yjs](https://yjs.dev), so people can draw at the 
 - Copy/paste shapes (pastes at the pointer)
 - Boards can persist across server restarts
 
-For how it's built under the hood, see [DESIGN.md](DESIGN.md).
+For how it's built under the hood, see [DESIGN.md](docs/DESIGN.md).
 
 ## Getting started
 
