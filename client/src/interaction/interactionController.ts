@@ -9,6 +9,7 @@ import { Handles } from '../util/handles';
 import { ResizeMath } from '../util/resizeMath';
 import { RotationMath } from '../util/rotationMath';
 import { VectorMath } from '../util/vectorMath';
+import { GridMath } from '../util/gridMath';
 import { ArrowEndpoints } from '../util/arrowEndpoints';
 
 /** Store surface the controller needs — a subset of uiStore's state + actions. */
@@ -16,6 +17,7 @@ export interface InteractionStore {
     tool: ToolName;
     style: Style;
     camera: Camera;
+    snapToGrid: boolean;
     selection: string[];
     setSelection: (ids: string[]) => void;
     toggleSelection: (id: string, additive: boolean) => void;
@@ -106,6 +108,8 @@ export class InteractionController {
     public onPointerMove(p: PointerInfo, shiftKey: boolean): void {
         const store = this.deps.getStore();
         const inter = this.interaction;
+        // Snap to grid when the mode is on; Ctrl/Cmd held temporarily disables it.
+        const snap = store.snapToGrid && !p.ctrlKey && !p.metaKey;
         switch (inter.kind) {
             case 'pan': {
                 store.panBy(p.clientX - inter.lastX, p.clientY - inter.lastY);
@@ -113,9 +117,14 @@ export class InteractionController {
                 break;
             }
             case 'resize': {
+                // Snapping the world pointer lands the grabbed edge/corner on the
+                // grid; only meaningful axis-aligned, so skip it for rotated shapes.
+                const snapH = snap && !inter.orig.rotation;
+                const rx = snapH ? GridMath.snap(p.x) : p.x;
+                const ry = snapH ? GridMath.snap(p.y) : p.y;
                 const geom = inter.orig.rotation
                     ? ResizeMath.computeRotated(inter.orig, inter.handle, inter.orig.rotation, p.x, p.y, shiftKey)
-                    : ResizeMath.compute(inter.orig, inter.handle, p.x, p.y, shiftKey);
+                    : ResizeMath.compute(inter.orig, inter.handle, rx, ry, shiftKey);
                 this.deps.doc.updateShapes([{ id: inter.id, patch: {
                     x: geom.w < 0 ? geom.x + geom.w : geom.x,
                     y: geom.h < 0 ? geom.y + geom.h : geom.y,
@@ -132,17 +141,21 @@ export class InteractionController {
             }
             case 'arrow-endpoint': {
                 const { origX, origY, origDx, origDy, endpoint, id } = inter;
+                // Snap the dragged endpoint to a grid node (matching create); the
+                // fixed end stays put and Shift still angle-snaps on top.
+                const px = snap ? GridMath.snap(p.x) : p.x;
+                const py = snap ? GridMath.snap(p.y) : p.y;
                 let patch: Partial<ArrowShape>;
                 if (endpoint === 1) {
-                    let dx = p.x - origX;
-                    let dy = p.y - origY;
+                    let dx = px - origX;
+                    let dy = py - origY;
                     if (shiftKey) ({ dx, dy } = VectorMath.snapAngle(dx, dy));
                     patch = { dx, dy };
                 } else {
                     const headX = origX + origDx;
                     const headY = origY + origDy;
-                    let vx = p.x - headX;
-                    let vy = p.y - headY;
+                    let vx = px - headX;
+                    let vy = py - headY;
                     if (shiftKey) ({ dx: vx, dy: vy } = VectorMath.snapAngle(vx, vy));
                     patch = { x: headX + vx, y: headY + vy, dx: -vx, dy: -vy };
                 }
@@ -151,22 +164,28 @@ export class InteractionController {
             }
             case 'create': {
                 if (inter.draft.type === 'arrow') {
-                    let dx = p.x - inter.startX;
-                    let dy = p.y - inter.startY;
+                    // Snap both endpoints to grid nodes; Shift still angle-snaps.
+                    const ax = snap ? GridMath.snap(inter.startX) : inter.startX;
+                    const ay = snap ? GridMath.snap(inter.startY) : inter.startY;
+                    let dx = (snap ? GridMath.snap(p.x) : p.x) - ax;
+                    let dy = (snap ? GridMath.snap(p.y) : p.y) - ay;
                     if (shiftKey) ({ dx, dy } = VectorMath.snapAngle(dx, dy));
-                    inter.draft = { ...inter.draft, dx, dy };
+                    inter.draft = { ...inter.draft, x: ax, y: ay, dx, dy };
                 } else if (
                     inter.draft.type === 'rectangle' ||
                     inter.draft.type === 'ellipse' ||
                     inter.draft.type === 'diamond'
                 ) {
-                    let w = p.x - inter.startX;
-                    let h = p.y - inter.startY;
+                    // Snap the box by snapping both the start and the moving corner.
+                    const x0 = snap ? GridMath.snap(inter.startX) : inter.startX;
+                    const y0 = snap ? GridMath.snap(inter.startY) : inter.startY;
+                    let w = (snap ? GridMath.snap(p.x) : p.x) - x0;
+                    let h = (snap ? GridMath.snap(p.y) : p.y) - y0;
                     if (shiftKey && inter.draft.type === 'ellipse') {
                         const side = Math.sign(w) * Math.min(Math.abs(w), Math.abs(h)) || Math.sign(h) * Math.abs(h);
                         w = side; h = side;
                     }
-                    inter.draft = { ...inter.draft, w, h };
+                    inter.draft = { ...inter.draft, x: x0, y: y0, w, h };
                 }
                 break;
             }
@@ -175,10 +194,18 @@ export class InteractionController {
                 break;
             }
             case 'move': {
-                const dx = p.x - inter.startX;
-                const dy = p.y - inter.startY;
+                let dx = p.x - inter.startX;
+                let dy = p.y - inter.startY;
                 if (!inter.moved && Math.hypot(dx, dy) < 2) break;
                 inter.moved = true;
+                // Snap the selection's bounding box (not each anchor) so the group
+                // moves as a unit and arrows/draw shapes snap by their visible box.
+                if (snap) {
+                    const gx = inter.groupX + dx;
+                    const gy = inter.groupY + dy;
+                    dx += GridMath.snap(gx) - gx;
+                    dy += GridMath.snap(gy) - gy;
+                }
                 const patches = inter.ids.map((id) => {
                     const o = inter.origins.get(id)!;
                     return { id, patch: { x: o.x + dx, y: o.y + dy } };

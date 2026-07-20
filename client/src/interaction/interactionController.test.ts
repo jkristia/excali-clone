@@ -13,6 +13,7 @@ function makeStore(overrides: Partial<InteractionStore> = {}): InteractionStore 
             noteFill: '#fff', startCap: 'none', endCap: 'arrow', edges: 'sharp',
         },
         camera: { x: 0, y: 0, zoom: 1 },
+        snapToGrid: false,
         selection: [],
         setSelection(ids) { this.selection = ids; },
         toggleSelection: () => {},
@@ -238,6 +239,61 @@ describe('InteractionController', () => {
         store.tool = 'rectangle';
         controller.onPointerDown(pointer(0, 0), true);
         expect(controller.getInteraction().kind).toBe('pan');
+    });
+
+    describe('snap to grid', () => {
+        it('move snaps the selection bounding box to the grid', () => {
+            store.snapToGrid = true;
+            controller.onPointerDown(pointer(10, 10), false); // selects + moves r1 (origin 0,0)
+            controller.onPointerMove(pointer(33, 27), false); // dx 23 / dy 17 -> snap group to 20/20
+            expect(patches.at(-1)).toEqual({ id: 'r1', patch: { x: 20, y: 20 } });
+        });
+
+        it('Ctrl held during a move disables snapping', () => {
+            store.snapToGrid = true;
+            controller.onPointerDown(pointer(10, 10), false);
+            controller.onPointerMove(pointer(33, 27, { ctrlKey: true }), false);
+            expect(patches.at(-1)).toEqual({ id: 'r1', patch: { x: 23, y: 17 } });
+        });
+
+        it('resize snaps the grabbed corner to the grid', () => {
+            store.snapToGrid = true;
+            store.selection = ['r1'];
+            controller.onPointerDown(pointer(0, 0), false); // NW handle
+            controller.onPointerMove(pointer(23, 11), false); // snaps pointer to (20, 20)
+            expect(patches.at(-1)).toEqual({ id: 'r1', patch: { x: 20, y: 20, w: 80, h: 30 } });
+        });
+
+        it('create snaps the new shape box to grid nodes', () => {
+            store.tool = 'rectangle';
+            store.snapToGrid = true;
+            controller.onPointerDown(pointer(3, 4), false); // start snaps to (0, 0)
+            controller.onPointerMove(pointer(57, 44), false); // corner snaps to (60, 40)
+            controller.onPointerUp();
+            expect(addedShapes[0]).toMatchObject({ type: 'rectangle', x: 0, y: 0, w: 60, h: 40 });
+        });
+
+        it('create snaps both endpoints of a line/arrow to grid nodes', () => {
+            store.tool = 'arrow';
+            store.snapToGrid = true;
+            controller.onPointerDown(pointer(3, 4), false); // tail snaps to (0, 0)
+            controller.onPointerMove(pointer(57, 44), false); // head snaps to (60, 40)
+            controller.onPointerUp();
+            expect(addedShapes[0]).toMatchObject({ type: 'arrow', x: 0, y: 0, dx: 60, dy: 40 });
+        });
+
+        it('dragging a line/arrow endpoint snaps it to the grid', () => {
+            const arrow: Shape = {
+                id: 'a1', type: 'arrow', x: 0, y: 0, z: 0, createdBy: 'u',
+                dx: 100, dy: 0, stroke: '#000', strokeWidth: 2, startCap: 'none', endCap: 'arrow',
+            };
+            shapes = [arrow];
+            store.selection = ['a1'];
+            store.snapToGrid = true;
+            controller.onPointerDown(pointer(100, 0), false); // grabs the head endpoint
+            controller.onPointerMove(pointer(57, 44), false); // head snaps to (60, 40)
+            expect(patches.at(-1)).toEqual({ id: 'a1', patch: { dx: 60, dy: 40 } });
+        });
     });
 
     describe('hover cursor', () => {

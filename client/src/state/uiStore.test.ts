@@ -34,6 +34,24 @@ describe('setTool applies each tool\'s defaultStyle', () => {
     });
 });
 
+describe('snapToGrid', () => {
+    it('defaults to false', () => {
+        expect(uiStore.getState().snapToGrid).toBe(false);
+    });
+
+    it('toggleSnapToGrid flips the flag', () => {
+        uiStore.getState().toggleSnapToGrid();
+        expect(uiStore.getState().snapToGrid).toBe(true);
+        uiStore.getState().toggleSnapToGrid();
+        expect(uiStore.getState().snapToGrid).toBe(false);
+    });
+
+    it('setSnapToGrid sets it explicitly', () => {
+        uiStore.getState().setSnapToGrid(true);
+        expect(uiStore.getState().snapToGrid).toBe(true);
+    });
+});
+
 describe('toggleSelection', () => {
     it('non-additive: replaces selection with just the given id', () => {
         uiStore.setState({ selection: ['a', 'b'] });

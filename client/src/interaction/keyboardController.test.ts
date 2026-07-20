@@ -68,4 +68,19 @@ describe('KeyboardController', () => {
         fire({ key: ']', ctrlKey: true });
         expect(canvasDocument.reorderShapes).not.toHaveBeenCalled();
     });
+
+    it("Ctrl+' toggles snap-to-grid", () => {
+        expect(uiStore.getState().snapToGrid).toBe(false);
+        const pd = fire({ key: "'", ctrlKey: true });
+        expect(uiStore.getState().snapToGrid).toBe(true);
+        expect(pd).toHaveBeenCalled();
+        fire({ key: "'", ctrlKey: true });
+        expect(uiStore.getState().snapToGrid).toBe(false);
+    });
+
+    it("Ctrl+' is ignored while typing", () => {
+        const typingKeyboard = new KeyboardController(uiStore, canvasDocument, () => true);
+        typingKeyboard.handleKeyDown(fakeEvent({ key: "'", ctrlKey: true }));
+        expect(uiStore.getState().snapToGrid).toBe(false);
+    });
 });

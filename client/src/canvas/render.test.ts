@@ -58,6 +58,7 @@ function baseInput(shapes: Shape[]) {
         marquee: null,
         draft: null,
         editingId: null,
+        showGrid: false,
     };
 }
 
@@ -127,6 +128,22 @@ describe('renderScene characterization', () => {
         sceneRenderer.render({ ctx, ...baseInput([shape]) });
         expect(calls).toContain('fill()');
         expect(calls.some((c) => c.startsWith('fillText('))).toBe(true);
+    });
+});
+
+describe('snap-to-grid line grid', () => {
+    it('draws dashed minor + solid major lines only when showGrid is true', () => {
+        const on = createRecordingContext();
+        sceneRenderer.render({ ctx: on.ctx, ...baseInput([]), showGrid: true });
+        expect(on.calls).toContain('setLineDash([2,3])'); // dashed minor pass
+        expect(on.calls).toContain('setLineDash([])'); // solid major pass
+        expect(on.calls.some((c) => c.startsWith('moveTo('))).toBe(true);
+    });
+
+    it('draws no grid lines when showGrid is false', () => {
+        const off = createRecordingContext();
+        sceneRenderer.render({ ctx: off.ctx, ...baseInput([]), showGrid: false });
+        expect(off.calls.some((c) => c.startsWith('moveTo('))).toBe(false);
     });
 });
 

@@ -59,17 +59,33 @@ npm start            # run the built server (after npm run build)
 
 ## Keyboard shortcuts
 
-| Key | Action | Key | Action |
-| --- | ------ | --- | ------ |
-| `V` | Select | `P` | Pen (draw) |
-| `H` / hold `Space` | Pan | `T` | Text |
-| `R` | Rectangle | `N` | Sticky note |
-| `O` | Ellipse | `Ctrl/⌘ + Z` | Undo |
-| `L` | Line | `Ctrl/⌘ + Shift + Z` | Redo |
-| `A` | Arrow | `Shift + 1` | Zoom to fit |
-| `Del` / `Backspace` | Delete selection | scroll / `Shift`+scroll | Pan / Pan horizontally |
-| `Ctrl/⌘ + C` | Copy selection | `Ctrl`+scroll | Zoom |
-| `Ctrl/⌘ + V` | Paste at pointer | | |
+**Tools**
+
+| Key | Action | &nbsp; | Key | Action |
+| --- | ------ | :---: | --- | ------ |
+| `V` | Select | &nbsp; | `A` | Arrow |
+| `H` / hold `Space` | Pan | &nbsp; | `P` | Pen (draw) |
+| `R` | Rectangle | &nbsp; | `T` | Text |
+| `O` | Ellipse | &nbsp; | `N` | Sticky note |
+| `L` | Line | &nbsp; | | |
+
+**Editing**
+
+| Key | Action | &nbsp; | Key | Action |
+| --- | ------ | :---: | --- | ------ |
+| `Del` / `Backspace` | Delete selection | &nbsp; | `Ctrl/⌘ + Z` | Undo |
+| `Ctrl/⌘ + C` | Copy selection | &nbsp; | `Ctrl/⌘ + Shift + Z` | Redo |
+| `Ctrl/⌘ + V` | Paste at pointer | &nbsp; | `Ctrl/⌘ + ]` / `[` | Bring forward / Send backward |
+| `Ctrl/⌘ + D` | Duplicate selection | &nbsp; | `Ctrl/⌘ + Shift + ]` / `[` | Bring to front / Send to back |
+| `Esc` | Clear selection | &nbsp; | | |
+
+**View**
+
+| Key | Action | &nbsp; | Key | Action |
+| --- | ------ | :---: | --- | ------ |
+| `Shift + 1` | Zoom to fit | &nbsp; | `Ctrl`+scroll | Zoom |
+| `Shift + 2` | Zoom to selection | &nbsp; | scroll / `Shift`+scroll | Pan / Pan horizontally |
+| `Ctrl/⌘ + '` | Toggle snap to grid | &nbsp; | | |
 
 ## License
 

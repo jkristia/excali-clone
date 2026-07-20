@@ -27,6 +27,8 @@ export interface UIState {
     readonly tool: Tool;
     /** true while Space is held — used to show the pan tool as active in the toolbar. */
     readonly spacePan: boolean;
+    /** when true, the grid is shown and shapes snap to it during move/resize/create. */
+    readonly snapToGrid: boolean;
     readonly camera: Camera;
     readonly style: Style;
     /** ids of locally-selected shapes. */
@@ -36,6 +38,8 @@ export interface UIState {
 
     setTool: (tool: Tool) => void;
     setSpacePan: (active: boolean) => void;
+    setSnapToGrid: (active: boolean) => void;
+    toggleSnapToGrid: () => void;
     setCamera: (camera: Camera) => void;
     panBy: (dxScreen: number, dyScreen: number) => void;
     setStyle: (patch: Partial<Style>) => void;
@@ -64,6 +68,7 @@ export class UIStore {
         this.state = {
             tool: 'select',
             spacePan: false,
+            snapToGrid: false,
             camera: { x: 0, y: 0, zoom: 1 },
             style: {
                 stroke: STROKE_COLORS[1],
@@ -87,6 +92,8 @@ export class UIStore {
                     style: { ...s.style, ...toolRegistry.get(tool).defaultStyle?.(s.style) },
                 })),
             setSpacePan: (active) => set({ spacePan: active }),
+            setSnapToGrid: (active) => set({ snapToGrid: active }),
+            toggleSnapToGrid: () => set((s) => ({ snapToGrid: !s.snapToGrid })),
             setCamera: (camera) => set({ camera }),
             panBy: (dxScreen, dyScreen) =>
                 set((s) => ({

@@ -13,7 +13,7 @@ export type Interaction =
     | { kind: 'pan'; lastX: number; lastY: number }
     | { kind: 'create'; draft: Shape; startX: number; startY: number }
     | { kind: 'draw'; draft: Extract<Shape, { type: 'draw' }>; startX: number; startY: number }
-    | { kind: 'move'; ids: string[]; startX: number; startY: number; origins: Map<string, { x: number; y: number }>; moved: boolean; pendingSelect?: string }
+    | { kind: 'move'; ids: string[]; startX: number; startY: number; origins: Map<string, { x: number; y: number }>; moved: boolean; pendingSelect?: string; groupX: number; groupY: number }
     | { kind: 'marquee'; startX: number; startY: number; curX: number; curY: number; mode: MarqueeMode }
     | { kind: 'resize'; id: string; handle: Handle; orig: { x: number; y: number; w: number; h: number; type: ShapeType; rotation: number } }
     | { kind: 'rotate'; id: string; cx: number; cy: number; startPointerAngle: number; origRotation: number }

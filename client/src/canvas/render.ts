@@ -3,6 +3,7 @@ import type { Bounds, PeerPresence, Shape } from '../model/types';
 import { CameraMath } from './camera';
 import { Handles } from '../util/handles';
 import { RotationMath } from '../util/rotationMath';
+import { GridMath } from '../util/gridMath';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 
 export interface RenderInput {
@@ -21,11 +22,13 @@ export interface RenderInput {
     /** id of the text/note being edited inline — hidden on the canvas so the
    *  live <textarea> overlay is the only thing drawn (no offset ghost). */
     editingId: string | null;
+    /** draw the snap-to-grid line grid (only while snap mode is enabled). */
+    showGrid: boolean;
 }
 
 export class SceneRenderer {
-    private static readonly GRID_SIZE = 40;
-    private static readonly GRID_COLOR = 'rgba(0,0,0,0.08)';
+    private static readonly GRID_MINOR_COLOR = 'rgba(0,0,0,0.06)';
+    private static readonly GRID_MAJOR_COLOR = 'rgba(0,0,0,0.14)';
     private static readonly SELECT_COLOR = '#4263eb';
     private static readonly HANDLE_SIZE = 8;
 
@@ -40,7 +43,7 @@ export class SceneRenderer {
         ctx.fillStyle = '#f8f9fa';
         ctx.fillRect(0, 0, width, height);
 
-        this.drawGrid(ctx, width, height, camera);
+        if (input.showGrid) this.drawGrid(ctx, width, height, camera);
 
         // World-space transform.
         ctx.translate(-camera.x * camera.zoom, -camera.y * camera.zoom);
@@ -92,24 +95,48 @@ export class SceneRenderer {
     }
 
     private drawGrid(ctx: CanvasRenderingContext2D, width: number, height: number, cam: Camera): void {
-        const step = SceneRenderer.GRID_SIZE * cam.zoom;
-        if (step < 8) return; // too dense to be useful
-        const topLeft = CameraMath.screenToWorld(0, 0, cam);
-        const startX = Math.floor(topLeft.x / SceneRenderer.GRID_SIZE) * SceneRenderer.GRID_SIZE;
-        const startY = Math.floor(topLeft.y / SceneRenderer.GRID_SIZE) * SceneRenderer.GRID_SIZE;
+        const minorPx = GridMath.MINOR * cam.zoom;
+        if (minorPx * GridMath.DIVISIONS < 4) return; // even the major lines are too dense
+        if (minorPx >= 6) this.drawGridLines(ctx, width, height, cam, false); // dashed sub-lines
+        this.drawGridLines(ctx, width, height, cam, true); // solid major lines
+    }
 
-        ctx.fillStyle = SceneRenderer.GRID_COLOR;
-        for (let wx = startX; ; wx += SceneRenderer.GRID_SIZE) {
-            const sx = (wx - cam.x) * cam.zoom;
+    /**
+     * One pass of grid lines: `major` draws the solid every-`DIVISIONS` lines, else the
+     * dashed sub-lines in between. Drawn in screen space with a constant 1px width so the
+     * grid never thickens with zoom.
+     */
+    private drawGridLines(ctx: CanvasRenderingContext2D, width: number, height: number, cam: Camera, major: boolean): void {
+        ctx.save();
+        ctx.beginPath();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = major ? SceneRenderer.GRID_MAJOR_COLOR : SceneRenderer.GRID_MINOR_COLOR;
+        ctx.setLineDash(major ? [] : [2, 3]);
+
+        const topLeft = CameraMath.screenToWorld(0, 0, cam);
+        for (let ix = Math.floor(topLeft.x / GridMath.MINOR); ; ix++) {
+            const sx = (ix * GridMath.MINOR - cam.x) * cam.zoom;
             if (sx > width) break;
-            for (let wy = startY; ; wy += SceneRenderer.GRID_SIZE) {
-                const sy = (wy - cam.y) * cam.zoom;
-                if (sy > height) break;
-                ctx.beginPath();
-                ctx.arc(sx, sy, 1, 0, Math.PI * 2);
-                ctx.fill();
-            }
+            if (SceneRenderer.isMajorIndex(ix) !== major) continue;
+            const x = Math.round(sx) + 0.5;
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, height);
         }
+        for (let iy = Math.floor(topLeft.y / GridMath.MINOR); ; iy++) {
+            const sy = (iy * GridMath.MINOR - cam.y) * cam.zoom;
+            if (sy > height) break;
+            if (SceneRenderer.isMajorIndex(iy) !== major) continue;
+            const y = Math.round(sy) + 0.5;
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+        }
+
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    private static isMajorIndex(index: number): boolean {
+        return (((index % GridMath.DIVISIONS) + GridMath.DIVISIONS) % GridMath.DIVISIONS) === 0;
     }
 
     private drawShape(ctx: CanvasRenderingContext2D, shape: Shape): void {

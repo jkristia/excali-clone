@@ -38,6 +38,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
     private readonly selection = this.ui.select((s) => s.selection);
     private readonly tool = this.ui.select((s) => s.tool);
     private readonly spacePan = this.ui.select((s) => s.spacePan);
+    private readonly snapToGrid = this.ui.select((s) => s.snapToGrid);
     private readonly camera = this.ui.select((s) => s.camera);
     private readonly editingId = this.ui.select((s) => s.editingId);
 
@@ -91,6 +92,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
             void this.editingId();
             void this.tool();
             void this.spacePan();
+            void this.snapToGrid();
             this.scheduleRender();
         });
     }
@@ -294,7 +296,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        const { camera, selection: sel, editingId } = this.ui.snapshot;
+        const { camera, selection: sel, editingId, snapToGrid } = this.ui.snapshot;
         const inter = this.controller.getInteraction();
 
         let draft: Shape | null = null;
@@ -311,6 +313,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
             selection: sel,
             peers: this.peersLatest,
             marquee, draft, editingId,
+            showGrid: snapToGrid,
         });
     }
 
