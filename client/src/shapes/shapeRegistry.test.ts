@@ -18,4 +18,12 @@ describe('ShapeRegistry', () => {
         const registry = new ShapeRegistry();
         expect(registry.getCapabilities('note')).toEqual(new NoteShapeDef().capabilities);
     });
+
+    it('isKnownType accepts registered types and rejects everything else', () => {
+        const registry = new ShapeRegistry();
+        expect(registry.isKnownType('rectangle')).toBe(true);
+        expect(registry.isKnownType('note')).toBe(true);
+        expect(registry.isKnownType('bogus')).toBe(false);
+        expect(registry.isKnownType('toString')).toBe(false); // not tricked by prototype members
+    });
 });

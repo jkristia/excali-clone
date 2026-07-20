@@ -17,7 +17,7 @@ export interface ShapeCapabilities {
 
 /**
  * Behavior for one shape type: bounds, hit-testing, and drawing. Shape *data*
- * stays a plain serializable interface (required by Yjs — see DESIGN.md); this
+ * stays a plain serializable interface (required by Yjs — see docs/DESIGN.md); this
  * is the polymorphic strategy that replaces per-concern `switch (shape.type)`.
  */
 export interface ShapeDefinition<S extends Shape = Shape> {

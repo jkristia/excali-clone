@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Real-time collaborative whiteboard (Yjs CRDT sync). See [DESIGN.md](DESIGN.md) for architecture, data model, repo layout, and extension guides. See [README.md](README.md) for product features and keyboard shortcuts.
+Real-time collaborative whiteboard (Yjs CRDT sync). See [DESIGN.md](docs/DESIGN.md) for architecture, data model, repo layout, and extension guides. See [README.md](README.md) for product features and keyboard shortcuts. See [SYNC-NOTES.md](docs/SYNC-NOTES.md) for a deep dive on the Y.Doc sync/persistence protocol.
 
 ## Language rules
 
@@ -25,8 +25,8 @@ Open http://localhost:5173. `?room=<name>` = shared board (default: `default-roo
 - **TypeScript strict** — keep `npm run typecheck` green. `noUnusedLocals/Parameters` on the client.
 - TypeScript and Angular coding rules live in [.claude/rules/](.claude/rules/) (imported above).
 - Colors/spacing: plain CSS variables in `index.css`. No CSS framework.
-- **Framework boundary**: only `client/src/app/` (the Angular shell) may import `@angular/*`. Everything else — `shapes/`, `tools/`, `interaction/`, `util/`, `canvas/render.ts`, `model/`, `document/canvasDocument.ts`, `state/uiStore.ts` — is framework-agnostic TypeScript, lint-enforced (`no-restricted-imports` in `client/eslint.config.js`). See [DESIGN.md](DESIGN.md) for why (the client used to be React; this discipline is what made swapping it to Angular a scoped `app/`-only rewrite).
-- Client testing: `npm run test` (Vitest, core logic only) and `npm run test:e2e` (Playwright, real app) from `client/`. See DESIGN.md's "Verification / testing pattern".
+- **Framework boundary**: only `client/src/app/` (the Angular shell) may import `@angular/*`. Everything else — `shapes/`, `tools/`, `interaction/`, `util/`, `canvas/render.ts`, `model/`, `document/canvasDocument.ts`, `state/uiStore.ts` — is framework-agnostic TypeScript, lint-enforced (`no-restricted-imports` in `client/eslint.config.js`). See [DESIGN.md](docs/DESIGN.md) for why (the client used to be React; this discipline is what made swapping it to Angular a scoped `app/`-only rewrite).
+- Client testing: `npm run test` (Vitest, core logic only) and `npm run test:e2e` (Playwright, real app) from `client/`. See docs/DESIGN.md's "Verification / testing pattern".
 
 ## Backlog / known gaps
 

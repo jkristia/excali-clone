@@ -30,6 +30,12 @@ export class ShapeRegistry {
         return this.definitions[type].capabilities;
     }
 
+    /** Whether `type` is a registered shape type — used to validate untrusted input
+     *  (e.g. shapes parsed from the OS clipboard) before treating it as a `Shape`. */
+    public isKnownType(type: string): type is ShapeType {
+        return Object.prototype.hasOwnProperty.call(this.definitions, type);
+    }
+
     /** Whether the select tool shows drag-to-resize box handles for this shape. */
     public isResizable(shape: Shape): boolean {
         return this.getDefinition(shape).resizable;

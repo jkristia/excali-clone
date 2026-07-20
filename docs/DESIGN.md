@@ -1,6 +1,6 @@
 # DESIGN.md
 
-Architecture, data model, rendering/interaction internals, and extension guides for the collaborative whiteboard. See [CLAUDE.md](CLAUDE.md) for commands and conventions.
+Architecture, data model, rendering/interaction internals, and extension guides for the collaborative whiteboard. See [CLAUDE.md](../CLAUDE.md) for commands and conventions.
 
 ## Repo layout
 

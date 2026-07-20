@@ -1,6 +1,6 @@
 # Angular rules
 
-Angular 20, standalone components, signals-era. Only `client/src/app/` may import `@angular/*` — everything else stays framework-agnostic (lint-enforced via `no-restricted-imports`). See [CLAUDE.md](../../CLAUDE.md) and [DESIGN.md](../../DESIGN.md) for why.
+Angular 20, standalone components, signals-era. Only `client/src/app/` may import `@angular/*` — everything else stays framework-agnostic (lint-enforced via `no-restricted-imports`). See [CLAUDE.md](../../CLAUDE.md) and [DESIGN.md](../../docs/DESIGN.md) for why.
 
 ## Components
 
