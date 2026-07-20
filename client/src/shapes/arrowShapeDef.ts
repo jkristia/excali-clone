@@ -7,6 +7,7 @@ import { CanvasDraw } from '../util/canvasDraw';
 export class ArrowShapeDef implements ShapeDefinition<ArrowShape> {
     public readonly capabilities = { stroke: true, fill: false, width: true, ends: true };
     public readonly resizable = false;
+    public readonly rotatable = false;
 
     public getBounds(shape: ArrowShape): Bounds {
         return Geometry.normalizeRect(shape.x, shape.y, shape.dx, shape.dy);

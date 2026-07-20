@@ -1,8 +1,8 @@
-import type { EndpointCap, TextAlign } from '../model/types';
+import type { CornerStyle, EndpointCap, TextAlign } from '../model/types';
 import { ToolRegistry } from '../tools/toolRegistry';
 import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS } from '../util/palette';
 
-export type Tool = 'select' | 'pan' | 'rectangle' | 'ellipse' | 'line' | 'arrow' | 'draw' | 'text' | 'note';
+export type Tool = 'select' | 'pan' | 'rectangle' | 'ellipse' | 'diamond' | 'line' | 'arrow' | 'draw' | 'text' | 'note';
 
 export interface Camera {
     x: number; // world coordinate at screen origin
@@ -19,6 +19,7 @@ export interface Style {
     noteFill: string;
     startCap: EndpointCap;
     endCap: EndpointCap;
+    edges: CornerStyle;
 }
 
 export interface UIState {
@@ -72,6 +73,7 @@ export class UIStore {
                 noteFill: NOTE_COLORS[0],
                 startCap: 'none',
                 endCap: 'arrow',
+                edges: 'sharp',
             },
             selection: [],
             editingId: null,

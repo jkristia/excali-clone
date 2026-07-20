@@ -9,6 +9,7 @@ export const TEXT_LINE_HEIGHT = 1.25;
 export class TextShapeDef implements ShapeDefinition<TextShape> {
     public readonly capabilities = { stroke: true, fill: false, width: false, ends: false, text: true };
     public readonly resizable = false;
+    public readonly rotatable = true;
 
     public getBounds(shape: TextShape): Bounds {
         // shape.y is the line-box top and h spans full 1.25 line boxes, so the box

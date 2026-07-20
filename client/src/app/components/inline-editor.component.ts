@@ -1,23 +1,11 @@
 import { Component, ElementRef, computed, effect, inject, viewChild } from '@angular/core';
 import { UiStoreService } from '../state/ui-store.service';
 import { CollabService } from '../collab/collab.service';
-import { CANVAS_DOCUMENT } from '../di-tokens';
+import { CANVAS_DOCUMENT, TEXT_MEASURE } from '../di-tokens';
 import { CameraMath } from '../../canvas/camera';
 import { TEXT_LINE_HEIGHT } from '../../shapes/textShapeDef';
-import type { TextShape } from '../../model/types';
-
-// Shared offscreen context for measuring text extents.
-const measureCanvas = document.createElement('canvas');
-const measureCtx = measureCanvas.getContext('2d')!;
-
-export function measureText(text: string, fontSize: number): { w: number; h: number } {
-    measureCtx.font = `${fontSize}px Inter, system-ui, sans-serif`;
-    const lines = text.split('\n');
-    let w = 0;
-    for (const line of lines) w = Math.max(w, measureCtx.measureText(line || ' ').width);
-    const lineBox = fontSize * TEXT_LINE_HEIGHT;
-    return { w: Math.max(20, w + 4), h: Math.max(lineBox, lines.length * lineBox) };
-}
+import { NOTE_PADDING } from '../../shapes/noteShapeDef';
+import type { NoteShape, TextShape } from '../../model/types';
 
 @Component({
     selector: 'app-inline-editor',
@@ -29,6 +17,7 @@ export class InlineEditorComponent {
     private readonly ui = inject(UiStoreService);
     private readonly collab = inject(CollabService);
     private readonly canvasDocument = inject(CANVAS_DOCUMENT);
+    private readonly textMeasure = inject(TEXT_MEASURE);
     private readonly taRef = viewChild<ElementRef<HTMLTextAreaElement>>('ta');
 
     protected readonly Math = Math;
@@ -46,6 +35,21 @@ export class InlineEditorComponent {
     protected readonly pos = computed(() => {
         const s = this.shape();
         return s ? CameraMath.worldToScreen(s.x, s.y, this.camera()) : { x: 0, y: 0 };
+    });
+    /** Zoom scale plus, for a rotated shape, a rotation about its center so the
+     *  <textarea> overlay lines up with the rotated canvas shape. */
+    protected readonly transform = computed(() => {
+        const s = this.shape();
+        const zoom = this.camera().zoom;
+        const rot = s?.rotation ?? 0;
+        if (!s || !rot) return `scale(${zoom})`;
+        return `scale(${zoom}) translate(${s.w / 2}px, ${s.h / 2}px) rotate(${rot}rad) translate(${-s.w / 2}px, ${-s.h / 2}px)`;
+    });
+    /** Top padding that vertically centers note text, mirroring the canvas render so the
+     *  text doesn't jump when editing ends. */
+    protected readonly noteTop = computed(() => {
+        const s = this.shape();
+        return s && s.type === 'note' ? this.textMeasure.noteTop(s.text, s.fontSize, s.w, s.h) : NOTE_PADDING;
     });
 
     constructor() {
@@ -78,13 +82,22 @@ export class InlineEditorComponent {
     }
 
     protected onChangeText(shape: TextShape, e: Event): void {
-        const text = (e.target as HTMLTextAreaElement).value;
-        const { w, h } = measureText(text, shape.fontSize);
+        const el = e.target as HTMLTextAreaElement;
+        const text = el.value;
+        const { w, h } = this.textMeasure.measureText(text, shape.fontSize);
         this.canvasDocument.updateShape(shape.id, { text, w, h } as Partial<TextShape>);
+        // Height is set imperatively (no style binding), so grow the textarea as
+        // lines are added — otherwise a new last line stays hidden until reopen.
+        el.style.height = 'auto';
+        el.style.height = `${el.scrollHeight}px`;
     }
 
-    protected onChangeNote(shape: { id: string }, e: Event): void {
-        this.canvasDocument.updateShape(shape.id, { text: (e.target as HTMLTextAreaElement).value });
+    protected onChangeNote(shape: NoteShape, e: Event): void {
+        const text = (e.target as HTMLTextAreaElement).value;
+        // Grow/shrink the note to fit its text so nothing overflows the box; the `h`
+        // binding resizes the textarea in step. Notes keep their fixed width.
+        const h = this.textMeasure.measureNote(text, shape.fontSize, shape.w);
+        this.canvasDocument.updateShape(shape.id, { text, h } as Partial<NoteShape>);
     }
 
     protected commit(shape: { id: string; type: string; text?: string }): void {

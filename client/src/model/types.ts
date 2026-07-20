@@ -3,7 +3,10 @@
  * moving a shape is always "add delta to x/y" regardless of type. Type-specific
  * geometry is expressed relative to that anchor.
  */
-export type ShapeType = 'rectangle' | 'ellipse' | 'arrow' | 'draw' | 'text' | 'note';
+export type ShapeType = 'rectangle' | 'ellipse' | 'diamond' | 'arrow' | 'draw' | 'text' | 'note';
+
+/** Corner treatment for the box-outline shapes (rectangle/diamond). Absent ⇒ 'sharp'. */
+export type CornerStyle = 'sharp' | 'rounded';
 
 export interface BaseShape {
     id: string;
@@ -14,6 +17,9 @@ export interface BaseShape {
     z: number;
     /** awareness/user id of the creator (for attribution, not security). */
     createdBy: string;
+    /** Rotation in radians (clockwise) about the shape's bounds center. Only the
+     *  box shapes (rectangle/ellipse/diamond/note/text) honor it; arrow/draw ignore it. */
+    rotation?: number;
 }
 
 export interface RectShape extends BaseShape {
@@ -23,6 +29,7 @@ export interface RectShape extends BaseShape {
     fill: string;
     stroke: string;
     strokeWidth: number;
+    edges?: CornerStyle;
 }
 
 export interface EllipseShape extends BaseShape {
@@ -32,6 +39,16 @@ export interface EllipseShape extends BaseShape {
     fill: string;
     stroke: string;
     strokeWidth: number;
+}
+
+export interface DiamondShape extends BaseShape {
+    type: 'diamond';
+    w: number;
+    h: number;
+    fill: string;
+    stroke: string;
+    strokeWidth: number;
+    edges?: CornerStyle;
 }
 
 /** Decoration drawn at an arrow/line endpoint. */
@@ -87,6 +104,7 @@ export interface NoteShape extends BaseShape {
 export type Shape =
     | RectShape
     | EllipseShape
+    | DiamondShape
     | ArrowShape
     | DrawShape
     | TextShape

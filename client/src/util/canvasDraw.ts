@@ -74,6 +74,79 @@ export class CanvasDraw {
         ctx.closePath();
     }
 
+    /** Build the path for a diamond (rhombus) inscribed in the (x, y, w, h) box —
+     *  vertices at the four edge midpoints. `r > 0` rounds each vertex by trimming
+     *  the adjacent edges inward and curving through the vertex; `r = 0` is sharp.
+     *  Path-only, like {@link roundRect}: the caller does `fill()`/`stroke()`. */
+    public static diamondPath(
+        ctx: CanvasRenderingContext2D,
+        x: number,
+        y: number,
+        w: number,
+        h: number,
+        r = 0,
+    ) {
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+        const pts = [
+            { x: cx, y }, // top
+            { x: x + w, y: cy }, // right
+            { x: cx, y: y + h }, // bottom
+            { x, y: cy }, // left
+        ];
+        ctx.beginPath();
+        if (r <= 0) {
+            ctx.moveTo(pts[0].x, pts[0].y);
+            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+            ctx.closePath();
+            return;
+        }
+        const n = pts.length;
+        for (let i = 0; i < n; i++) {
+            const curr = pts[i];
+            const inPt = CanvasDraw.pointToward(curr, pts[(i - 1 + n) % n], r);
+            const outPt = CanvasDraw.pointToward(curr, pts[(i + 1) % n], r);
+            if (i === 0) ctx.moveTo(inPt.x, inPt.y);
+            else ctx.lineTo(inPt.x, inPt.y);
+            ctx.quadraticCurveTo(curr.x, curr.y, outPt.x, outPt.y);
+        }
+        ctx.closePath();
+    }
+
+    /** A point `dist` from `from` toward `to`, never past the edge midpoint. */
+    private static pointToward(
+        from: { x: number; y: number },
+        to: { x: number; y: number },
+        dist: number,
+    ): { x: number; y: number } {
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const t = Math.min(dist, len / 2) / len;
+        return { x: from.x + dx * t, y: from.y + dy * t };
+    }
+
+    /** Break text into rendered lines: split on `\n`, then word-wrap each paragraph to
+     *  `maxWidth`. Empty paragraphs yield an empty string so blank lines are preserved.
+     *  Shared by {@link wrapText} (drawing) and note height measurement so both agree. */
+    public static wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+        const lines: string[] = [];
+        for (const paragraph of text.split('\n')) {
+            let line = '';
+            for (const word of paragraph.split(' ')) {
+                const test = line ? `${line} ${word}` : word;
+                if (ctx.measureText(test).width > maxWidth && line) {
+                    lines.push(line);
+                    line = word;
+                } else {
+                    line = test;
+                }
+            }
+            lines.push(line);
+        }
+        return lines;
+    }
+
     public static wrapText(
         ctx: CanvasRenderingContext2D,
         text: string,
@@ -86,23 +159,9 @@ export class CanvasDraw {
         ctx.textAlign = align;
         const anchorX = align === 'center' ? x + maxWidth / 2 : align === 'right' ? x + maxWidth : x;
         let cursorY = y;
-        for (const paragraph of text.split('\n')) {
-            const words = paragraph.split(' ');
-            let line = '';
-            for (const word of words) {
-                const test = line ? `${line} ${word}` : word;
-                if (ctx.measureText(test).width > maxWidth && line) {
-                    ctx.fillText(line, anchorX, cursorY);
-                    line = word;
-                    cursorY += lineHeight;
-                } else {
-                    line = test;
-                }
-            }
-            if (line) {
-                ctx.fillText(line, anchorX, cursorY);
-                cursorY += lineHeight;
-            }
+        for (const line of CanvasDraw.wrapLines(ctx, text, maxWidth)) {
+            ctx.fillText(line, anchorX, cursorY);
+            cursorY += lineHeight;
         }
     }
 }

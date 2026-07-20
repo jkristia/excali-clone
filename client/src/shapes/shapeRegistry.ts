@@ -1,8 +1,10 @@
 import type { Bounds, Shape, ShapeType } from '../model/types';
 import type { ShapeDefinition } from './shapeDefinition';
 import { Geometry } from '../util/geometry';
+import { RotationMath } from '../util/rotationMath';
 import { RectangleShapeDef } from './rectangleShapeDef';
 import { EllipseShapeDef } from './ellipseShapeDef';
+import { DiamondShapeDef } from './diamondShapeDef';
 import { ArrowShapeDef } from './arrowShapeDef';
 import { DrawShapeDef } from './drawShapeDef';
 import { TextShapeDef } from './textShapeDef';
@@ -13,6 +15,7 @@ export class ShapeRegistry {
     private readonly definitions: { [T in ShapeType]: ShapeDefinition<Extract<Shape, { type: T }>> } = {
         rectangle: new RectangleShapeDef(),
         ellipse: new EllipseShapeDef(),
+        diamond: new DiamondShapeDef(),
         arrow: new ArrowShapeDef(),
         draw: new DrawShapeDef(),
         text: new TextShapeDef(),
@@ -32,14 +35,26 @@ export class ShapeRegistry {
         return this.getDefinition(shape).resizable;
     }
 
+    /** Whether the select tool shows the rotate handle for this shape. */
+    public isRotatable(shape: Shape): boolean {
+        return this.getDefinition(shape).rotatable;
+    }
+
     /** Axis-aligned bounding box of a shape in world coordinates. */
     public getBounds(shape: Shape): Bounds {
         return this.getDefinition(shape).getBounds(shape);
     }
 
-    /** Hit test a single shape at a world point. `tol` is in world units. */
+    /** Hit test a single shape at a world point. `tol` is in world units.
+     *  For rotated shapes the point is un-rotated into the shape's local frame
+     *  first, so each definition's `hitTest` stays axis-aligned. */
     public hitTest(shape: Shape, px: number, py: number, tol = 6): boolean {
-        return this.getDefinition(shape).hitTest(shape, px, py, tol);
+        const def = this.getDefinition(shape);
+        if (shape.rotation) {
+            const c = RotationMath.center(def.getBounds(shape));
+            ({ x: px, y: py } = RotationMath.rotatePoint(px, py, c.x, c.y, -shape.rotation));
+        }
+        return def.hitTest(shape, px, py, tol);
     }
 
     /** Return the topmost shape (highest z) hit at the given world point. */

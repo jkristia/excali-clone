@@ -1,15 +1,14 @@
 import { Component, computed, inject } from '@angular/core';
 import { UiStoreService } from '../state/ui-store.service';
 import { CollabService } from '../collab/collab.service';
-import { CANVAS_DOCUMENT, SHAPE_REGISTRY, TOOL_REGISTRY } from '../di-tokens';
+import { CANVAS_DOCUMENT, SHAPE_REGISTRY, TOOL_REGISTRY, TEXT_MEASURE } from '../di-tokens';
 import type { ReorderOp } from '../../document/canvasDocument';
-import type { EndpointCap, Shape, TextAlign } from '../../model/types';
+import type { CornerStyle, EndpointCap, Shape, TextAlign } from '../../model/types';
 import type { Style } from '../../state/uiStore';
 import { panelFlags } from '../../util/panelCapabilities';
-import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS, WIDTHS, CAPS, FONT_SIZES, TEXT_ALIGNS } from '../../util/palette';
+import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS, WIDTHS, CAPS, FONT_SIZES, TEXT_ALIGNS, EDGES } from '../../util/palette';
 import { LayerIconComponent } from './layer-icon.component';
 import { AlignIconComponent } from './align-icon.component';
-import { measureText } from './inline-editor.component';
 
 const LAYER_OPS: { op: ReorderOp; label: string; shortcut: string }[] = [
     { op: 'toBack', label: 'Send to back', shortcut: 'Ctrl+Shift+[' },
@@ -31,6 +30,7 @@ export class PropertiesPanelComponent {
     private readonly canvasDocument = inject(CANVAS_DOCUMENT);
     private readonly toolRegistry = inject(TOOL_REGISTRY);
     private readonly shapeRegistry = inject(SHAPE_REGISTRY);
+    private readonly textMeasure = inject(TEXT_MEASURE);
 
     protected readonly strokeColors = STROKE_COLORS;
     protected readonly fillColors = FILL_COLORS;
@@ -39,6 +39,7 @@ export class PropertiesPanelComponent {
     protected readonly caps = CAPS;
     protected readonly fontSizes = FONT_SIZES;
     protected readonly textAligns = TEXT_ALIGNS;
+    protected readonly edges = EDGES;
     protected readonly layerOps = LAYER_OPS;
 
     protected readonly tool = this.ui.select((s) => s.tool);
@@ -54,7 +55,7 @@ export class PropertiesPanelComponent {
     protected readonly hasSelection = computed(() => this.selected().length > 0);
     protected readonly visible = computed(() => {
         const f = this.flags();
-        return this.hasSelection() || f.stroke || f.fill || f.width || f.ends || f.note || f.text;
+        return this.hasSelection() || f.stroke || f.fill || f.width || f.ends || f.note || f.text || !!f.edges;
     });
 
     private apply(patch: Partial<Style>, shapePatch: (s: Shape) => Partial<Shape> | null): void {
@@ -87,18 +88,22 @@ export class PropertiesPanelComponent {
         this.apply({ noteFill: c }, (s) => (s.type === 'note' ? { fill: c } : null));
     }
     protected applyFontSize(size: number): void {
-        // Text auto-sizes to its content, so its box (w/h) must be re-measured — the same
-        // measureText the inline editor runs on every keystroke. Notes keep their fixed box.
+        // Both text and notes auto-size to their content, so their box must be re-measured —
+        // the same helpers the inline editor runs on every keystroke. Text grows w/h freely;
+        // a note keeps its fixed width but grows/shrinks its height to fit.
         this.apply({ fontSize: size }, (s) => {
             if (s.type === 'text') {
-                const { w, h } = measureText(s.text, size);
+                const { w, h } = this.textMeasure.measureText(s.text, size);
                 return { fontSize: size, w, h };
             }
-            return s.type === 'note' ? { fontSize: size } : null;
+            return s.type === 'note' ? { fontSize: size, h: this.textMeasure.measureNote(s.text, size, s.w) } : null;
         });
     }
     protected applyTextAlign(a: TextAlign): void {
         this.apply({ textAlign: a }, (s) => (s.type === 'text' || s.type === 'note' ? { textAlign: a } : null));
+    }
+    protected applyEdges(e: CornerStyle): void {
+        this.apply({ edges: e }, (s) => (s.type === 'rectangle' || s.type === 'diamond' ? { edges: e } : null));
     }
     protected reorder(op: ReorderOp): void {
         this.canvasDocument.reorderShapes(this.selection(), op);

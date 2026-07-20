@@ -1,8 +1,8 @@
 {
-  "name": "realtime-whiteboard",
+  "name": "excali-clone",
   "private": true,
   "version": "1.0.0",
-  "description": "Real-time collaborative whiteboard (simplified Miro/Excalidraw) built on Yjs CRDTs.",
+  "description": "",
   "workspaces": [
     "server",
     "client"
@@ -10,13 +10,13 @@
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"npm:dev:server\" \"npm:dev:client\"",
     "kill:dev": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$ports = 5173,1234; foreach ($p in $ports) { $conns = Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue; if ($conns) { $conns | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } } }\"",
-    "dev:server": "npm --workspace @whiteboard/server run dev",
-    "dev:client": "npm --workspace @whiteboard/client run dev",
-    "build": "npm --workspace @whiteboard/server run build && npm --workspace @whiteboard/client run build",
-    "start": "npm --workspace @whiteboard/server run start",
-    "typecheck": "npm --workspace @whiteboard/server run typecheck && npm --workspace @whiteboard/client run typecheck",
-    "test": "npm --workspace @whiteboard/client run test",
-    "test:e2e": "npm --workspace @whiteboard/client run test:e2e"
+    "dev:server": "npm --workspace server run dev",
+    "dev:client": "npm --workspace client run dev",
+    "build": "npm --workspace server run build && npm --workspace client run build",
+    "start": "npm --workspace server run start",
+    "typecheck": "npm --workspace server run typecheck && npm --workspace client run typecheck",
+    "test": "npm --workspace client run test",
+    "test:e2e": "npm --workspace client run test:e2e"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

@@ -1,4 +1,4 @@
-import type { EndpointCap, TextAlign } from '../model/types';
+import type { CornerStyle, EndpointCap, TextAlign } from '../model/types';
 
 /** Shape drawing defaults — persisted into shape data, not CSS (canvas rendering can't consume CSS custom properties). */
 export const STROKE_COLORS = ['transparent', '#1e1e1e', '#e03131', '#2f9e44', '#1971c2', '#f08c00', '#ae3ec9'];
@@ -20,4 +20,8 @@ export const CAPS: { cap: EndpointCap; label: string; icon: string }[] = [
     { cap: 'none', label: 'None', icon: '—' },
     { cap: 'arrow', label: 'Arrowhead', icon: '➤' },
     { cap: 'circle', label: 'Circle', icon: '●' },
+];
+export const EDGES: { value: CornerStyle; label: string; icon: string }[] = [
+    { value: 'sharp', label: 'Sharp', icon: '◾' },
+    { value: 'rounded', label: 'Rounded', icon: '▢' },
 ];

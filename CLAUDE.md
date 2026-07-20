@@ -18,6 +18,7 @@ Open http://localhost:5173. `?room=<name>` = shared board (default: `default-roo
 
 - **TypeScript strict** — keep `npm run typecheck` green. `noUnusedLocals/Parameters` on the client.
 - Explain *why*, not *what*. No decorative comments.
+- **No file-level functions.** Logic lives in a class. A helper used by one class becomes a `private` (or `private static`) method on it; a helper shared by several becomes a method on a class in `util/` (wired through the DI tokens like the other framework-agnostic singletons — see [main.ts](client/src/app/main.ts)). Module-level `function`/`const` helpers and module-level singletons are both out.
 - Client: ESM `moduleResolution: bundler`. Server: ESM `NodeNext` — `.js` import specifiers required.
 - Colors/spacing: plain CSS variables in `index.css`. No CSS framework.
 - **Framework boundary**: only `client/src/app/` (the Angular shell) may import `@angular/*`. Everything else — `shapes/`, `tools/`, `interaction/`, `util/`, `canvas/render.ts`, `model/`, `document/canvasDocument.ts`, `state/uiStore.ts` — is framework-agnostic TypeScript, lint-enforced (`no-restricted-imports` in `client/eslint.config.js`). See [DESIGN.md](DESIGN.md) for why (the client used to be React; this discipline is what made swapping it to Angular a scoped `app/`-only rewrite).

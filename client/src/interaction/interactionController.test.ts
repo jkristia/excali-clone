@@ -10,7 +10,7 @@ function makeStore(overrides: Partial<InteractionStore> = {}): InteractionStore 
         tool: 'select',
         style: {
             stroke: '#000', fill: 'transparent', strokeWidth: 2, fontSize: 20, textAlign: 'left',
-            noteFill: '#fff', startCap: 'none', endCap: 'arrow',
+            noteFill: '#fff', startCap: 'none', endCap: 'arrow', edges: 'sharp',
         },
         camera: { x: 0, y: 0, zoom: 1 },
         selection: [],
@@ -95,6 +95,26 @@ describe('InteractionController', () => {
         expect(controller.getInteraction().kind).toBe('resize');
         controller.onPointerMove(pointer(10, 5), false);
         expect(patches).toEqual([{ id: 'r1', patch: { x: 10, y: 5, w: 90, h: 45 } }]);
+    });
+
+    it('select tool: rotate handle drag patches the shape rotation', () => {
+        store.selection = ['r1'];
+        controller.onPointerDown(pointer(50, -24), false); // rotate handle above the top edge
+        expect(controller.getInteraction().kind).toBe('rotate');
+        controller.onPointerMove(pointer(99, 25), false); // drag to the right of the center
+        const last = patches.at(-1) as { id: string; patch: { rotation: number } };
+        expect(last.id).toBe('r1');
+        expect(last.patch.rotation).toBeCloseTo(Math.PI / 2, 5);
+    });
+
+    it('select tool: shift snaps rotation to 5-degree steps', () => {
+        store.selection = ['r1'];
+        controller.onPointerDown(pointer(50, -24), false);
+        controller.onPointerMove(pointer(54, -15), true); // ~5.7deg, shift-snapped
+        const rot = (patches.at(-1) as { patch: { rotation: number } }).patch.rotation;
+        const steps = rot / ((5 * Math.PI) / 180);
+        expect(steps).toBeCloseTo(Math.round(steps), 6);
+        expect(rot).toBeGreaterThan(0);
     });
 
     it('rectangle tool: drag creates a draft and commits on pointer-up if big enough', () => {

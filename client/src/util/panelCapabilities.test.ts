@@ -21,6 +21,6 @@ describe('panelFlags', () => {
 
     it('with selection: unions capabilities across all selected shapes', () => {
         const flags = panelFlags(toolRegistry, shapeRegistry, 'select', [rect('a'), note('b')]);
-        expect(flags).toEqual({ stroke: true, fill: true, width: true, ends: false, note: true, text: true });
+        expect(flags).toEqual({ stroke: true, fill: true, width: true, ends: false, note: true, text: true, edges: true });
     });
 });

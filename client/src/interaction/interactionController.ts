@@ -7,6 +7,7 @@ import { ToolRegistry } from '../tools/toolRegistry';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { Handles } from '../util/handles';
 import { ResizeMath } from '../util/resizeMath';
+import { RotationMath } from '../util/rotationMath';
 import { VectorMath } from '../util/vectorMath';
 import { ArrowEndpoints } from '../util/arrowEndpoints';
 
@@ -115,13 +116,21 @@ export class InteractionController {
                 break;
             }
             case 'resize': {
-                const geom = ResizeMath.compute(inter.orig, inter.handle, p.x, p.y, shiftKey);
+                const geom = inter.orig.rotation
+                    ? ResizeMath.computeRotated(inter.orig, inter.handle, inter.orig.rotation, p.x, p.y, shiftKey)
+                    : ResizeMath.compute(inter.orig, inter.handle, p.x, p.y, shiftKey);
                 this.deps.doc.updateShapes([{ id: inter.id, patch: {
                     x: geom.w < 0 ? geom.x + geom.w : geom.x,
                     y: geom.h < 0 ? geom.y + geom.h : geom.y,
                     w: Math.abs(geom.w),
                     h: Math.abs(geom.h),
                 } }]);
+                break;
+            }
+            case 'rotate': {
+                let rot = inter.origRotation + (Math.atan2(p.y - inter.cy, p.x - inter.cx) - inter.startPointerAngle);
+                if (shiftKey) rot = RotationMath.snap(rot);
+                this.deps.doc.updateShapes([{ id: inter.id, patch: { rotation: rot } }]);
                 break;
             }
             case 'arrow-endpoint': {
@@ -149,7 +158,11 @@ export class InteractionController {
                     let dy = p.y - inter.startY;
                     if (shiftKey) ({ dx, dy } = VectorMath.snapAngle(dx, dy));
                     inter.draft = { ...inter.draft, dx, dy };
-                } else if (inter.draft.type === 'rectangle' || inter.draft.type === 'ellipse') {
+                } else if (
+                    inter.draft.type === 'rectangle' ||
+                    inter.draft.type === 'ellipse' ||
+                    inter.draft.type === 'diamond'
+                ) {
                     let w = p.x - inter.startX;
                     let h = p.y - inter.startY;
                     if (shiftKey && inter.draft.type === 'ellipse') {
@@ -198,12 +211,24 @@ export class InteractionController {
             if (selShape?.type === 'arrow') {
                 const ep = ArrowEndpoints.hitTest(selShape, p.x, p.y, store.camera.zoom);
                 if (ep !== null) newCursor = 'crosshair';
-            } else if (selShape && (selShape.type === 'rectangle' || selShape.type === 'ellipse')) {
-                const h = Handles.hitTest(this.shapeRegistry.getBounds(selShape), p.x, p.y, ArrowEndpoints.HIT_RADIUS / store.camera.zoom);
-                if (h !== -1) newCursor = HANDLE_CURSORS[h];
+            } else if (selShape) {
+                const bounds = this.shapeRegistry.getBounds(selShape);
+                const radius = ArrowEndpoints.HIT_RADIUS / store.camera.zoom;
+                const c = RotationMath.center(bounds);
+                const local = RotationMath.rotatePoint(p.x, p.y, c.x, c.y, -(selShape.rotation ?? 0));
+                if (this.shapeRegistry.isRotatable(selShape)) {
+                    const [rx, ry] = Handles.rotateHandlePoint(bounds, Handles.ROTATE_OFFSET / store.camera.zoom);
+                    if (Math.hypot(local.x - rx, local.y - ry) <= radius) newCursor = 'grab';
+                }
+                if (!newCursor && this.shapeRegistry.isResizable(selShape)) {
+                    const h = Handles.hitTest(bounds, local.x, local.y, radius);
+                    if (h !== -1) newCursor = HANDLE_CURSORS[h];
+                }
             }
         } else if (inter.kind === 'resize') {
             newCursor = HANDLE_CURSORS[inter.handle];
+        } else if (inter.kind === 'rotate') {
+            newCursor = 'grabbing';
         } else if (inter.kind === 'arrow-endpoint') {
             newCursor = 'crosshair';
         }
@@ -249,16 +274,16 @@ export class InteractionController {
     }
 
     public boundsOfDraft(d: Shape): Bounds {
-        if (d.type === 'rectangle' || d.type === 'ellipse') {
+        if (d.type === 'rectangle' || d.type === 'ellipse' || d.type === 'diamond') {
             return { x: d.x, y: d.y, w: Math.abs(d.w), h: Math.abs(d.h) };
         }
         if (d.type === 'arrow') return { x: d.x, y: d.y, w: Math.abs(d.dx), h: Math.abs(d.dy) };
         return this.shapeRegistry.unionBounds([d]) ?? { x: d.x, y: d.y, w: 0, h: 0 };
     }
 
-    /** Normalize negative-extent rectangles/ellipses so x/y is the top-left. */
+    /** Normalize negative-extent box shapes (rectangle/ellipse/diamond) so x/y is the top-left. */
     public static normalizeDraft(d: Shape): Shape {
-        if ((d.type === 'rectangle' || d.type === 'ellipse') && (d.w < 0 || d.h < 0)) {
+        if ((d.type === 'rectangle' || d.type === 'ellipse' || d.type === 'diamond') && (d.w < 0 || d.h < 0)) {
             return {
                 ...d,
                 x: d.w < 0 ? d.x + d.w : d.x,

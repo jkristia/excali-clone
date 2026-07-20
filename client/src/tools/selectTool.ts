@@ -3,6 +3,7 @@ import type { Tool, ToolContext } from './tool';
 import { NO_PANEL_CAPABILITIES } from './tool';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { Handles } from '../util/handles';
+import { RotationMath } from '../util/rotationMath';
 import { ArrowEndpoints } from '../util/arrowEndpoints';
 
 /**
@@ -26,14 +27,32 @@ export class SelectTool implements Tool {
                         origX: selShape.x, origY: selShape.y, origDx: selShape.dx, origDy: selShape.dy,
                     };
                 }
-            } else if (selShape && this.shapeRegistry.isResizable(selShape)) {
+            } else if (selShape) {
                 const bounds = this.shapeRegistry.getBounds(selShape);
-                const hIdx = Handles.hitTest(bounds, p.x, p.y, ArrowEndpoints.HIT_RADIUS / ctx.camera().zoom);
-                if (hIdx !== -1) {
-                    return {
-                        kind: 'resize', id: selShape.id, handle: hIdx,
-                        orig: { ...bounds, type: selShape.type },
-                    };
+                const rot = selShape.rotation ?? 0;
+                const radius = ArrowEndpoints.HIT_RADIUS / ctx.camera().zoom;
+                // Handles are drawn in the shape's rotated frame, so test the
+                // pointer un-rotated into that local frame.
+                const c = RotationMath.center(bounds);
+                const local = RotationMath.rotatePoint(p.x, p.y, c.x, c.y, -rot);
+
+                if (this.shapeRegistry.isRotatable(selShape)) {
+                    const [rx, ry] = Handles.rotateHandlePoint(bounds, Handles.ROTATE_OFFSET / ctx.camera().zoom);
+                    if (Math.hypot(local.x - rx, local.y - ry) <= radius) {
+                        return {
+                            kind: 'rotate', id: selShape.id, cx: c.x, cy: c.y,
+                            startPointerAngle: Math.atan2(p.y - c.y, p.x - c.x), origRotation: rot,
+                        };
+                    }
+                }
+                if (this.shapeRegistry.isResizable(selShape)) {
+                    const hIdx = Handles.hitTest(bounds, local.x, local.y, radius);
+                    if (hIdx !== -1) {
+                        return {
+                            kind: 'resize', id: selShape.id, handle: hIdx,
+                            orig: { ...bounds, type: selShape.type, rotation: rot },
+                        };
+                    }
                 }
             }
         }

@@ -1,33 +1,32 @@
-import type { Bounds, EllipseShape } from '../model/types';
+import type { Bounds, DiamondShape } from '../model/types';
 import type { ShapeDefinition } from './shapeDefinition';
 import { Geometry } from '../util/geometry';
 import { CanvasDraw } from '../util/canvasDraw';
 
-export class EllipseShapeDef implements ShapeDefinition<EllipseShape> {
-    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false };
+export class DiamondShapeDef implements ShapeDefinition<DiamondShape> {
+    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false, edges: true };
     public readonly resizable = true;
     public readonly rotatable = true;
 
-    public getBounds(shape: EllipseShape): Bounds {
+    public getBounds(shape: DiamondShape): Bounds {
         return Geometry.normalizeRect(shape.x, shape.y, shape.w, shape.h);
     }
 
-    public hitTest(shape: EllipseShape, px: number, py: number): boolean {
+    public hitTest(shape: DiamondShape, px: number, py: number): boolean {
         const b = this.getBounds(shape);
         const cx = b.x + b.w / 2;
         const cy = b.y + b.h / 2;
         const rx = b.w / 2 || 1;
         const ry = b.h / 2 || 1;
-        const nx = (px - cx) / rx;
-        const ny = (py - cy) / ry;
-        return nx * nx + ny * ny <= 1.15;
+        // Point-in-rhombus is the L1 (diamond) norm; small slack mirrors the ellipse's.
+        return Math.abs(px - cx) / rx + Math.abs(py - cy) / ry <= 1.1;
     }
 
-    public draw(ctx: CanvasRenderingContext2D, shape: EllipseShape): void {
+    public draw(ctx: CanvasRenderingContext2D, shape: DiamondShape): void {
         CanvasDraw.applyStroke(ctx, shape.stroke, shape.strokeWidth);
         const b = this.getBounds(shape);
-        ctx.beginPath();
-        ctx.ellipse(b.x + b.w / 2, b.y + b.h / 2, b.w / 2, b.h / 2, 0, 0, Math.PI * 2);
+        const r = shape.edges === 'rounded' ? Math.min(b.w, b.h) * 0.18 : 0;
+        CanvasDraw.diamondPath(ctx, b.x, b.y, b.w, b.h, r);
         if (shape.fill && shape.fill !== 'transparent') {
             ctx.fillStyle = shape.fill;
             ctx.fill();

@@ -27,8 +27,9 @@ export function panelFlags(
                 ends: acc.ends || c.ends,
                 note: acc.note || c.note,
                 text: acc.text || c.text,
+                edges: acc.edges || c.edges,
             };
         },
-        { stroke: false, fill: false, width: false, ends: false, note: false, text: false },
+        { stroke: false, fill: false, width: false, ends: false, note: false, text: false, edges: false },
     );
 }

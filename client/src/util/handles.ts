@@ -42,4 +42,17 @@ export class Handles {
     public static isCorner(handle: Handle): boolean {
         return handle % 2 === 0;
     }
+
+    /** Gap (screen px) between the top edge and the rotate handle circle. */
+    public static readonly ROTATE_OFFSET = 24;
+
+    /**
+     * The rotate handle floats above the top edge midpoint. Kept out of the
+     * `Handle` enum (which drives resize math + cursor indexing) since it is a
+     * different interaction. `offset` is in world units (screen px / zoom).
+     * Both the renderer and hit-testing derive the point from here.
+     */
+    public static rotateHandlePoint(b: Bounds, offset: number): [number, number] {
+        return [b.x + b.w / 2, b.y - offset];
+    }
 }

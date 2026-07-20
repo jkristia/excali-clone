@@ -31,6 +31,12 @@ describe('Handles.hitTest', () => {
     });
 });
 
+describe('Handles.rotateHandlePoint', () => {
+    it('floats above the top-edge midpoint by the given world offset', () => {
+        expect(Handles.rotateHandlePoint(b, 24)).toEqual([60, -4]);
+    });
+});
+
 describe('Handles.isCorner', () => {
     it('is true for the four corners, false for the four edges', () => {
         expect([Handle.NW, Handle.NE, Handle.SE, Handle.SW].every(Handles.isCorner)).toBe(true);

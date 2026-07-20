@@ -47,6 +47,19 @@
             </div>
         }
 
+        @if (flags().edges) {
+            <div class="prop-section">
+                <div class="prop-label">Edges</div>
+                <div class="width-row">
+                    @for (e of edges; track e.value) {
+                        <button class="width-btn" [class.active]="style().edges === e.value" [title]="e.label" (click)="applyEdges(e.value)">
+                            <span class="cap-icon">{{ e.icon }}</span>
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+
         @if (flags().ends) {
             <div class="prop-section">
                 <div class="prop-label">Start</div>

@@ -4,6 +4,7 @@ import type { ToolRegistry } from '../tools/toolRegistry';
 import type { UIStore } from '../state/uiStore';
 import type { CanvasDocument } from '../document/canvasDocument';
 import type { SceneRenderer } from '../canvas/render';
+import type { TextMeasure } from '../util/textMeasure';
 
 /**
  * DI tokens for the framework-agnostic singletons. They are instantiated once in
@@ -16,3 +17,4 @@ export const TOOL_REGISTRY = new InjectionToken<ToolRegistry>('TOOL_REGISTRY');
 export const UI_STORE = new InjectionToken<UIStore>('UI_STORE');
 export const CANVAS_DOCUMENT = new InjectionToken<CanvasDocument>('CANVAS_DOCUMENT');
 export const SCENE_RENDERER = new InjectionToken<SceneRenderer>('SCENE_RENDERER');
+export const TEXT_MEASURE = new InjectionToken<TextMeasure>('TEXT_MEASURE');

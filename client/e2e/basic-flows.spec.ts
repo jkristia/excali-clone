@@ -62,7 +62,7 @@ test('pan tool activates from the toolbar', async ({ page }) => {
 });
 
 test('text tool: typing multiple characters accumulates in the inline editor', async ({ page }) => {
-    await page.getByTitle('Text (X)').click();
+    await page.getByTitle('Text (T)').click();
     const canvas = page.locator('canvas');
     const box = await canvas.boundingBox();
     if (!box) throw new Error('canvas not laid out');

@@ -20,7 +20,7 @@ export class ToolRegistry {
             const style = ctx.style();
             return {
                 id, type: 'rectangle', x: p.x, y: p.y, z, createdBy: ctx.author(),
-                w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth,
+                w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth, edges: style.edges,
             };
         }, shapeRegistry.getCapabilities('rectangle'));
 
@@ -31,6 +31,14 @@ export class ToolRegistry {
                 w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth,
             };
         }, shapeRegistry.getCapabilities('ellipse'));
+
+        const diamondTool = new CreateShapeTool((ctx, p, id, z) => {
+            const style = ctx.style();
+            return {
+                id, type: 'diamond', x: p.x, y: p.y, z, createdBy: ctx.author(),
+                w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth, edges: style.edges,
+            };
+        }, shapeRegistry.getCapabilities('diamond'));
 
         // Line and Arrow are the same shape; caps (set from the tool's signature style
         // via defaultStyle below) are what distinguishes them.
@@ -46,6 +54,7 @@ export class ToolRegistry {
             pan: new PanTool(),
             rectangle: rectangleTool,
             ellipse: ellipseTool,
+            diamond: diamondTool,
             line: lineTool,
             arrow: arrowTool,
             draw: new DrawTool(shapeRegistry),

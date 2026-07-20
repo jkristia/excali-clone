@@ -2,6 +2,7 @@ import type { Camera } from '../state/uiStore';
 import type { Bounds, PeerPresence, Shape } from '../model/types';
 import { CameraMath } from './camera';
 import { Handles } from '../util/handles';
+import { RotationMath } from '../util/rotationMath';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 
 export interface RenderInput {
@@ -57,7 +58,7 @@ export class SceneRenderer {
         for (const peer of input.peers) {
             for (const id of peer.selection) {
                 const s = selById.get(id);
-                if (s) this.drawOutline(ctx, this.shapeRegistry.getBounds(s), peer.user.color, camera.zoom, 4);
+                if (s) this.withShapeTransform(ctx, s, () => this.drawOutline(ctx, this.shapeRegistry.getBounds(s), peer.user.color, camera.zoom, 4));
             }
         }
 
@@ -65,14 +66,18 @@ export class SceneRenderer {
         const selected = input.selection.map((id) => selById.get(id)).filter(Boolean) as Shape[];
         for (const s of selected) {
             if (s.id === input.editingId) continue; // no selection rect while inline-editing
-            this.drawOutline(ctx, this.shapeRegistry.getBounds(s), SceneRenderer.SELECT_COLOR, camera.zoom, 2);
+            this.withShapeTransform(ctx, s, () => this.drawOutline(ctx, this.shapeRegistry.getBounds(s), SceneRenderer.SELECT_COLOR, camera.zoom, 2));
         }
-        if (selected.length === 1) {
+        if (selected.length === 1 && selected[0].id !== input.editingId) {
             const s = selected[0];
             if (s.type === 'arrow') {
                 this.drawArrowHandles(ctx, s.x, s.y, s.x + s.dx, s.y + s.dy, camera.zoom);
-            } else if (this.shapeRegistry.isResizable(s)) {
-                this.drawHandles(ctx, this.shapeRegistry.getBounds(s), camera.zoom);
+            } else {
+                this.withShapeTransform(ctx, s, () => {
+                    const b = this.shapeRegistry.getBounds(s);
+                    if (this.shapeRegistry.isResizable(s)) this.drawHandles(ctx, b, camera.zoom);
+                    if (this.shapeRegistry.isRotatable(s)) this.drawRotateHandle(ctx, b, camera.zoom);
+                });
             }
         }
 
@@ -104,7 +109,25 @@ export class SceneRenderer {
 
     private drawShape(ctx: CanvasRenderingContext2D, shape: Shape): void {
         ctx.save();
-        this.shapeRegistry.getDefinition(shape).draw(ctx, shape);
+        this.withShapeTransform(ctx, shape, () => this.shapeRegistry.getDefinition(shape).draw(ctx, shape));
+        ctx.restore();
+    }
+
+    /** Run `fn` with the canvas rotated about the shape's bounds center, so the
+     *  shape and its selection chrome draw in one shared local frame. No-op (and
+     *  no save/restore) when the shape is unrotated. */
+    private withShapeTransform(ctx: CanvasRenderingContext2D, shape: Shape, fn: () => void): void {
+        const rot = shape.rotation ?? 0;
+        if (!rot) {
+            fn();
+            return;
+        }
+        const c = RotationMath.center(this.shapeRegistry.getBounds(shape));
+        ctx.save();
+        ctx.translate(c.x, c.y);
+        ctx.rotate(rot);
+        ctx.translate(-c.x, -c.y);
+        fn();
         ctx.restore();
     }
 
@@ -157,6 +180,26 @@ export class SceneRenderer {
             ctx.fill();
             ctx.stroke();
         }
+        ctx.restore();
+    }
+
+    private drawRotateHandle(ctx: CanvasRenderingContext2D, b: Bounds, zoom: number): void {
+        const r = SceneRenderer.HANDLE_SIZE / 2 / zoom;
+        const offset = Handles.ROTATE_OFFSET / zoom;
+        const [hx, hy] = Handles.rotateHandlePoint(b, offset);
+        ctx.save();
+        ctx.strokeStyle = SceneRenderer.SELECT_COLOR;
+        ctx.fillStyle = '#fff';
+        ctx.lineWidth = 1.5 / zoom;
+        // Connector from the top-edge midpoint up to the handle.
+        ctx.beginPath();
+        ctx.moveTo(b.x + b.w / 2, b.y);
+        ctx.lineTo(hx, hy);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(hx, hy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
         ctx.restore();
     }
 

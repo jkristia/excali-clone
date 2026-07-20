@@ -1,5 +1,6 @@
 import type { ShapeType } from '../model/types';
 import { Handle, Handles } from './handles';
+import { RotationMath } from './rotationMath';
 
 export interface ResizeOrigin {
     x: number;
@@ -65,5 +66,31 @@ export class ResizeMath {
         }
 
         return { x, y, w, h };
+    }
+
+    /**
+     * Resize a rotated shape while keeping the corner/edge opposite the grabbed
+     * handle fixed in world space. The pointer is un-rotated into the shape's
+     * local frame, the axis-aligned `compute` runs there, then the resulting box
+     * center is rotated back so the returned world x/y already position the shape
+     * with a normalized (positive) extent — no further normalization needed.
+     */
+    public static computeRotated(
+        orig: ResizeOrigin,
+        handle: Handle,
+        angle: number,
+        px: number, py: number,
+        shiftKey: boolean,
+    ): ResizeGeometry {
+        const cx = orig.x + orig.w / 2;
+        const cy = orig.y + orig.h / 2;
+        const local = RotationMath.rotatePoint(px, py, cx, cy, -angle);
+        const g = ResizeMath.compute(orig, handle, local.x, local.y, shiftKey);
+        // `compute` keeps the anchor's *local* coords fixed, so the new box center
+        // in world space is just the new local center rotated about the old center.
+        const world = RotationMath.rotatePoint(g.x + g.w / 2, g.y + g.h / 2, cx, cy, angle);
+        const w = Math.abs(g.w);
+        const h = Math.abs(g.h);
+        return { x: world.x - w / 2, y: world.y - h / 2, w, h };
     }
 }
