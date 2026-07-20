@@ -43,6 +43,26 @@ export class Handles {
         return handle % 2 === 0;
     }
 
+    /**
+     * Base resize-axis angle (degrees, mod 180) per handle before the shape's
+     * rotation is applied: E/W = 0 (horizontal), N/S = 90 (vertical),
+     * NW/SE = 45 ("\"), NE/SW = 135 ("/"). Indexed by `Handle`.
+     */
+    private static readonly HANDLE_AXIS = [45, 90, 135, 0, 45, 90, 135, 0];
+    /** CSS resize cursor per 45° bucket: 0->ew, 45->nwse, 90->ns, 135->nesw. */
+    private static readonly AXIS_CURSORS = ['ew-resize', 'nwse-resize', 'ns-resize', 'nesw-resize'];
+
+    /**
+     * The CSS resize cursor for `handle` on a shape rotated `rotation` radians
+     * (clockwise). The handle's axis is rotated with the shape and snapped to the
+     * nearest of the four resize cursors, so a rotated frame's cursors track it.
+     */
+    public static cursor(handle: Handle, rotation: number): string {
+        const deg = Handles.HANDLE_AXIS[handle] + (rotation * 180) / Math.PI;
+        const axis = ((deg % 180) + 180) % 180; // normalize into [0, 180)
+        return Handles.AXIS_CURSORS[Math.round(axis / 45) % 4];
+    }
+
     /** Gap (screen px) between the top edge and the rotate handle circle. */
     public static readonly ROTATE_OFFSET = 24;
 

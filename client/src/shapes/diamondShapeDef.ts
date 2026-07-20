@@ -4,7 +4,7 @@ import { Geometry } from '../util/geometry';
 import { CanvasDraw } from '../util/canvasDraw';
 
 export class DiamondShapeDef implements ShapeDefinition<DiamondShape> {
-    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false, edges: true };
+    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false, edges: true, strokeStyle: true };
     public readonly resizable = true;
     public readonly rotatable = true;
 
@@ -23,7 +23,7 @@ export class DiamondShapeDef implements ShapeDefinition<DiamondShape> {
     }
 
     public draw(ctx: CanvasRenderingContext2D, shape: DiamondShape): void {
-        CanvasDraw.applyStroke(ctx, shape.stroke, shape.strokeWidth);
+        CanvasDraw.applyStroke(ctx, shape.stroke, shape.strokeWidth, shape.strokeStyle);
         const b = this.getBounds(shape);
         const r = shape.edges === 'rounded' ? Math.min(b.w, b.h) * 0.18 : 0;
         CanvasDraw.diamondPath(ctx, b.x, b.y, b.w, b.h, r);

@@ -43,3 +43,30 @@ describe('Handles.isCorner', () => {
         expect([Handle.N, Handle.E, Handle.S, Handle.W].some(Handles.isCorner)).toBe(false);
     });
 });
+
+describe('Handles.cursor', () => {
+    it('maps each handle to its axis-aligned cursor when unrotated', () => {
+        expect(Handles.cursor(Handle.NW, 0)).toBe('nwse-resize');
+        expect(Handles.cursor(Handle.SE, 0)).toBe('nwse-resize');
+        expect(Handles.cursor(Handle.NE, 0)).toBe('nesw-resize');
+        expect(Handles.cursor(Handle.SW, 0)).toBe('nesw-resize');
+        expect(Handles.cursor(Handle.N, 0)).toBe('ns-resize');
+        expect(Handles.cursor(Handle.S, 0)).toBe('ns-resize');
+        expect(Handles.cursor(Handle.E, 0)).toBe('ew-resize');
+        expect(Handles.cursor(Handle.W, 0)).toBe('ew-resize');
+    });
+
+    it('rotates the cursor axis with the shape at 90deg', () => {
+        const q = Math.PI / 2;
+        expect(Handles.cursor(Handle.N, q)).toBe('ew-resize');
+        expect(Handles.cursor(Handle.E, q)).toBe('ns-resize');
+        expect(Handles.cursor(Handle.NW, q)).toBe('nesw-resize');
+        expect(Handles.cursor(Handle.NE, q)).toBe('nwse-resize');
+    });
+
+    it('snaps a near-axis rotation to the nearest cursor bucket', () => {
+        const tenDeg = (10 * Math.PI) / 180;
+        expect(Handles.cursor(Handle.N, tenDeg)).toBe('ns-resize');
+        expect(Handles.cursor(Handle.E, tenDeg)).toBe('ew-resize');
+    });
+});

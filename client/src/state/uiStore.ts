@@ -1,4 +1,4 @@
-import type { CornerStyle, EndpointCap, TextAlign } from '../model/types';
+import type { CornerStyle, EndpointCap, StrokeStyle, TextAlign } from '../model/types';
 import { ToolRegistry } from '../tools/toolRegistry';
 import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS } from '../util/palette';
 
@@ -14,6 +14,7 @@ export interface Style {
     stroke: string;
     fill: string;
     strokeWidth: number;
+    strokeStyle: StrokeStyle;
     fontSize: number;
     textAlign: TextAlign;
     noteFill: string;
@@ -68,6 +69,7 @@ export class UIStore {
                 stroke: STROKE_COLORS[1],
                 fill: FILL_COLORS[0],
                 strokeWidth: 2,
+                strokeStyle: 'solid',
                 fontSize: 20,
                 textAlign: 'left',
                 noteFill: NOTE_COLORS[0],

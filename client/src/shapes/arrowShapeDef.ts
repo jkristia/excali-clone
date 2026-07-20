@@ -5,7 +5,7 @@ import { CanvasDraw } from '../util/canvasDraw';
 
 /** Covers both arrows and lines — a line is an arrow with both caps 'none'. */
 export class ArrowShapeDef implements ShapeDefinition<ArrowShape> {
-    public readonly capabilities = { stroke: true, fill: false, width: true, ends: true };
+    public readonly capabilities = { stroke: true, fill: false, width: true, ends: true, strokeStyle: true };
     public readonly resizable = false;
     public readonly rotatable = false;
 
@@ -21,7 +21,7 @@ export class ArrowShapeDef implements ShapeDefinition<ArrowShape> {
     }
 
     public draw(ctx: CanvasRenderingContext2D, shape: ArrowShape): void {
-        CanvasDraw.applyStroke(ctx, shape.stroke, shape.strokeWidth);
+        CanvasDraw.applyStroke(ctx, shape.stroke, shape.strokeWidth, shape.strokeStyle);
         // Old persisted arrows predate caps: default to a plain start + arrowhead end.
         CanvasDraw.drawArrow(
             ctx,

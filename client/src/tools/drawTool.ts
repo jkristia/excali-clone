@@ -15,7 +15,7 @@ export class DrawTool implements Tool {
         const style = ctx.style();
         const draft: Extract<Shape, { type: 'draw' }> = {
             id: ctx.newId(), type: 'draw', x: p.x, y: p.y, z: ctx.nextZ(), createdBy: ctx.author(),
-            points: [0, 0], stroke: style.stroke, strokeWidth: style.strokeWidth,
+            points: [0, 0], stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle,
         };
         return { kind: 'draw', draft, startX: p.x, startY: p.y };
     }

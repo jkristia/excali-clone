@@ -68,6 +68,11 @@ export class SceneRenderer {
             if (s.id === input.editingId) continue; // no selection rect while inline-editing
             this.withShapeTransform(ctx, s, () => this.drawOutline(ctx, this.shapeRegistry.getBounds(s), SceneRenderer.SELECT_COLOR, camera.zoom, 2));
         }
+        // Dotted bounding box around the whole selection (no handles yet).
+        if (selected.length > 1) {
+            const group = this.shapeRegistry.unionBounds(selected);
+            if (group) this.drawSelectionBox(ctx, group, camera.zoom);
+        }
         if (selected.length === 1 && selected[0].id !== input.editingId) {
             const s = selected[0];
             if (s.type === 'arrow') {
@@ -200,6 +205,18 @@ export class SceneRenderer {
         ctx.arc(hx, hy, r, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
+        ctx.restore();
+    }
+
+    /** Dashed rectangle around a multi-selection's combined bounds, padded slightly so it
+     *  sits just outside the shapes. No fill, no resize/rotate handles. */
+    private drawSelectionBox(ctx: CanvasRenderingContext2D, b: Bounds, zoom: number): void {
+        const pad = 4 / zoom;
+        ctx.save();
+        ctx.strokeStyle = SceneRenderer.SELECT_COLOR;
+        ctx.lineWidth = 1 / zoom;
+        ctx.setLineDash([4 / zoom, 4 / zoom]);
+        ctx.strokeRect(b.x - pad, b.y - pad, b.w + pad * 2, b.h + pad * 2);
         ctx.restore();
     }
 

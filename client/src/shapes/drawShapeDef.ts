@@ -4,7 +4,7 @@ import { Geometry } from '../util/geometry';
 import { CanvasDraw } from '../util/canvasDraw';
 
 export class DrawShapeDef implements ShapeDefinition<DrawShape> {
-    public readonly capabilities = { stroke: true, fill: false, width: true, ends: false };
+    public readonly capabilities = { stroke: true, fill: false, width: true, ends: false, strokeStyle: true };
     public readonly resizable = false;
     public readonly rotatable = false;
 
@@ -39,7 +39,7 @@ export class DrawShapeDef implements ShapeDefinition<DrawShape> {
     }
 
     public draw(ctx: CanvasRenderingContext2D, shape: DrawShape): void {
-        CanvasDraw.applyStroke(ctx, shape.stroke, shape.strokeWidth);
+        CanvasDraw.applyStroke(ctx, shape.stroke, shape.strokeWidth, shape.strokeStyle);
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
         const pts = shape.points;

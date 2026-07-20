@@ -1,0 +1,35 @@
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+ stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    @switch (op) {
+        @case ('left') {
+            <line x1="4" y1="3" x2="4" y2="21" stroke-width="2.6" />
+            <rect x="4" y="6" width="13" height="4" rx="1" />
+            <rect x="4" y="14" width="9" height="4" rx="1" />
+        }
+        @case ('hcenter') {
+            <line x1="12" y1="3" x2="12" y2="21" stroke-width="2.6" />
+            <rect x="6" y="6" width="12" height="4" rx="1" />
+            <rect x="8" y="14" width="8" height="4" rx="1" />
+        }
+        @case ('right') {
+            <line x1="20" y1="3" x2="20" y2="21" stroke-width="2.6" />
+            <rect x="7" y="6" width="13" height="4" rx="1" />
+            <rect x="11" y="14" width="9" height="4" rx="1" />
+        }
+        @case ('top') {
+            <line x1="3" y1="4" x2="21" y2="4" stroke-width="2.6" />
+            <rect x="6" y="4" width="4" height="13" rx="1" />
+            <rect x="14" y="4" width="4" height="9" rx="1" />
+        }
+        @case ('vcenter') {
+            <line x1="3" y1="12" x2="21" y2="12" stroke-width="2.6" />
+            <rect x="6" y="6" width="4" height="12" rx="1" />
+            <rect x="14" y="8" width="4" height="8" rx="1" />
+        }
+        @case ('bottom') {
+            <line x1="3" y1="20" x2="21" y2="20" stroke-width="2.6" />
+            <rect x="6" y="7" width="4" height="13" rx="1" />
+            <rect x="14" y="11" width="4" height="9" rx="1" />
+        }
+    }
+</svg>

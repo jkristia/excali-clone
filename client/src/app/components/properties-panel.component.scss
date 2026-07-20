@@ -94,6 +94,13 @@
     gap: 6px;
 }
 
+/* Align buttons: two rows of three (horizontal aligns, then vertical aligns). */
+.align-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
 .layer-btn {
     flex: 1;
     height: 34px;

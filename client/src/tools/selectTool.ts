@@ -62,18 +62,34 @@ export class SelectTool implements Tool {
             const already = selection.includes(hit.id);
             if (p.shiftKey) {
                 ctx.toggleSelection(hit.id, true);
-            } else if (!already) {
-                ctx.setSelection([hit.id]);
+                return this.startMove(ctx, ctx.selection(), p);
             }
-            const ids = ctx.selection();
-            const origins = new Map<string, { x: number; y: number }>();
-            for (const s of ctx.shapes()) {
-                if (ids.includes(s.id)) origins.set(s.id, { x: s.x, y: s.y });
+            if (already) {
+                return this.startMove(ctx, selection, p);
             }
-            return { kind: 'move', ids, startX: p.x, startY: p.y, origins, moved: false };
+            // `hit` is unselected. If a currently-selected shape sits under the
+            // pointer too (overlap), a drag should move the existing selection
+            // and only a plain click should switch to `hit` — so keep the
+            // selection now and defer the switch to pointer-up.
+            const overlapsSelection = ctx.shapes().some(
+                (s) => selection.includes(s.id) && this.shapeRegistry.hitTest(s, p.x, p.y),
+            );
+            if (overlapsSelection) {
+                return this.startMove(ctx, selection, p, hit.id);
+            }
+            ctx.setSelection([hit.id]);
+            return this.startMove(ctx, [hit.id], p);
         }
 
         if (!p.shiftKey) ctx.setSelection([]);
         return { kind: 'marquee', startX: p.x, startY: p.y, curX: p.x, curY: p.y };
+    }
+
+    private startMove(ctx: ToolContext, ids: string[], p: PointerInfo, pendingSelect?: string): Interaction {
+        const origins = new Map<string, { x: number; y: number }>();
+        for (const s of ctx.shapes()) {
+            if (ids.includes(s.id)) origins.set(s.id, { x: s.x, y: s.y });
+        }
+        return { kind: 'move', ids, startX: p.x, startY: p.y, origins, moved: false, pendingSelect };
     }
 }

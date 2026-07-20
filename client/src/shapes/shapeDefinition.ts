@@ -11,6 +11,8 @@ export interface ShapeCapabilities {
     text?: boolean;
     /** Sharp/rounded corner toggle (rectangle and diamond). */
     edges?: boolean;
+    /** Solid/dashed/dotted line-style toggle (every stroked shape, i.e. not text/note). */
+    strokeStyle?: boolean;
 }
 
 /**

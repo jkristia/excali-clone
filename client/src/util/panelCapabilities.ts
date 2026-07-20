@@ -28,8 +28,9 @@ export function panelFlags(
                 note: acc.note || c.note,
                 text: acc.text || c.text,
                 edges: acc.edges || c.edges,
+                strokeStyle: acc.strokeStyle || c.strokeStyle,
             };
         },
-        { stroke: false, fill: false, width: false, ends: false, note: false, text: false, edges: false },
+        { stroke: false, fill: false, width: false, ends: false, note: false, text: false, edges: false, strokeStyle: false },
     );
 }

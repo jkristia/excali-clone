@@ -20,7 +20,7 @@ export class ToolRegistry {
             const style = ctx.style();
             return {
                 id, type: 'rectangle', x: p.x, y: p.y, z, createdBy: ctx.author(),
-                w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth, edges: style.edges,
+                w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle, edges: style.edges,
             };
         }, shapeRegistry.getCapabilities('rectangle'));
 
@@ -28,7 +28,7 @@ export class ToolRegistry {
             const style = ctx.style();
             return {
                 id, type: 'ellipse', x: p.x, y: p.y, z, createdBy: ctx.author(),
-                w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth,
+                w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle,
             };
         }, shapeRegistry.getCapabilities('ellipse'));
 
@@ -36,7 +36,7 @@ export class ToolRegistry {
             const style = ctx.style();
             return {
                 id, type: 'diamond', x: p.x, y: p.y, z, createdBy: ctx.author(),
-                w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth, edges: style.edges,
+                w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle, edges: style.edges,
             };
         }, shapeRegistry.getCapabilities('diamond'));
 
@@ -67,7 +67,7 @@ export class ToolRegistry {
         const style = ctx.style();
         return {
             id, type: 'arrow', x: p.x, y: p.y, z, createdBy: ctx.author(),
-            dx: 0, dy: 0, stroke: style.stroke, strokeWidth: style.strokeWidth,
+            dx: 0, dy: 0, stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle,
             startCap: style.startCap, endCap: style.endCap,
         };
     }

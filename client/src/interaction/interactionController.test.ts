@@ -9,7 +9,7 @@ function makeStore(overrides: Partial<InteractionStore> = {}): InteractionStore 
     return {
         tool: 'select',
         style: {
-            stroke: '#000', fill: 'transparent', strokeWidth: 2, fontSize: 20, textAlign: 'left',
+            stroke: '#000', fill: 'transparent', strokeWidth: 2, strokeStyle: 'solid', fontSize: 20, textAlign: 'left',
             noteFill: '#fff', startCap: 'none', endCap: 'arrow', edges: 'sharp',
         },
         camera: { x: 0, y: 0, zoom: 1 },
@@ -76,6 +76,51 @@ describe('InteractionController', () => {
         expect(patches).toEqual([{ id: 'r1', patch: { x: 10, y: 20 } }]);
         controller.onPointerUp();
         expect(controller.getInteraction().kind).toBe('none');
+    });
+
+    describe('overlapping shape: move vs select', () => {
+        // A second rectangle drawn on top of `rect`, overlapping it at (50, 25).
+        const top: Shape = { ...rect, id: 'r2', z: 1 };
+
+        beforeEach(() => {
+            shapes = [rect, top];
+            store.selection = ['r1']; // the lower shape is selected
+        });
+
+        it('drag over the overlap moves the selected (lower) shape, not the top one', () => {
+            let selected: string[] | null = null;
+            store.setSelection = (ids) => { selected = ids; };
+
+            controller.onPointerDown(pointer(50, 25), false);
+            expect(controller.getInteraction().kind).toBe('move');
+            controller.onPointerMove(pointer(60, 45), false);
+            controller.onPointerUp();
+
+            expect(patches).toEqual([{ id: 'r1', patch: { x: 10, y: 20 } }]);
+            expect(selected).toBeNull(); // selection untouched by a drag
+        });
+
+        it('click over the overlap selects the top shape on pointer-up', () => {
+            let selected: string[] | null = null;
+            store.setSelection = (ids) => { selected = ids; };
+
+            controller.onPointerDown(pointer(50, 25), false);
+            controller.onPointerUp(); // no move: a plain click
+            expect(selected).toEqual(['r2']);
+            expect(patches).toEqual([]);
+        });
+
+        it('press-drag on a non-overlapping unselected shape still selects and moves it', () => {
+            const far: Shape = { ...rect, id: 'r3', x: 300, y: 300, z: 2 };
+            shapes = [rect, far];
+            let selected: string[] | null = null;
+            store.setSelection = (ids) => { selected = ids; store.selection = ids; };
+
+            controller.onPointerDown(pointer(350, 325), false);
+            expect(selected).toEqual(['r3']);
+            controller.onPointerMove(pointer(360, 345), false);
+            expect(patches).toEqual([{ id: 'r3', patch: { x: 310, y: 320 } }]);
+        });
     });
 
     it('select tool: empty-space drag starts a marquee and selects contained shapes', () => {
@@ -157,5 +202,33 @@ describe('InteractionController', () => {
         store.tool = 'rectangle';
         controller.onPointerDown(pointer(0, 0), true);
         expect(controller.getInteraction().kind).toBe('pan');
+    });
+
+    describe('hover cursor', () => {
+        it('shows the move cursor over any shape body', () => {
+            controller.onPointerMove(pointer(50, 25), false);
+            expect(controller.getCursor()).toBe('move');
+        });
+
+        it('shows resize cursors over a selected shape\'s anchors', () => {
+            store.selection = ['r1'];
+            controller.onPointerMove(pointer(0, 0), false); // top-left corner
+            expect(controller.getCursor()).toBe('nwse-resize');
+            controller.onPointerMove(pointer(50, 0), false); // top-middle
+            expect(controller.getCursor()).toBe('ns-resize');
+        });
+
+        it('rotates the anchor cursor with a rotated shape', () => {
+            shapes = [{ ...rect, rotation: Math.PI / 2 }];
+            store.selection = ['r1'];
+            // Top-middle anchor un-rotates to the right-middle edge of the box.
+            controller.onPointerMove(pointer(75, 25), false);
+            expect(controller.getCursor()).toBe('ew-resize');
+        });
+
+        it('is null over empty space', () => {
+            controller.onPointerMove(pointer(-50, -50), false);
+            expect(controller.getCursor()).toBeNull();
+        });
     });
 });

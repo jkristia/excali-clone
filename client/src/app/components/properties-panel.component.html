@@ -47,6 +47,19 @@
             </div>
         }
 
+        @if (flags().strokeStyle) {
+            <div class="prop-section">
+                <div class="prop-label">Stroke style</div>
+                <div class="width-row">
+                    @for (s of strokeStyles; track s.value) {
+                        <button class="width-btn" [class.active]="style().strokeStyle === s.value" [title]="s.label" (click)="applyStrokeStyle(s.value)">
+                            <span class="cap-icon">{{ s.icon }}</span>
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+
         @if (flags().edges) {
             <div class="prop-section">
                 <div class="prop-label">Edges</div>
@@ -111,6 +124,19 @@
                     @for (a of textAligns; track a.align) {
                         <button class="width-btn" [class.active]="style().textAlign === a.align" [title]="a.label" (click)="applyTextAlign(a.align)">
                             <span class="cap-icon"><app-align-icon [align]="a.align" /></span>
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (hasMultiSelection()) {
+            <div class="prop-section">
+                <div class="prop-label">Align</div>
+                <div class="align-grid">
+                    @for (o of alignOps; track o.op) {
+                        <button class="layer-btn" [title]="o.label" (click)="align(o.op)">
+                            <app-align-shapes-icon [op]="o.op" />
                         </button>
                     }
                 </div>

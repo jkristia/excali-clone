@@ -4,7 +4,7 @@ import { Geometry } from '../util/geometry';
 import { CanvasDraw } from '../util/canvasDraw';
 
 export class RectangleShapeDef implements ShapeDefinition<RectShape> {
-    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false, edges: true };
+    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false, edges: true, strokeStyle: true };
     public readonly resizable = true;
     public readonly rotatable = true;
 
@@ -17,7 +17,7 @@ export class RectangleShapeDef implements ShapeDefinition<RectShape> {
     }
 
     public draw(ctx: CanvasRenderingContext2D, shape: RectShape): void {
-        CanvasDraw.applyStroke(ctx, shape.stroke, shape.strokeWidth);
+        CanvasDraw.applyStroke(ctx, shape.stroke, shape.strokeWidth, shape.strokeStyle);
         if (shape.edges === 'rounded') {
             const b = this.getBounds(shape);
             CanvasDraw.roundRect(ctx, b.x, b.y, b.w, b.h, Math.min(b.w, b.h) * 0.18);

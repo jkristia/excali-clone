@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnDestroy, AfterViewInit, computed, effect, inject, viewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, AfterViewInit, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { UiStoreService } from '../state/ui-store.service';
 import { CollabService } from '../collab/collab.service';
 import { InlineEditorComponent } from '../components/inline-editor.component';
@@ -38,12 +38,12 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
 
     private shapesLatest: Shape[] = [];
     private peersLatest: PeerPresence[] = [];
-    private handleCursor: string | null = null;
+    private readonly handleCursor = signal<string | null>(null);
 
     protected readonly cursor = computed(() => {
         const tool = this.tool();
         if (tool === 'pan' || this.spacePan()) return 'grab';
-        if (tool === 'select') return this.handleCursor ?? 'default';
+        if (tool === 'select') return this.handleCursor() ?? 'default';
         if (tool === 'text') return 'text';
         return 'crosshair';
     });
@@ -166,7 +166,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
             const p = toPointerInfo(e);
             this.canvasDocument.awareness.setLocalStateField('cursor', { x: p.x, y: p.y });
             this.controller.onPointerMove(p, e.shiftKey);
-            this.handleCursor = this.controller.getCursor();
+            this.handleCursor.set(this.controller.getCursor());
             this.scheduleRender();
         };
         const onPointerUp = (e: PointerEvent) => {
@@ -181,7 +181,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
         const onPointerLeave = () => {
             this.canvasDocument.awareness.setLocalStateField('cursor', null);
             this.controller.onPointerLeave();
-            this.handleCursor = null;
+            this.handleCursor.set(null);
         };
         const onDoubleClick = (e: MouseEvent) => {
             const rect = canvas.getBoundingClientRect();

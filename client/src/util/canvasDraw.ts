@@ -1,10 +1,30 @@
-import type { EndpointCap } from '../model/types';
+import type { EndpointCap, StrokeStyle } from '../model/types';
 
 /** Small reusable canvas-2D drawing primitives shared by multiple shape definitions. */
 export class CanvasDraw {
-    public static applyStroke(ctx: CanvasRenderingContext2D, color: string, width: number) {
+    public static applyStroke(
+        ctx: CanvasRenderingContext2D,
+        color: string,
+        width: number,
+        style: StrokeStyle = 'solid',
+    ) {
         ctx.strokeStyle = color;
         ctx.lineWidth = width;
+        // Every stroked shape calls this first, so resetting to [] on 'solid' also keeps
+        // a dash pattern from one shape leaking into the next.
+        ctx.setLineDash(CanvasDraw.dashPattern(style, width));
+    }
+
+    /** Dash array for a stroke style, scaled by width so it stays proportional. */
+    private static dashPattern(style: StrokeStyle, width: number): number[] {
+        switch (style) {
+            case 'dashed':
+                return [width * 4, width * 2];
+            case 'dotted':
+                return [width, width * 2];
+            default:
+                return [];
+        }
     }
 
     public static drawArrow(
@@ -22,6 +42,9 @@ export class CanvasDraw {
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
         ctx.stroke();
+
+        // The connecting line may be dashed/dotted, but the arrowheads must stay solid.
+        ctx.setLineDash([]);
 
         // Cap angle points *outward* from the line at each end.
         const angle = Math.atan2(y2 - y1, x2 - x1);

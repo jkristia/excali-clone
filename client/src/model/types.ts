@@ -8,6 +8,9 @@ export type ShapeType = 'rectangle' | 'ellipse' | 'diamond' | 'arrow' | 'draw' |
 /** Corner treatment for the box-outline shapes (rectangle/diamond). Absent ⇒ 'sharp'. */
 export type CornerStyle = 'sharp' | 'rounded';
 
+/** Line style for stroked shapes (all except text/note). Absent ⇒ 'solid'. */
+export type StrokeStyle = 'solid' | 'dashed' | 'dotted';
+
 export interface BaseShape {
     id: string;
     type: ShapeType;
@@ -29,6 +32,7 @@ export interface RectShape extends BaseShape {
     fill: string;
     stroke: string;
     strokeWidth: number;
+    strokeStyle?: StrokeStyle;
     edges?: CornerStyle;
 }
 
@@ -39,6 +43,7 @@ export interface EllipseShape extends BaseShape {
     fill: string;
     stroke: string;
     strokeWidth: number;
+    strokeStyle?: StrokeStyle;
 }
 
 export interface DiamondShape extends BaseShape {
@@ -48,6 +53,7 @@ export interface DiamondShape extends BaseShape {
     fill: string;
     stroke: string;
     strokeWidth: number;
+    strokeStyle?: StrokeStyle;
     edges?: CornerStyle;
 }
 
@@ -63,6 +69,7 @@ export interface ArrowShape extends BaseShape {
     dy: number;
     stroke: string;
     strokeWidth: number;
+    strokeStyle?: StrokeStyle;
     /** decoration at the start point (x, y). */
     startCap: EndpointCap;
     /** decoration at the end point (x+dx, y+dy). */
@@ -75,6 +82,7 @@ export interface DrawShape extends BaseShape {
     points: number[];
     stroke: string;
     strokeWidth: number;
+    strokeStyle?: StrokeStyle;
 }
 
 export type TextAlign = 'left' | 'center' | 'right';

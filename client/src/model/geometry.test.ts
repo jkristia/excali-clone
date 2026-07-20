@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
-import type { ArrowShape, Bounds, DrawShape, EllipseShape, NoteShape, RectShape, Shape, TextShape } from './types';
+import type { Bounds, Shape } from './types';
+import { arrow, draw, ellipse, note, rect, text } from '../test-support/shapeFactories';
 
 // Shape geometry now lives on ShapeRegistry; these wrappers keep the cases below unchanged.
 const reg = new ShapeRegistry();
@@ -9,55 +10,6 @@ const hitTest = (s: Shape, px: number, py: number, tol?: number): boolean => reg
 const shapesInRect = (shapes: Shape[], sel: Bounds): Shape[] => reg.shapesInRect(shapes, sel);
 const topShapeAt = (shapes: Shape[], px: number, py: number): Shape | null => reg.topShapeAt(shapes, px, py);
 const unionBounds = (shapes: Shape[]): Bounds | null => reg.unionBounds(shapes);
-
-function rect(over: Partial<RectShape> = {}): RectShape {
-    return {
-        id: 'r1', type: 'rectangle', x: 10, y: 10, z: 1, createdBy: 'u',
-        w: 20, h: 20, fill: '#fff', stroke: '#000', strokeWidth: 2,
-        ...over,
-    };
-}
-
-function ellipse(over: Partial<EllipseShape> = {}): EllipseShape {
-    return {
-        id: 'e1', type: 'ellipse', x: 0, y: 0, z: 1, createdBy: 'u',
-        w: 40, h: 20, fill: '#fff', stroke: '#000', strokeWidth: 2,
-        ...over,
-    };
-}
-
-function note(over: Partial<NoteShape> = {}): NoteShape {
-    return {
-        id: 'n1', type: 'note', x: 5, y: 5, z: 1, createdBy: 'u',
-        w: 100, h: 80, text: '', fill: '#ff0', fontSize: 16, textAlign: 'left',
-        ...over,
-    };
-}
-
-function text(over: Partial<TextShape> = {}): TextShape {
-    return {
-        id: 't1', type: 'text', x: 0, y: 0, z: 1, createdBy: 'u',
-        text: 'hi', fontSize: 20, color: '#000', textAlign: 'left', w: 20, h: 25,
-        ...over,
-    };
-}
-
-function arrow(over: Partial<ArrowShape> = {}): ArrowShape {
-    return {
-        id: 'a1', type: 'arrow', x: 0, y: 0, z: 1, createdBy: 'u',
-        dx: 30, dy: 0, stroke: '#000', strokeWidth: 2,
-        startCap: 'none', endCap: 'arrow',
-        ...over,
-    };
-}
-
-function draw(over: Partial<DrawShape> = {}): DrawShape {
-    return {
-        id: 'd1', type: 'draw', x: 0, y: 0, z: 1, createdBy: 'u',
-        points: [0, 0, 10, 10, 20, 0], stroke: '#000', strokeWidth: 2,
-        ...over,
-    };
-}
 
 describe('getBounds', () => {
     it('rectangle: normalizes negative w/h', () => {

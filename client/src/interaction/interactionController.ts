@@ -11,9 +11,6 @@ import { RotationMath } from '../util/rotationMath';
 import { VectorMath } from '../util/vectorMath';
 import { ArrowEndpoints } from '../util/arrowEndpoints';
 
-// Indexed by Handle (NW, N, NE, E, SE, S, SW, W).
-const HANDLE_CURSORS = ['nwse-resize', 'ns-resize', 'nesw-resize', 'ew-resize', 'nwse-resize', 'ns-resize', 'nesw-resize', 'ew-resize'];
-
 /** Store surface the controller needs — a subset of uiStore's state + actions. */
 export interface InteractionStore {
     tool: ToolName;
@@ -206,33 +203,47 @@ export class InteractionController {
         }
         const inter = this.interaction;
         let newCursor: string | null = null;
-        if (inter.kind === 'none' && store.selection.length === 1) {
-            const selShape = this.deps.shapes().find((s) => s.id === store.selection[0]);
-            if (selShape?.type === 'arrow') {
-                const ep = ArrowEndpoints.hitTest(selShape, p.x, p.y, store.camera.zoom);
-                if (ep !== null) newCursor = 'crosshair';
-            } else if (selShape) {
-                const bounds = this.shapeRegistry.getBounds(selShape);
-                const radius = ArrowEndpoints.HIT_RADIUS / store.camera.zoom;
-                const c = RotationMath.center(bounds);
-                const local = RotationMath.rotatePoint(p.x, p.y, c.x, c.y, -(selShape.rotation ?? 0));
-                if (this.shapeRegistry.isRotatable(selShape)) {
-                    const [rx, ry] = Handles.rotateHandlePoint(bounds, Handles.ROTATE_OFFSET / store.camera.zoom);
-                    if (Math.hypot(local.x - rx, local.y - ry) <= radius) newCursor = 'grab';
-                }
-                if (!newCursor && this.shapeRegistry.isResizable(selShape)) {
-                    const h = Handles.hitTest(bounds, local.x, local.y, radius);
-                    if (h !== -1) newCursor = HANDLE_CURSORS[h];
-                }
+        if (inter.kind === 'none') {
+            if (store.selection.length === 1) {
+                newCursor = this.selectedShapeCursor(store, p);
+            }
+            // Over any shape body a click selects+moves it (see SelectTool), so
+            // show the move cursor there — but never over an anchor of the
+            // selected shape, which was resolved above.
+            if (!newCursor && this.shapeRegistry.topShapeAt(this.deps.shapes(), p.x, p.y)) {
+                newCursor = 'move';
             }
         } else if (inter.kind === 'resize') {
-            newCursor = HANDLE_CURSORS[inter.handle];
+            newCursor = Handles.cursor(inter.handle, inter.orig.rotation);
         } else if (inter.kind === 'rotate') {
             newCursor = 'grabbing';
         } else if (inter.kind === 'arrow-endpoint') {
             newCursor = 'crosshair';
         }
         this.cursor = newCursor;
+    }
+
+    /** Hover cursor for the single selected shape's endpoints / handles, else null. */
+    private selectedShapeCursor(store: InteractionStore, p: PointerInfo): string | null {
+        const selShape = this.deps.shapes().find((s) => s.id === store.selection[0]);
+        if (!selShape) return null;
+        if (selShape.type === 'arrow') {
+            const ep = ArrowEndpoints.hitTest(selShape, p.x, p.y, store.camera.zoom);
+            return ep !== null ? 'crosshair' : null;
+        }
+        const bounds = this.shapeRegistry.getBounds(selShape);
+        const radius = ArrowEndpoints.HIT_RADIUS / store.camera.zoom;
+        const c = RotationMath.center(bounds);
+        const local = RotationMath.rotatePoint(p.x, p.y, c.x, c.y, -(selShape.rotation ?? 0));
+        if (this.shapeRegistry.isRotatable(selShape)) {
+            const [rx, ry] = Handles.rotateHandlePoint(bounds, Handles.ROTATE_OFFSET / store.camera.zoom);
+            if (Math.hypot(local.x - rx, local.y - ry) <= radius) return 'grab';
+        }
+        if (this.shapeRegistry.isResizable(selShape)) {
+            const h = Handles.hitTest(bounds, local.x, local.y, radius);
+            if (h !== -1) return Handles.cursor(h, selShape.rotation ?? 0);
+        }
+        return null;
     }
 
     public onPointerUp(): void {
@@ -263,6 +274,12 @@ export class InteractionController {
             if (Math.abs(rect.w) > 3 || Math.abs(rect.h) > 3) {
                 const inside = this.shapeRegistry.shapesInRect(this.deps.shapes(), rect).map((s) => s.id);
                 store.setSelection(inside);
+            }
+        } else if (inter.kind === 'move') {
+            // A deferred (overlap) selection switch: apply it only if this was a
+            // click, not a drag — a drag has already moved the existing selection.
+            if (!inter.moved && inter.pendingSelect !== undefined) {
+                store.setSelection([inter.pendingSelect]);
             }
         }
 

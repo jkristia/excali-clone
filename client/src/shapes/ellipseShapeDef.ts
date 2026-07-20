@@ -4,7 +4,7 @@ import { Geometry } from '../util/geometry';
 import { CanvasDraw } from '../util/canvasDraw';
 
 export class EllipseShapeDef implements ShapeDefinition<EllipseShape> {
-    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false };
+    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false, strokeStyle: true };
     public readonly resizable = true;
     public readonly rotatable = true;
 
@@ -24,7 +24,7 @@ export class EllipseShapeDef implements ShapeDefinition<EllipseShape> {
     }
 
     public draw(ctx: CanvasRenderingContext2D, shape: EllipseShape): void {
-        CanvasDraw.applyStroke(ctx, shape.stroke, shape.strokeWidth);
+        CanvasDraw.applyStroke(ctx, shape.stroke, shape.strokeWidth, shape.strokeStyle);
         const b = this.getBounds(shape);
         ctx.beginPath();
         ctx.ellipse(b.x + b.w / 2, b.y + b.h / 2, b.w / 2, b.h / 2, 0, 0, Math.PI * 2);
