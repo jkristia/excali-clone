@@ -30,7 +30,6 @@
     "@angular/build": "^20.3.26",
     "@angular/compiler-cli": "^20.3.26",
     "@eslint/js": "^10.0.1",
-    "@oxc-parser/binding-win32-x64-msvc": "^0.140.0",
     "@playwright/test": "^1.61.1",
     "eslint": "^10.7.0",
     "jsdom": "^29.1.1",

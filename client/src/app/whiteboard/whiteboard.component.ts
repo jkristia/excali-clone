@@ -253,10 +253,14 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
             e.preventDefault();
             const store = this.ui.snapshot;
             const rect = canvas.getBoundingClientRect();
+            const pinchZoomGain = 0.008;
+            const wheelZoomGain = 0.001;
             if (e.ctrlKey || e.metaKey) {
                 const ax = e.clientX - rect.left;
                 const ay = e.clientY - rect.top;
-                const factor = Math.exp(-e.deltaY * 0.001);
+                const isPinchGesture = e.deltaMode === WheelEvent.DOM_DELTA_PIXEL && Math.abs(e.deltaY) < 40;
+                const gain = isPinchGesture ? pinchZoomGain : wheelZoomGain;
+                const factor = Math.exp(-e.deltaY * gain);
                 store.setCamera(CameraMath.zoomAt(store.camera, factor, ax, ay));
             } else {
                 const cam = store.camera;
