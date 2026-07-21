@@ -4,12 +4,13 @@ import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { ToolRegistry } from '../tools/toolRegistry';
 import type { Shape } from '../model/types';
 import type { PointerInfo } from './interaction';
+import { FontSize } from '../util/palette';
 
 function makeStore(overrides: Partial<InteractionStore> = {}): InteractionStore {
     return {
         tool: 'select',
         style: {
-            stroke: '#000', fill: 'transparent', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', opacity: 1, fontSize: 20, labelFontSize: 16, labelHAlign: 'center', labelVAlign: 'middle', textAlign: 'left',
+            stroke: '#000', fill: 'transparent', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', opacity: 1, fontSize: FontSize.Medium, labelFontSize: FontSize.Small, labelHAlign: 'center', labelVAlign: 'middle', textAlign: 'left',
             noteFill: '#fff', startCap: 'none', endCap: 'arrow', edges: 'sharp',
         },
         camera: { x: 0, y: 0, zoom: 1 },

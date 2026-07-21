@@ -5,11 +5,17 @@ export const STROKE_COLORS: Color[] = ['transparent', '#1e1e1e', '#e03131', '#2f
 export const FILL_COLORS: Color[] = ['transparent', '#ffc9c9', '#b2f2bb', '#a5d8ff', '#ffec99', '#eebefa'];
 export const NOTE_COLORS: Color[] = ['#fff9b1', '#d3f8e2', '#ffd6e0', '#cddafd', '#ffe8cc'];
 export const WIDTHS = [1, 2, 4, 8];
+export const enum FontSize {
+    Small = 14,
+    Medium = 18,
+    Large = 24,
+    ExtraLarge = 32,
+}
 export const FONT_SIZES: { size: number; label: string }[] = [
-    { size: 16, label: 'S' },
-    { size: 20, label: 'M' },
-    { size: 28, label: 'L' },
-    { size: 36, label: 'XL' },
+    { size: FontSize.Small, label: 'S' },
+    { size: FontSize.Medium, label: 'M' },
+    { size: FontSize.Large, label: 'L' },
+    { size: FontSize.ExtraLarge, label: 'XL' },
 ];
 export const TEXT_ALIGNS: { align: TextAlign; label: string }[] = [
     { align: 'left', label: 'Left' },

@@ -2,6 +2,7 @@ import type { Bounds, NoteShape } from '../model/types';
 import type { ShapeDefinition } from './shapeDefinition';
 import { Geometry } from '../util/geometry';
 import { CanvasDraw } from '../util/canvasDraw';
+import { FontSize } from '../util/palette';
 
 /** Note text layout, shared by rendering ({@link NoteShapeDef.draw}) and auto-sizing. */
 export const NOTE_PADDING = 12;
@@ -61,7 +62,7 @@ export class NoteShapeDef implements ShapeDefinition<NoteShape> {
 
         ctx.fillStyle = '#1e1e1e';
         ctx.textBaseline = 'top';
-        const fs = shape.fontSize ?? 16;
+        const fs = shape.fontSize ?? FontSize.Small;
         ctx.font = `${fs}px Inter, system-ui, sans-serif`;
         const top = shape.y + NoteShapeDef.textOffsetY(ctx, shape.text, fs, shape.w, shape.h);
         CanvasDraw.wrapText(
