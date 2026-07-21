@@ -17,7 +17,20 @@ export type Interaction =
     | { kind: 'marquee'; startX: number; startY: number; curX: number; curY: number; mode: MarqueeMode }
     | { kind: 'resize'; id: string; handle: Handle; orig: { x: number; y: number; w: number; h: number; type: ShapeType; rotation: number } }
     | { kind: 'rotate'; id: string; cx: number; cy: number; startPointerAngle: number; origRotation: number }
+    | { kind: 'rotate-selection'; pivot: { x: number; y: number }; startPointerAngle: number; origins: Map<string, RotateOrigin> }
     | { kind: 'arrow-endpoint'; id: string; endpoint: 0 | 1; origX: number; origY: number; origDx: number; origDy: number };
+
+/**
+ * Per-shape state captured at the start of a multi-selection rotate, enough to
+ * recompute the shape's geometry from the drag angle each frame (nothing is
+ * stored as an aggregate). Discriminated by how the shape carries rotation:
+ * box shapes accumulate the `rotation` field about their center; arrow/draw
+ * ignore `rotation`, so their coordinates are rotated explicitly.
+ */
+export type RotateOrigin =
+    | { kind: 'box'; cx: number; cy: number; hw: number; hh: number; origRotation: number }
+    | { kind: 'arrow'; x: number; y: number; dx: number; dy: number }
+    | { kind: 'draw'; x: number; y: number; points: readonly number[] };
 
 /** Screen + world pointer data, decoupled from React's PointerEvent type. */
 export interface PointerInfo {

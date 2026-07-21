@@ -315,6 +315,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
             peers: this.peersLatest,
             marquee, draft, editingId,
             showGrid: snapToGrid,
+            rotatingSelection: inter.kind === 'rotate-selection',
         });
     }
 

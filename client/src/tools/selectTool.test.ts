@@ -115,6 +115,45 @@ describe('SelectTool', () => {
         });
     });
 
+    describe('multi-selection: rotate handle off the union frame', () => {
+        // r1 (0,0,100,50) and r2 (0,100,100,50) → union (0,0,100,150), padded by
+        // SELECTION_PAD=4 → (-4,-4,108,158), center (50,75), rotate handle at
+        // [50, -4 - ROTATE_OFFSET] = [50, -28].
+        const shapes = () => [rect(), rect({ id: 'r2', y: 100 })];
+
+        it('grabs the rotate handle above the padded union box', () => {
+            const { ctx } = makeCtx(shapes(), ['r1', 'r2']);
+            const result = tool().onPointerDown(ctx, pointer(50, -28));
+            expect(result).toMatchObject({ kind: 'rotate-selection', pivot: { x: 50, y: 75 } });
+            const rs = result as Extract<typeof result, { kind: 'rotate-selection' }>;
+            expect(rs.startPointerAngle).toBeCloseTo(-Math.PI / 2, 6);
+            expect(rs.origins.size).toBe(2);
+            expect(rs.origins.get('r1')).toEqual({ kind: 'box', cx: 50, cy: 25, hw: 50, hh: 25, origRotation: 0 });
+            expect(rs.origins.get('r2')).toEqual({ kind: 'box', cx: 50, cy: 125, hw: 50, hh: 25, origRotation: 0 });
+        });
+
+        it('captures arrow/draw geometry rather than a box origin', () => {
+            const draw: Shape = {
+                id: 'd1', type: 'draw', x: 5, y: 5, z: 0, createdBy: 'u',
+                points: [0, 0, 10, 10], stroke: '#000', strokeWidth: 2,
+            };
+            const { ctx } = makeCtx([arrow(), draw], ['a1', 'd1']);
+            // union of arrow (x 0..100, y 0) and draw (5,5)-(15,15) → (0,0,100,15),
+            // padded (-4,-4,108,23), center (50,7.5), handle at [50, -28].
+            const result = tool().onPointerDown(ctx, pointer(50, -28));
+            const rs = result as Extract<typeof result, { kind: 'rotate-selection' }>;
+            expect(rs.kind).toBe('rotate-selection');
+            expect(rs.origins.get('a1')).toEqual({ kind: 'arrow', x: 0, y: 0, dx: 100, dy: 0 });
+            expect(rs.origins.get('d1')).toEqual({ kind: 'draw', x: 5, y: 5, points: [0, 0, 10, 10] });
+        });
+
+        it('falls through to a body drag when the pointer misses the handle', () => {
+            const { ctx } = makeCtx(shapes(), ['r1', 'r2']);
+            const result = tool().onPointerDown(ctx, pointer(50, 25)); // over r1's body
+            expect(result?.kind).toBe('move');
+        });
+    });
+
     describe('shape body clicks', () => {
         it('selects and starts moving an unselected shape', () => {
             const { ctx, state } = makeCtx([rect()]);

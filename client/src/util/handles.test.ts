@@ -37,6 +37,18 @@ describe('Handles.rotateHandlePoint', () => {
     });
 });
 
+describe('Handles.padBounds', () => {
+    it('grows the bounds outward by pad on all sides', () => {
+        expect(Handles.padBounds(b, 4)).toEqual({ x: 6, y: 16, w: 108, h: 58 });
+    });
+
+    it('keeps the center fixed so the rotate pivot is unchanged by padding', () => {
+        const padded = Handles.padBounds(b, 4);
+        expect(padded.x + padded.w / 2).toBe(b.x + b.w / 2);
+        expect(padded.y + padded.h / 2).toBe(b.y + b.h / 2);
+    });
+});
+
 describe('Handles.isCorner', () => {
     it('is true for the four corners, false for the four edges', () => {
         expect([Handle.NW, Handle.NE, Handle.SE, Handle.SW].every(Handles.isCorner)).toBe(true);

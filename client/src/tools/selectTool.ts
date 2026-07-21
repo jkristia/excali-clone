@@ -1,4 +1,5 @@
-import type { Interaction, MarqueeMode, PointerInfo } from '../interaction/interaction';
+import type { Interaction, MarqueeMode, PointerInfo, RotateOrigin } from '../interaction/interaction';
+import type { Shape } from '../model/types';
 import type { Tool, ToolContext } from './tool';
 import { NO_PANEL_CAPABILITIES } from './tool';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
@@ -56,6 +57,10 @@ export class SelectTool implements Tool {
                 }
             }
         }
+        if (selection.length > 1) {
+            const rotate = this.tryStartSelectionRotate(ctx, selection, p);
+            if (rotate) return rotate;
+        }
 
         const hit = this.shapeRegistry.topShapeAt(ctx.shapes(), p.x, p.y);
         if (hit) {
@@ -86,6 +91,38 @@ export class SelectTool implements Tool {
         // existing selection so pointer-up can combine against it.
         if (mode === 'replace') ctx.setSelection([]);
         return { kind: 'marquee', startX: p.x, startY: p.y, curX: p.x, curY: p.y, mode };
+    }
+
+    /**
+     * Rotate handle for a multi-selection: hit-tested off the axis-aligned padded
+     * union frame (the same box the renderer draws), so no un-rotation is needed.
+     * Returns the interaction if the handle is grabbed, else null.
+     */
+    private tryStartSelectionRotate(ctx: ToolContext, selection: string[], p: PointerInfo): Interaction | null {
+        const selected = ctx.shapes().filter((s) => selection.includes(s.id));
+        const union = this.shapeRegistry.unionBounds(selected);
+        if (!union) return null;
+        const zoom = ctx.camera().zoom;
+        const frame = Handles.padBounds(union, Handles.SELECTION_PAD / zoom);
+        const [rx, ry] = Handles.rotateHandlePoint(frame, Handles.ROTATE_OFFSET / zoom);
+        const radius = ArrowEndpoints.HIT_RADIUS / zoom;
+        if (Math.hypot(p.x - rx, p.y - ry) > radius) return null;
+
+        const pivot = RotationMath.center(frame);
+        const origins = new Map<string, RotateOrigin>();
+        for (const s of selected) origins.set(s.id, this.rotateOrigin(s));
+        return {
+            kind: 'rotate-selection', pivot,
+            startPointerAngle: Math.atan2(p.y - pivot.y, p.x - pivot.x), origins,
+        };
+    }
+
+    private rotateOrigin(s: Shape): RotateOrigin {
+        if (s.type === 'arrow') return { kind: 'arrow', x: s.x, y: s.y, dx: s.dx, dy: s.dy };
+        if (s.type === 'draw') return { kind: 'draw', x: s.x, y: s.y, points: s.points };
+        const b = this.shapeRegistry.getBounds(s);
+        const c = RotationMath.center(b);
+        return { kind: 'box', cx: c.x, cy: c.y, hw: b.w / 2, hh: b.h / 2, origRotation: s.rotation ?? 0 };
     }
 
     private startMove(ctx: ToolContext, ids: string[], p: PointerInfo, pendingSelect?: string): Interaction {

@@ -1,7 +1,7 @@
 import { nanoid } from 'nanoid';
 import type { ArrowShape, Bounds, Shape } from '../model/types';
 import type { Camera, Style, Tool as ToolName } from '../state/uiStore';
-import type { Interaction, MarqueeMode, PointerInfo } from './interaction';
+import type { Interaction, MarqueeMode, PointerInfo, RotateOrigin } from './interaction';
 import type { ToolContext } from '../tools/tool';
 import { ToolRegistry } from '../tools/toolRegistry';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
@@ -139,6 +139,14 @@ export class InteractionController {
                 this.deps.doc.updateShapes([{ id: inter.id, patch: { rotation: rot } }]);
                 break;
             }
+            case 'rotate-selection': {
+                const { pivot } = inter;
+                let theta = Math.atan2(p.y - pivot.y, p.x - pivot.x) - inter.startPointerAngle;
+                if (shiftKey) theta = RotationMath.snap(theta);
+                const patches = [...inter.origins].map(([id, o]) => ({ id, patch: this.rotatePatch(o, pivot, theta) }));
+                this.deps.doc.updateShapes(patches);
+                break;
+            }
             case 'arrow-endpoint': {
                 const { origX, origY, origDx, origDy, endpoint, id } = inter;
                 // Snap the dragged endpoint to a grid node (matching create); the
@@ -223,6 +231,27 @@ export class InteractionController {
         this.updateCursor(store, p);
     }
 
+    /** Geometry patch for one shape in a multi-selection rotate by `theta` about `pivot`.
+     *  Box shapes accumulate the `rotation` field; arrow/draw rotate coordinates directly. */
+    private rotatePatch(o: RotateOrigin, pivot: { x: number; y: number }, theta: number): Partial<Shape> {
+        if (o.kind === 'box') {
+            const c = RotationMath.rotatePoint(o.cx, o.cy, pivot.x, pivot.y, theta);
+            return { x: c.x - o.hw, y: c.y - o.hh, rotation: o.origRotation + theta };
+        }
+        if (o.kind === 'arrow') {
+            const s = RotationMath.rotatePoint(o.x, o.y, pivot.x, pivot.y, theta);
+            const e = RotationMath.rotatePoint(o.x + o.dx, o.y + o.dy, pivot.x, pivot.y, theta);
+            return { x: s.x, y: s.y, dx: e.x - s.x, dy: e.y - s.y };
+        }
+        const a = RotationMath.rotatePoint(o.x, o.y, pivot.x, pivot.y, theta);
+        const points: number[] = [];
+        for (let i = 0; i + 1 < o.points.length; i += 2) {
+            const rp = RotationMath.rotatePoint(o.points[i], o.points[i + 1], 0, 0, theta);
+            points.push(rp.x, rp.y);
+        }
+        return { x: a.x, y: a.y, points };
+    }
+
     private updateCursor(store: InteractionStore, p: PointerInfo): void {
         if (store.tool !== 'select') {
             this.cursor = null;
@@ -233,6 +262,8 @@ export class InteractionController {
         if (inter.kind === 'none') {
             if (store.selection.length === 1) {
                 newCursor = this.selectedShapeCursor(store, p);
+            } else if (store.selection.length > 1) {
+                newCursor = this.multiSelectionCursor(store, p);
             }
             // Over any shape body a click selects+moves it (see SelectTool), so
             // show the move cursor there — but never over an anchor of the
@@ -242,7 +273,7 @@ export class InteractionController {
             }
         } else if (inter.kind === 'resize') {
             newCursor = Handles.cursor(inter.handle, inter.orig.rotation);
-        } else if (inter.kind === 'rotate') {
+        } else if (inter.kind === 'rotate' || inter.kind === 'rotate-selection') {
             newCursor = 'grabbing';
         } else if (inter.kind === 'arrow-endpoint') {
             newCursor = 'crosshair';
@@ -271,6 +302,18 @@ export class InteractionController {
             if (h !== -1) return Handles.cursor(h, selShape.rotation ?? 0);
         }
         return null;
+    }
+
+    /** Hover cursor over a multi-selection's rotate handle (off the padded union frame), else null. */
+    private multiSelectionCursor(store: InteractionStore, p: PointerInfo): string | null {
+        const selected = this.deps.shapes().filter((s) => store.selection.includes(s.id));
+        const union = this.shapeRegistry.unionBounds(selected);
+        if (!union) return null;
+        const zoom = store.camera.zoom;
+        const frame = Handles.padBounds(union, Handles.SELECTION_PAD / zoom);
+        const [rx, ry] = Handles.rotateHandlePoint(frame, Handles.ROTATE_OFFSET / zoom);
+        const radius = ArrowEndpoints.HIT_RADIUS / zoom;
+        return Math.hypot(p.x - rx, p.y - ry) <= radius ? 'grab' : null;
     }
 
     public onPointerUp(): void {

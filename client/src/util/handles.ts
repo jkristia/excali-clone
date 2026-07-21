@@ -66,6 +66,16 @@ export class Handles {
     /** Gap (screen px) between the top edge and the rotate handle circle. */
     public static readonly ROTATE_OFFSET = 24;
 
+    /** Padding (screen px) between a multi-selection's union bounds and its drawn
+     *  dashed box. Shared so the renderer's box and the tool's rotate-handle
+     *  hit-test derive from the same padded frame and never desync. */
+    public static readonly SELECTION_PAD = 4;
+
+    /** Grow `b` outward by `pad` on all sides (pad in world units: screen px / zoom). */
+    public static padBounds(b: Bounds, pad: number): Bounds {
+        return { x: b.x - pad, y: b.y - pad, w: b.w + pad * 2, h: b.h + pad * 2 };
+    }
+
     /**
      * The rotate handle floats above the top edge midpoint. Kept out of the
      * `Handle` enum (which drives resize math + cursor indexing) since it is a

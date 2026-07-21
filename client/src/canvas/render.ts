@@ -25,6 +25,10 @@ export interface RenderInput {
     editingId: string | null;
     /** draw the snap-to-grid line grid (only while snap mode is enabled). */
     showGrid: boolean;
+    /** a multi-selection rotate is in progress — hide its rotate handle, which
+     *  sits on the axis-aligned frame and would otherwise appear stuck at the top
+     *  while the shapes turn. It reappears on release. */
+    rotatingSelection: boolean;
 }
 
 export class SceneRenderer {
@@ -75,10 +79,17 @@ export class SceneRenderer {
             if (s.id === input.editingId) continue; // no selection rect while inline-editing
             this.withShapeTransform(ctx, s, () => this.drawOutline(ctx, this.shapeRegistry.getBounds(s), SceneRenderer.SELECT_COLOR, camera.zoom, 2));
         }
-        // Dotted bounding box around the whole selection (no handles yet).
+        // Dotted bounding box around the whole selection, with a rotate handle
+        // on the padded frame (the transform frame the SelectTool hit-tests).
         if (selected.length > 1) {
             const group = this.shapeRegistry.unionBounds(selected);
-            if (group) this.drawSelectionBox(ctx, group, camera.zoom);
+            if (group) {
+                this.drawSelectionBox(ctx, group, camera.zoom);
+                if (!input.rotatingSelection) {
+                    const frame = Handles.padBounds(group, Handles.SELECTION_PAD / camera.zoom);
+                    this.drawRotateHandle(ctx, frame, camera.zoom);
+                }
+            }
         }
         if (selected.length === 1 && selected[0].id !== input.editingId) {
             const s = selected[0];
@@ -260,12 +271,12 @@ export class SceneRenderer {
     /** Dashed rectangle around a multi-selection's combined bounds, padded slightly so it
      *  sits just outside the shapes. No fill, no resize/rotate handles. */
     private drawSelectionBox(ctx: CanvasRenderingContext2D, b: Bounds, zoom: number): void {
-        const pad = 4 / zoom;
+        const frame = Handles.padBounds(b, Handles.SELECTION_PAD / zoom);
         ctx.save();
         ctx.strokeStyle = SceneRenderer.SELECT_COLOR;
         ctx.lineWidth = 1 / zoom;
         ctx.setLineDash([4 / zoom, 4 / zoom]);
-        ctx.strokeRect(b.x - pad, b.y - pad, b.w + pad * 2, b.h + pad * 2);
+        ctx.strokeRect(frame.x, frame.y, frame.w, frame.h);
         ctx.restore();
     }
 
