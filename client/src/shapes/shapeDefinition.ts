@@ -13,6 +13,13 @@ export interface ShapeCapabilities {
     edges?: boolean;
     /** Solid/dashed/dotted line-style toggle (every stroked shape, i.e. not text/note). */
     strokeStyle?: boolean;
+    /** Solid/hatch/cross-hatch fill-style toggle (the fillable box shapes). */
+    fillStyle?: boolean;
+    /** Optional centered caption, editable via double-click (every shape except text/note). */
+    label?: boolean;
+    /** Horizontal + vertical caption-alignment controls (the box shapes: rectangle/ellipse/diamond).
+     *  Off for arrow/draw, whose caption is pinned to the line midpoint. */
+    labelAlign?: boolean;
 }
 
 /**

@@ -1,9 +1,10 @@
 import type { Camera } from '../state/uiStore';
-import type { Bounds, PeerPresence, Shape } from '../model/types';
+import type { Bounds, Color, PeerPresence, Shape } from '../model/types';
 import { CameraMath } from './camera';
 import { Handles } from '../util/handles';
 import { RotationMath } from '../util/rotationMath';
 import { GridMath } from '../util/gridMath';
+import { CanvasDraw } from '../util/canvasDraw';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 
 export interface RenderInput {
@@ -50,8 +51,11 @@ export class SceneRenderer {
         ctx.scale(camera.zoom, camera.zoom);
 
         for (const shape of input.shapes) {
-            if (shape.id === input.editingId) continue; // rendered by the inline editor
-            this.drawShape(ctx, shape);
+            const editing = shape.id === input.editingId;
+            // Text/note bodies are fully replaced by the inline <textarea>; other shapes
+            // keep their body while caption-editing and only suppress the caption.
+            if (editing && (shape.type === 'text' || shape.type === 'note')) continue;
+            this.drawShape(ctx, shape, editing);
         }
         if (input.draft) this.drawShape(ctx, input.draft);
 
@@ -139,10 +143,28 @@ export class SceneRenderer {
         return (((index % GridMath.DIVISIONS) + GridMath.DIVISIONS) % GridMath.DIVISIONS) === 0;
     }
 
-    private drawShape(ctx: CanvasRenderingContext2D, shape: Shape): void {
+    private drawShape(ctx: CanvasRenderingContext2D, shape: Shape, hideLabel = false): void {
         ctx.save();
-        this.withShapeTransform(ctx, shape, () => this.shapeRegistry.getDefinition(shape).draw(ctx, shape));
+        // Scoped to this shape by the surrounding save/restore, so it resets for the next
+        // shape and never touches the selection/handle chrome drawn outside this bracket.
+        ctx.globalAlpha = shape.opacity ?? 1;
+        this.withShapeTransform(ctx, shape, () => {
+            this.shapeRegistry.getDefinition(shape).draw(ctx, shape);
+            if (!hideLabel) this.drawLabel(ctx, shape);
+        });
         ctx.restore();
+    }
+
+    /** Draw the optional caption centered over the shape. Box shapes wrap to their bounds;
+     *  arrow/draw get a background pill on the midpoint. Text/note carry their own text and
+     *  are excluded. Drawn inside {@link withShapeTransform} so it inherits opacity/rotation. */
+    private drawLabel(ctx: CanvasRenderingContext2D, shape: Shape): void {
+        if (!shape.label || shape.type === 'text' || shape.type === 'note') return;
+        const pill = shape.type === 'arrow' || shape.type === 'draw';
+        CanvasDraw.drawCenteredLabel(
+            ctx, shape.label, this.shapeRegistry.getBounds(shape), shape.labelFontSize ?? 16,
+            pill, shape.labelHAlign ?? 'center', shape.labelVAlign ?? 'middle',
+        );
     }
 
     /** Run `fn` with the canvas rotated about the shape's bounds center, so the
@@ -166,7 +188,7 @@ export class SceneRenderer {
     private drawOutline(
         ctx: CanvasRenderingContext2D,
         b: Bounds,
-        color: string,
+        color: Color,
         zoom: number,
         padScreen: number,
     ): void {

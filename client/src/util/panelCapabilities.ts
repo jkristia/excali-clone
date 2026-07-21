@@ -29,8 +29,11 @@ export function panelFlags(
                 text: acc.text || c.text,
                 edges: acc.edges || c.edges,
                 strokeStyle: acc.strokeStyle || c.strokeStyle,
+                fillStyle: acc.fillStyle || c.fillStyle,
+                label: acc.label || c.label,
+                labelAlign: acc.labelAlign || c.labelAlign,
             };
         },
-        { stroke: false, fill: false, width: false, ends: false, note: false, text: false, edges: false, strokeStyle: false },
+        { stroke: false, fill: false, width: false, ends: false, note: false, text: false, edges: false, strokeStyle: false, fillStyle: false, label: false, labelAlign: false },
     );
 }

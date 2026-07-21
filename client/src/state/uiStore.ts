@@ -1,4 +1,4 @@
-import type { CornerStyle, EndpointCap, StrokeStyle, TextAlign } from '../model/types';
+import type { Color, CornerStyle, EndpointCap, FillStyle, StrokeStyle, TextAlign, VerticalAlign } from '../model/types';
 import { ToolRegistry } from '../tools/toolRegistry';
 import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS } from '../util/palette';
 
@@ -11,13 +11,21 @@ export interface Camera {
 }
 
 export interface Style {
-    stroke: string;
-    fill: string;
+    stroke: Color;
+    fill: Color;
     strokeWidth: number;
     strokeStyle: StrokeStyle;
+    fillStyle: FillStyle;
+    /** 0..1 shape opacity applied to the current selection. */
+    opacity: number;
     fontSize: number;
+    /** Caption font size (px) for the label control. */
+    labelFontSize: number;
+    /** Caption horizontal/vertical alignment for the label-align controls. */
+    labelHAlign: TextAlign;
+    labelVAlign: VerticalAlign;
     textAlign: TextAlign;
-    noteFill: string;
+    noteFill: Color;
     startCap: EndpointCap;
     endCap: EndpointCap;
     edges: CornerStyle;
@@ -75,7 +83,12 @@ export class UIStore {
                 fill: FILL_COLORS[0],
                 strokeWidth: 2,
                 strokeStyle: 'solid',
+                fillStyle: 'solid',
+                opacity: 1,
                 fontSize: 20,
+                labelFontSize: 16,
+                labelHAlign: 'center',
+                labelVAlign: 'middle',
                 textAlign: 'left',
                 noteFill: NOTE_COLORS[0],
                 startCap: 'none',

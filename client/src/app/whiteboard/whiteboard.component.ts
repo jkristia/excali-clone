@@ -225,7 +225,8 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
             const cam = this.ui.snapshot.camera;
             const world = CameraMath.screenToWorld(e.clientX - rect.left, e.clientY - rect.top, cam);
             const hit = this.shapeRegistry.topShapeAt(this.shapesLatest, world.x, world.y);
-            if (hit && (hit.type === 'text' || hit.type === 'note')) {
+            // text/note edit their body; every other shape edits its centered caption.
+            if (hit) {
                 this.ui.snapshot.setSelection([hit.id]);
                 this.ui.snapshot.setEditing(hit.id);
             }
