@@ -91,6 +91,13 @@
     color: var(--text);
 }
 
+.opacity-slider {
+    width: 100%;
+    margin: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
 .layer-row {
     display: flex;
     gap: 6px;

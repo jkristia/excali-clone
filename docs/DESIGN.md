@@ -86,6 +86,90 @@ You **cannot store class instances in Yjs** — the CRDT needs POJOs. Shape *dat
 
 `InteractionController` (in `interaction/`, no framework import) owns a single `Interaction` union: `none | pan | create | draw | move | marquee | resize | arrow-endpoint`. `app/whiteboard/whiteboard.component.ts` wires DOM pointer events to it via `onPointerDown`/`onPointerMove`/`onPointerUp`, translating screen coordinates to world coordinates first (`CameraMath`). Which interaction a pointer-down starts is decided by the current tool's `onPointerDown` (`tools/*.ts`, looked up via `toolRegistry.ts`) — read from `uiStore.getState()` directly, not through a reactive binding, so tool lookups don't cause spurious re-renders. Live cursor position is published on every `pointermove` via `awareness.setLocalStateField('cursor', ...)`.
 
+## Selection transforms (rotate / scale)
+
+Rotating (and, later, scaling) works on a **set** of shapes, and it is one
+primitive with three entry points that differ only in how the set is chosen:
+
+- an **ad-hoc multi-selection** — the set is `uiStore.selection`;
+- a **group** — the set is the group's members (see [GROUPING.md](GROUPING.md));
+- **inside an entered group** — the set is the shift-selected subset of that
+  group's members.
+
+**The primitive:** rotate the set about a common pivot, **bake the delta into
+each shape**, and re-fit an axis-aligned selection frame. This is the multi-shape
+generalization of the existing single-shape rotate — today
+[`{ kind: 'rotate'; id }`](../client/src/interaction/interaction.ts) targets one
+shape and writes its `rotation` live in
+[`interactionController`](../client/src/interaction/interactionController.ts). The
+multi variant carries the set's ids, each shape's origin anchor + `origRotation`,
+and the pivot.
+
+### The selection frame
+
+For `selection.length > 1`, [`SceneRenderer`](../client/src/canvas/render.ts)
+already draws a dashed axis-aligned box (`unionBounds`) but with **no handles
+yet**. Build that box as the reusable transform frame: it carries the **rotate
+handle now** and the **corner scale anchors later**. Both read the same
+axis-aligned union — so adding scaling is adding handles to an existing frame,
+not new infrastructure.
+
+### Rotation is baked, not stored (model B)
+
+No aggregate angle is stored on the selection or group. On pointer-down, capture
+the **pivot** = center of the selection's axis-aligned bounds, and per shape its
+origin anchor `(x, y)` and `origRotation`. On each move, by delta `θ`:
+
+- rotate every shape's anchor about the pivot by `θ`;
+- **box shapes** (rectangle/ellipse/diamond/note/text/frame) accumulate
+  `rotation = origRotation + θ` (snap to 5° with Shift, via
+  [`RotationMath`](../client/src/util/rotationMath.ts));
+- **`arrow`/`draw`** ignore the `rotation` field, so rotate their geometry
+  explicitly — the `dx/dy` endpoints and the relative `points` — about the pivot.
+
+Write the whole set in one [`updateShapes`](../client/src/document/canvasDocument.ts)
+per frame (live, like single-shape rotate). Because nothing stores an aggregate
+angle, the frame re-derives as an axis-aligned `unionBounds` every frame and the
+rotate handle sits at the top of an upright box — on release it "pops back" to
+top rather than staying attached to a tilted frame.
+
+**Why bake:** it preserves the world-coordinate invariant (every shape's `x,y`
+stay world-space, axis-aligned in their own frame), so `hitTest`/`getBounds` need
+**no** ancestor-transform composition — the geometry layer is untouched. The
+alternative (a stored container transform) would force every hit/bounds path to
+compose a parent transform chain.
+
+Two tradeoffs are inherent to "re-fit axis-aligned + reset handle":
+
+- **Pivot drift across drags.** Rotating a set rigidly about center `C` yields a
+  result whose *axis-aligned* box is centered on `C' ≠ C`, so the next drag pivots
+  about `C'` — 30°+30° in two drags differs slightly from 60° in one. A stored
+  group angle would avoid this; this UX trades it away deliberately.
+- **Cumulative float drift** on `draw`/`arrow`, whose coordinates are rewritten
+  each rotation rather than composing an angle. Box shapes are fine — `rotation`
+  just accumulates.
+
+The whole drag is `LOCAL_ORIGIN` writes coalesced by the `UndoManager`'s
+`captureTimeout` into one undo step, same as the existing rotate/move.
+
+### Scaling (deferred)
+
+Same frame and corner anchors, not yet built. The wrinkle to plan for: a
+**rotated** member cannot be scaled by a world-space delta — it must be scaled in
+its own local frame, so multi-selection scaling of rotated shapes is not a simple
+`w/h` multiply. Defer until rotation lands.
+
+### Where it lands
+
+- [`interaction.ts`](../client/src/interaction/interaction.ts) — extend/parallel
+  the `rotate` variant for a set (ids + per-shape origins + pivot).
+- [`interactionController.ts`](../client/src/interaction/interactionController.ts)
+  — the multi-shape `rotate` case; hit the rotate handle off the union frame.
+- [`render.ts`](../client/src/canvas/render.ts) — draw the rotate handle (and
+  later scale anchors) on the `selection.length > 1` frame.
+- [`RotationMath`](../client/src/util/rotationMath.ts) — set-rotation helpers
+  (rotate a point about the pivot; the arrow/draw geometry rotation).
+
 ## Presence
 
 Yjs **awareness** carries `{ user:{name,color}, cursor:{x,y}|null, selection:string[] }`. Remote cursors are a DOM overlay in `whiteboard.component.html`; peer selections are drawn on-canvas by `SceneRenderer`.

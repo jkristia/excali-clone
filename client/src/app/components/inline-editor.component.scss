@@ -18,3 +18,9 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
     color: #1e1e1e;
 }
+
+.inline-editor.label {
+    // Match CanvasDraw.LABEL_LINE_HEIGHT / label color so the caption doesn't shift on commit.
+    line-height: 1.3;
+    color: #1e1e1e;
+}

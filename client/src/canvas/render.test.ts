@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { SceneRenderer } from './render';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import type { Camera } from '../state/uiStore';
@@ -18,7 +18,7 @@ function createRecordingContext(): { ctx: CanvasRenderingContext2D; calls: strin
     const methods = [
         'save', 'restore', 'clearRect', 'fillRect', 'strokeRect', 'beginPath', 'moveTo', 'lineTo',
         'closePath', 'stroke', 'fill', 'arc', 'arcTo', 'ellipse', 'fillText', 'measureText',
-        'setTransform', 'translate', 'scale', 'setLineDash',
+        'setTransform', 'translate', 'scale', 'setLineDash', 'createPattern',
     ];
     const target: Record<string, unknown> = {};
     for (const m of methods) {
@@ -72,6 +72,42 @@ describe('renderScene characterization', () => {
         sceneRenderer.render({ ctx, ...baseInput([shape]) });
         expect(calls).toContain('fillRect(0,0,10,10)');
         expect(calls).toContain('strokeRect(0,0,10,10)');
+    });
+
+    it('rectangle: still fills when hatched (fillStyle set)', () => {
+        // fillFor builds an offscreen tile via document.createElement; stub it for the node env.
+        vi.stubGlobal('document', {
+            createElement: () => ({ width: 0, height: 0, getContext: () => null }),
+        });
+        try {
+            const { ctx, calls } = createRecordingContext();
+            const shape: Shape = {
+                id: 'r1', type: 'rectangle', x: 0, y: 0, z: 1, createdBy: 'u',
+                w: 10, h: 10, fill: '#fff', stroke: '#000', strokeWidth: 2, fillStyle: 'hatch',
+            };
+            sceneRenderer.render({ ctx, ...baseInput([shape]) });
+            expect(calls).toContain('fillRect(0,0,10,10)');
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it('opacity: sets globalAlpha from shape.opacity, defaulting to 1 when absent', () => {
+        const faint = createRecordingContext();
+        const faintShape: Shape = {
+            id: 'r1', type: 'rectangle', x: 0, y: 0, z: 1, createdBy: 'u',
+            w: 10, h: 10, fill: '#fff', stroke: '#000', strokeWidth: 2, opacity: 0.5,
+        };
+        sceneRenderer.render({ ctx: faint.ctx, ...baseInput([faintShape]) });
+        expect(faint.calls).toContain('set globalAlpha=0.5');
+
+        const opaque = createRecordingContext();
+        const opaqueShape: Shape = {
+            id: 'r2', type: 'rectangle', x: 0, y: 0, z: 1, createdBy: 'u',
+            w: 10, h: 10, fill: '#fff', stroke: '#000', strokeWidth: 2,
+        };
+        sceneRenderer.render({ ctx: opaque.ctx, ...baseInput([opaqueShape]) });
+        expect(opaque.calls).toContain('set globalAlpha=1');
     });
 
     it('ellipse: uses ctx.ellipse with bounds-derived center/radii', () => {

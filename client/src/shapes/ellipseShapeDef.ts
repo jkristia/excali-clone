@@ -4,7 +4,7 @@ import { Geometry } from '../util/geometry';
 import { CanvasDraw } from '../util/canvasDraw';
 
 export class EllipseShapeDef implements ShapeDefinition<EllipseShape> {
-    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false, strokeStyle: true };
+    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false, strokeStyle: true, fillStyle: true, label: true, labelAlign: true };
     public readonly resizable = true;
     public readonly rotatable = true;
 
@@ -29,7 +29,7 @@ export class EllipseShapeDef implements ShapeDefinition<EllipseShape> {
         ctx.beginPath();
         ctx.ellipse(b.x + b.w / 2, b.y + b.h / 2, b.w / 2, b.h / 2, 0, 0, Math.PI * 2);
         if (shape.fill && shape.fill !== 'transparent') {
-            ctx.fillStyle = shape.fill;
+            ctx.fillStyle = CanvasDraw.fillFor(ctx, shape.fillStyle ?? 'solid', shape.fill);
             ctx.fill();
         }
         if (shape.strokeWidth > 0) ctx.stroke();

@@ -34,6 +34,54 @@
             </div>
         }
 
+        @if (flags().fillStyle) {
+            <div class="prop-section">
+                <div class="prop-label">Fill style</div>
+                <div class="width-row">
+                    @for (s of fillStyles; track s.value) {
+                        <button class="width-btn" [class.active]="style().fillStyle === s.value" [title]="s.label" (click)="applyFillStyle(s.value)">
+                            <span class="cap-icon">{{ s.icon }}</span>
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (flags().label && hasLabel()) {
+            <div class="prop-section">
+                <div class="prop-label">Caption size</div>
+                <div class="width-row">
+                    @for (f of fontSizes; track f.size) {
+                        <button class="width-btn" [class.active]="labelFontSize() === f.size" [title]="f.label" (click)="applyLabelFontSize(f.size)">
+                            <span class="cap-icon">{{ f.label }}</span>
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (flags().labelAlign && hasLabel()) {
+            <div class="prop-section">
+                <div class="prop-label">Label align</div>
+                <div class="width-row">
+                    @for (a of textAligns; track a.align) {
+                        <button class="width-btn" [class.active]="labelAlign() === a.align" [title]="a.label" (click)="applyLabelAlign(a.align)">
+                            <span class="cap-icon"><app-align-icon [align]="a.align" /></span>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="prop-section">
+                <div class="width-row">
+                    @for (a of verticalAligns; track a.align) {
+                        <button class="width-btn" [class.active]="labelVAlign() === a.align" [title]="a.label" (click)="applyLabelVAlign(a.align)">
+                            <span class="cap-icon"><app-valign-icon [align]="a.align" /></span>
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+
         @if (flags().width) {
             <div class="prop-section">
                 <div class="prop-label">Width</div>
@@ -144,6 +192,19 @@
         }
 
         @if (hasSelection()) {
+            <div class="prop-section">
+                <div class="prop-label">Opacity</div>
+                <input
+                    class="opacity-slider"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="10"
+                    [value]="opacityPercent()"
+                    (input)="onOpacityInput($event)"
+                />
+            </div>
+
             <div class="prop-section">
                 <div class="prop-label">Layers</div>
                 <div class="layer-row">

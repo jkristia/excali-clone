@@ -1,5 +1,7 @@
+import type { VerticalAlign } from '../model/types';
 import { TEXT_LINE_HEIGHT } from '../shapes/textShapeDef';
 import { NoteShapeDef } from '../shapes/noteShapeDef';
+import { CanvasDraw } from './canvasDraw';
 
 /** Text metrics computed off a single shared offscreen canvas. Used by the inline editor
  *  and the properties panel to auto-size text/note boxes identically to the canvas render. */
@@ -30,5 +32,12 @@ export class TextMeasure {
     public noteTop(text: string, fontSize: number, width: number, height: number): number {
         this.applyFont(fontSize);
         return NoteShapeDef.textOffsetY(this.ctx, text, fontSize, width, height);
+    }
+
+    /** Top padding that aligns a caption in the editor overlay per `valign`, matching the
+     *  canvas — see {@link CanvasDraw.labelOffsetY}. Floored at 0 so it never rides above. */
+    public labelTop(text: string, fontSize: number, width: number, height: number, valign: VerticalAlign = 'middle'): number {
+        this.applyFont(fontSize);
+        return Math.max(0, CanvasDraw.labelOffsetY(this.ctx, text, fontSize, width, height, valign));
     }
 }

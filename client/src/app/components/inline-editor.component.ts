@@ -1,11 +1,12 @@
 import { Component, ElementRef, computed, effect, inject, viewChild } from '@angular/core';
 import { UiStoreService } from '../state/ui-store.service';
 import { CollabService } from '../collab/collab.service';
-import { CANVAS_DOCUMENT, TEXT_MEASURE } from '../di-tokens';
+import { CANVAS_DOCUMENT, SHAPE_REGISTRY, TEXT_MEASURE } from '../di-tokens';
 import { CameraMath } from '../../canvas/camera';
 import { TEXT_LINE_HEIGHT } from '../../shapes/textShapeDef';
 import { NOTE_PADDING } from '../../shapes/noteShapeDef';
-import type { NoteShape, TextShape } from '../../model/types';
+import { CanvasDraw } from '../../util/canvasDraw';
+import type { NoteShape, Shape, TextAlign, TextShape } from '../../model/types';
 
 @Component({
     selector: 'app-inline-editor',
@@ -17,6 +18,7 @@ export class InlineEditorComponent {
     private readonly ui = inject(UiStoreService);
     private readonly collab = inject(CollabService);
     private readonly canvasDocument = inject(CANVAS_DOCUMENT);
+    private readonly shapeRegistry = inject(SHAPE_REGISTRY);
     private readonly textMeasure = inject(TEXT_MEASURE);
     private readonly taRef = viewChild<ElementRef<HTMLTextAreaElement>>('ta');
 
@@ -29,21 +31,32 @@ export class InlineEditorComponent {
 
     protected readonly shape = computed(() => {
         const id = this.editingId();
-        const s = this.shapes().find((sh) => sh.id === id);
-        return s && (s.type === 'text' || s.type === 'note') ? s : null;
+        return this.shapes().find((sh) => sh.id === id) ?? null;
     });
-    protected readonly pos = computed(() => {
+    /** True for a shape edited via its caption (anything but text/note, which edit body text). */
+    protected readonly isLabel = computed(() => {
         const s = this.shape();
-        return s ? CameraMath.worldToScreen(s.x, s.y, this.camera()) : { x: 0, y: 0 };
+        return !!s && s.type !== 'text' && s.type !== 'note';
+    });
+    /** Shape bounds — the overlay's anchor and size. For text/note this equals x/y/w/h;
+     *  for arrow/draw (no top-left x/y or w/h) it's the axis-aligned box the caption fills. */
+    protected readonly box = computed(() => {
+        const s = this.shape();
+        return s ? this.shapeRegistry.getBounds(s) : null;
+    });
+    protected readonly labelFontSize = computed(() => this.shape()?.labelFontSize ?? 16);
+    protected readonly pos = computed(() => {
+        const b = this.box();
+        return b ? CameraMath.worldToScreen(b.x, b.y, this.camera()) : { x: 0, y: 0 };
     });
     /** Zoom scale plus, for a rotated shape, a rotation about its center so the
      *  <textarea> overlay lines up with the rotated canvas shape. */
     protected readonly transform = computed(() => {
-        const s = this.shape();
+        const b = this.box();
         const zoom = this.camera().zoom;
-        const rot = s?.rotation ?? 0;
-        if (!s || !rot) return `scale(${zoom})`;
-        return `scale(${zoom}) translate(${s.w / 2}px, ${s.h / 2}px) rotate(${rot}rad) translate(${-s.w / 2}px, ${-s.h / 2}px)`;
+        const rot = this.shape()?.rotation ?? 0;
+        if (!b || !rot) return `scale(${zoom})`;
+        return `scale(${zoom}) translate(${b.w / 2}px, ${b.h / 2}px) rotate(${rot}rad) translate(${-b.w / 2}px, ${-b.h / 2}px)`;
     });
     /** Top padding that vertically centers note text, mirroring the canvas render so the
      *  text doesn't jump when editing ends. */
@@ -51,6 +64,15 @@ export class InlineEditorComponent {
         const s = this.shape();
         return s && s.type === 'note' ? this.textMeasure.noteTop(s.text, s.fontSize, s.w, s.h) : NOTE_PADDING;
     });
+    /** Top padding that aligns a caption in its box per its vertical align, mirroring the canvas. */
+    protected readonly labelTop = computed(() => {
+        const s = this.shape();
+        const b = this.box();
+        return s && b ? this.textMeasure.labelTop(s.label ?? '', s.labelFontSize ?? 16, b.w, b.h, s.labelVAlign ?? 'middle') : 0;
+    });
+    /** Caption horizontal alignment for the overlay's `text-align`, mirroring the canvas. */
+    protected readonly labelAlign = computed<TextAlign>(() => this.shape()?.labelHAlign ?? 'center');
+    protected readonly labelPadding = CanvasDraw.LABEL_PADDING;
 
     constructor() {
         // Focus (and select) the editor when it opens, deferred to the next frame — see
@@ -98,6 +120,12 @@ export class InlineEditorComponent {
         // binding resizes the textarea in step. Notes keep their fixed width.
         const h = this.textMeasure.measureNote(text, shape.fontSize, shape.w);
         this.canvasDocument.updateShape(shape.id, { text, h } as Partial<NoteShape>);
+    }
+
+    protected onChangeLabel(shape: Shape, e: Event): void {
+        // Caption is constrained to the existing box, so only the label changes — no resize.
+        const label = (e.target as HTMLTextAreaElement).value;
+        this.canvasDocument.updateShape(shape.id, { label } as Partial<Shape>);
     }
 
     protected commit(shape: { id: string; type: string; text?: string }): void {

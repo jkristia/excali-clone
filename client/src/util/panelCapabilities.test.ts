@@ -21,6 +21,11 @@ describe('panelFlags', () => {
 
     it('with selection: unions capabilities across all selected shapes', () => {
         const flags = panelFlags(toolRegistry, shapeRegistry, 'select', [rect('a'), note('b')]);
-        expect(flags).toEqual({ stroke: true, fill: true, width: true, ends: false, note: true, text: true, edges: true, strokeStyle: true });
+        expect(flags).toEqual({ stroke: true, fill: true, width: true, ends: false, note: true, text: true, edges: true, strokeStyle: true, fillStyle: true, label: true, labelAlign: true });
+    });
+
+    it('label capability: on for captionable shapes, off for a note-only selection', () => {
+        expect(panelFlags(toolRegistry, shapeRegistry, 'select', [rect('a')]).label).toBe(true);
+        expect(panelFlags(toolRegistry, shapeRegistry, 'select', [note('b')]).label).toBeFalsy();
     });
 });

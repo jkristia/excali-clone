@@ -20,7 +20,7 @@ function makeCtx(shapes: Shape[], selection: string[] = [], zoom = 1): { ctx: To
         selection: () => state.selection,
         camera: () => ({ x: 0, y: 0, zoom }),
         style: () => ({
-            stroke: '#000', fill: 'transparent', strokeWidth: 2, strokeStyle: 'solid', fontSize: 20, textAlign: 'left',
+            stroke: '#000', fill: 'transparent', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', opacity: 1, fontSize: 20, labelFontSize: 16, labelHAlign: 'center', labelVAlign: 'middle', textAlign: 'left',
             noteFill: '#fff', startCap: 'none', endCap: 'arrow', edges: 'sharp',
         }),
         author: () => 'u',

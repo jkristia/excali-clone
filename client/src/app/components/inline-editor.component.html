@@ -38,5 +38,26 @@
             [style.text-align]="shape.textAlign"
             [style.background]="shape.fill"
         ></textarea>
+    } @else if (box(); as box) {
+        <textarea
+            #ta
+            class="inline-editor label"
+            spellcheck="false"
+            [value]="shape.label ?? ''"
+            (input)="onChangeLabel(shape, $event)"
+            (blur)="commit(shape)"
+            (keydown)="onKeyDown($event, shape)"
+            [style.left.px]="pos().x"
+            [style.top.px]="pos().y"
+            style="position:absolute; transform-origin: top left; background:transparent;"
+            [style.transform]="transform()"
+            [style.width.px]="box.w"
+            [style.height.px]="box.h"
+            [style.padding-top.px]="labelTop()"
+            [style.padding-left.px]="labelPadding"
+            [style.padding-right.px]="labelPadding"
+            [style.text-align]="labelAlign()"
+            [style.font]="labelFontSize() + 'px Inter, system-ui, sans-serif'"
+        ></textarea>
     }
 }

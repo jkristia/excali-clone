@@ -4,7 +4,7 @@ import { Geometry } from '../util/geometry';
 import { CanvasDraw } from '../util/canvasDraw';
 
 export class DrawShapeDef implements ShapeDefinition<DrawShape> {
-    public readonly capabilities = { stroke: true, fill: false, width: true, ends: false, strokeStyle: true };
+    public readonly capabilities = { stroke: true, fill: false, width: true, ends: false, strokeStyle: true, label: true };
     public readonly resizable = false;
     public readonly rotatable = false;
 
