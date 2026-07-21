@@ -58,6 +58,7 @@ function baseInput(shapes: Shape[]) {
         marquee: null,
         draft: null,
         editingId: null,
+        editingGroupId: null,
         showGrid: false,
         rotatingSelection: false,
     };

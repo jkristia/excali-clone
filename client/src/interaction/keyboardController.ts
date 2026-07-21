@@ -45,6 +45,19 @@ export class KeyboardController {
             return;
         }
 
+        // Group / ungroup (match Excalidraw's Ctrl+G / Ctrl+Shift+G). Not while typing.
+        if (!typing && mod && e.key.toLowerCase() === 'g') {
+            e.preventDefault();
+            const store = this.uiStore.getState();
+            if (e.shiftKey) {
+                for (const id of store.selection) this.canvasDocument.ungroup(id);
+            } else {
+                const groupId = this.canvasDocument.groupShapes(store.selection);
+                if (groupId) store.setSelection([groupId]);
+            }
+            return;
+        }
+
         // Layer / z-order shortcuts (match Excalidraw).
         if (mod && (e.key === ']' || e.key === '[')) {
             e.preventDefault();

@@ -13,6 +13,9 @@ export interface ToolContext {
     author: () => string;
     newId: () => string;
     nextZ: () => number;
+    /** The group currently entered for scoped editing, or null. Container-aware
+     *  selection stops at this group's members instead of selecting the group. */
+    editingGroupId: () => string | null;
     /** Add a fully-formed shape immediately (text/note — no drag-to-create). */
     addShape: (shape: Shape) => void;
     setSelection: (ids: string[]) => void;

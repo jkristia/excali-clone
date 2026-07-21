@@ -6,6 +6,7 @@ import { RotationMath } from '../util/rotationMath';
 import { GridMath } from '../util/gridMath';
 import { CanvasDraw } from '../util/canvasDraw';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
+import { SceneTree } from '../util/sceneTree';
 
 export interface RenderInput {
     ctx: CanvasRenderingContext2D;
@@ -23,6 +24,9 @@ export interface RenderInput {
     /** id of the text/note being edited inline — hidden on the canvas so the
    *  live <textarea> overlay is the only thing drawn (no offset ghost). */
     editingId: string | null;
+    /** id of the group currently entered for scoped editing — drawn with a dashed
+     *  active-container outline around its members. Null when not scoped. */
+    editingGroupId: string | null;
     /** draw the snap-to-grid line grid (only while snap mode is enabled). */
     showGrid: boolean;
     /** a multi-selection rotate is in progress — hide its rotate handle, which
@@ -35,6 +39,7 @@ export class SceneRenderer {
     private static readonly GRID_MINOR_COLOR = 'rgba(0,0,0,0.06)';
     private static readonly GRID_MAJOR_COLOR = 'rgba(0,0,0,0.14)';
     private static readonly SELECT_COLOR = '#4263eb';
+    private static readonly ACTIVE_CONTAINER_COLOR = '#9775fa';
     private static readonly HANDLE_SIZE = 8;
 
     constructor(private readonly shapeRegistry: ShapeRegistry) {}
@@ -69,20 +74,38 @@ export class SceneRenderer {
         for (const peer of input.peers) {
             for (const id of peer.selection) {
                 const s = selById.get(id);
-                if (s) this.withShapeTransform(ctx, s, () => this.drawOutline(ctx, this.shapeRegistry.getBounds(s), peer.user.color, camera.zoom, 4));
+                if (!s) continue;
+                if (s.type === 'group') {
+                    // A group has no bounds of its own — outline its members' union.
+                    const b = this.shapeRegistry.unionBounds(SceneTree.boundableDescendants(input.shapes, id));
+                    if (b) this.drawOutline(ctx, b, peer.user.color, camera.zoom, 4);
+                } else {
+                    this.withShapeTransform(ctx, s, () => this.drawOutline(ctx, this.shapeRegistry.getBounds(s), peer.user.color, camera.zoom, 4));
+                }
             }
         }
 
-        // Local selection with handles.
+        // Active container (entered group): a dashed outline around its members.
+        if (input.editingGroupId) {
+            const b = this.shapeRegistry.unionBounds(SceneTree.boundableDescendants(input.shapes, input.editingGroupId));
+            if (b) this.drawActiveContainer(ctx, b, camera.zoom);
+        }
+
+        // Local selection with handles. Groups have no bounds of their own — they
+        // are shown via the union frame below, not a per-shape outline.
         const selected = input.selection.map((id) => selById.get(id)).filter(Boolean) as Shape[];
         for (const s of selected) {
             if (s.id === input.editingId) continue; // no selection rect while inline-editing
+            if (s.type === 'group') continue;
             this.withShapeTransform(ctx, s, () => this.drawOutline(ctx, this.shapeRegistry.getBounds(s), SceneRenderer.SELECT_COLOR, camera.zoom, 2));
         }
-        // Dotted bounding box around the whole selection, with a rotate handle
-        // on the padded frame (the transform frame the SelectTool hit-tests).
-        if (selected.length > 1) {
-            const group = this.shapeRegistry.unionBounds(selected);
+        // A multi-selection, or a single group, gets the dashed union frame + rotate
+        // handle (the transform frame the SelectTool hit-tests), computed over the
+        // selection's concrete member shapes.
+        const framed = selected.length > 1 || (selected.length === 1 && selected[0].type === 'group');
+        if (framed) {
+            const members = input.selection.flatMap((id) => SceneTree.boundableDescendants(input.shapes, id));
+            const group = this.shapeRegistry.unionBounds(members);
             if (group) {
                 this.drawSelectionBox(ctx, group, camera.zoom);
                 if (!input.rotatingSelection) {
@@ -90,8 +113,7 @@ export class SceneRenderer {
                     this.drawRotateHandle(ctx, frame, camera.zoom);
                 }
             }
-        }
-        if (selected.length === 1 && selected[0].id !== input.editingId) {
+        } else if (selected.length === 1 && selected[0].id !== input.editingId && selected[0].type !== 'group') {
             const s = selected[0];
             if (s.type === 'arrow') {
                 this.drawArrowHandles(ctx, s.x, s.y, s.x + s.dx, s.y + s.dy, camera.zoom);
@@ -276,6 +298,18 @@ export class SceneRenderer {
         ctx.strokeStyle = SceneRenderer.SELECT_COLOR;
         ctx.lineWidth = 1 / zoom;
         ctx.setLineDash([4 / zoom, 4 / zoom]);
+        ctx.strokeRect(frame.x, frame.y, frame.w, frame.h);
+        ctx.restore();
+    }
+
+    /** Dashed outline around the entered group's members, set off from the normal
+     *  selection color so it reads as "you are scoped inside this container." */
+    private drawActiveContainer(ctx: CanvasRenderingContext2D, b: Bounds, zoom: number): void {
+        const frame = Handles.padBounds(b, (Handles.SELECTION_PAD + 6) / zoom);
+        ctx.save();
+        ctx.strokeStyle = SceneRenderer.ACTIVE_CONTAINER_COLOR;
+        ctx.lineWidth = 1 / zoom;
+        ctx.setLineDash([6 / zoom, 4 / zoom]);
         ctx.strokeRect(frame.x, frame.y, frame.w, frame.h);
         ctx.restore();
     }

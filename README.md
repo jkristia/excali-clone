@@ -77,7 +77,8 @@ npm start            # run the built server (after npm run build)
 | `Ctrl/⌘ + C` | Copy selection | &nbsp; | `Ctrl/⌘ + Shift + Z` | Redo |
 | `Ctrl/⌘ + V` | Paste at pointer | &nbsp; | `Ctrl/⌘ + ]` / `[` | Bring forward / Send backward |
 | `Ctrl/⌘ + D` | Duplicate selection | &nbsp; | `Ctrl/⌘ + Shift + ]` / `[` | Bring to front / Send to back |
-| `Esc` | Clear selection | &nbsp; | | |
+| `Esc` | Clear selection | &nbsp; | `Ctrl/⌘ + G` | Group selection |
+| &nbsp; | &nbsp; | &nbsp; | `Ctrl/⌘ + Shift + G` | Ungroup selection |
 
 **View**
 

@@ -3,6 +3,7 @@ import type { Shape } from '../model/types';
 import { UIStore } from '../state/uiStore';
 import { CanvasDocument } from '../document/canvasDocument';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
+import { SceneTree } from '../util/sceneTree';
 
 /** Tag on the clipboard envelope so pasted text from other apps isn't mis-read as shapes. */
 const CLIPBOARD_KIND = 'whiteboard/shapes@1';
@@ -58,7 +59,8 @@ export class ClipboardController {
     public async paste(centerX: number, centerY: number): Promise<void> {
         const source = (await this.readClipboard()) ?? this.contents;
         if (source.length === 0) return;
-        const bounds = this.shapeRegistry.unionBounds(source);
+        // Groups have no bounds of their own — center on the concrete shapes only.
+        const bounds = this.shapeRegistry.unionBounds(source.filter((s) => s.type !== 'group'));
         if (!bounds) return;
 
         const dx = centerX - (bounds.x + bounds.w / 2);
@@ -79,31 +81,51 @@ export class ClipboardController {
     }
 
     /** Clone shapes onto the top of the stack with fresh ids, offset by (dx, dy),
-     *  add them to the document, and make them the selection. */
+     *  add them to the document, and make them the selection. Container ids are
+     *  re-minted and members' `parentId` rewritten through the same old→new map, so a
+     *  pasted group is independent of its source; a `parentId` pointing outside the
+     *  buffer is dropped (the clone becomes top-level). */
     private addClones(shapes: Shape[], dx: number, dy: number): void {
         const author = this.author();
         const baseZ = this.canvasDocument.topZ();
+        const ordered = shapes.slice().sort((a, b) => a.z - b.z);
 
-        const clones = shapes
-            .slice()
-            .sort((a, b) => a.z - b.z)
-            .map((shape, index) => ({
+        const idMap = new Map<string, string>();
+        for (const shape of ordered) idMap.set(shape.id, nanoid());
+
+        const clones: Shape[] = ordered.map((shape, index) => {
+            const mappedParent = shape.parentId ? idMap.get(shape.parentId) : undefined;
+            const clone: Shape = {
                 ...shape,
-                id: nanoid(),
+                id: idMap.get(shape.id) ?? nanoid(),
                 x: shape.x + dx,
                 y: shape.y + dy,
                 z: baseZ + 1 + index,
                 createdBy: author,
-            }));
+            };
+            if (mappedParent) clone.parentId = mappedParent;
+            else delete clone.parentId;
+            return clone;
+        });
 
         this.canvasDocument.addShapes(clones);
-        this.uiStore.getState().setSelection(clones.map((s) => s.id));
+        // Select the pasted top-level shapes (a pasted group selects as a unit, not
+        // its members individually).
+        this.uiStore.getState().setSelection(clones.filter((s) => !s.parentId).map((s) => s.id));
     }
 
+    /** The selection expanded to full subtrees, so copying a group carries its group
+     *  shape *and* every descendant (otherwise the paste would miss members). */
     private selectedShapes(): Shape[] {
-        const out: Shape[] = [];
+        const all = this.canvasDocument.readAllShapes();
+        const byId = new Map(all.map((s) => [s.id, s] as const));
+        const ids = new Set<string>();
         for (const id of this.uiStore.getState().selection) {
-            const shape = this.canvasDocument.getShape(id);
+            for (const sub of SceneTree.subtreeIds(all, id)) ids.add(sub);
+        }
+        const out: Shape[] = [];
+        for (const id of ids) {
+            const shape = byId.get(id);
             if (shape) out.push(shape);
         }
         return out;

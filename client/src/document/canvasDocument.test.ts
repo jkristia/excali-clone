@@ -20,8 +20,8 @@ vi.stubGlobal('window', { location: { search: '', hostname: 'localhost' } });
 
 const { CanvasDocument } = await import('./canvasDocument');
 
-function rect(id: string, z: number): Shape {
-    return { id, type: 'rectangle', x: 0, y: 0, z, w: 10, h: 10, fill: '#fff', stroke: '#000', strokeWidth: 1, createdBy: 'x' };
+function rect(id: string, z: number, parentId?: string): Shape {
+    return { id, type: 'rectangle', x: 0, y: 0, z, w: 10, h: 10, fill: '#fff', stroke: '#000', strokeWidth: 1, createdBy: 'x', parentId };
 }
 
 function makeDoc() {
@@ -84,6 +84,80 @@ describe('CanvasDocument', () => {
         it('backward moves a shape one step toward the back', () => {
             doc.reorderShapes(['c'], 'backward');
             expect(doc.readAllShapes().map((s) => s.id)).toEqual(['a', 'c', 'b']);
+        });
+    });
+
+    describe('groupShapes / ungroup', () => {
+        it('mints a group, reparents members, and renumbers their z 0..n-1', () => {
+            doc.addShape(rect('a', 3));
+            doc.addShape(rect('b', 7));
+            const gid = doc.groupShapes(['a', 'b']);
+            expect(gid).not.toBeNull();
+            const a = doc.getShape('a');
+            const b = doc.getShape('b');
+            expect(a?.parentId).toBe(gid);
+            expect(b?.parentId).toBe(gid);
+            // members renumbered to a contiguous 0..n-1 in their prior order.
+            expect([a?.z, b?.z].sort()).toEqual([0, 1]);
+            // the group sits at the root, on top of remaining siblings.
+            const group = gid ? doc.getShape(gid) : null;
+            expect(group?.type).toBe('group');
+            expect(group?.parentId).toBeUndefined();
+        });
+
+        it('rejects a mixed-parent selection', () => {
+            doc.addShape(rect('a', 0));
+            doc.addShape(rect('b', 1));
+            const gid = doc.groupShapes(['a', 'b']);
+            // Now `a` is grouped; grouping it together with a root shape must fail.
+            doc.addShape(rect('c', 2));
+            expect(doc.groupShapes(['a', 'c'])).toBeNull();
+            expect(gid).not.toBeNull();
+        });
+
+        it('rejects grouping fewer than two shapes', () => {
+            doc.addShape(rect('a', 0));
+            expect(doc.groupShapes(['a'])).toBeNull();
+        });
+
+        it('ungroup reparents members to root and deletes the group', () => {
+            doc.addShape(rect('a', 0));
+            doc.addShape(rect('b', 1));
+            const gid = doc.groupShapes(['a', 'b']);
+            if (!gid) throw new Error('group failed');
+            doc.ungroup(gid);
+            expect(doc.getShape(gid)).toBeNull();
+            expect(doc.getShape('a')?.parentId).toBeUndefined();
+            expect(doc.getShape('b')?.parentId).toBeUndefined();
+        });
+    });
+
+    describe('grouped stacking', () => {
+        it('deletes a group together with its members', () => {
+            doc.addShape(rect('a', 0));
+            doc.addShape(rect('b', 1));
+            doc.addShape(rect('loose', 2));
+            const gid = doc.groupShapes(['a', 'b']);
+            if (!gid) throw new Error('group failed');
+            doc.deleteShapes([gid]);
+            expect(doc.readAllShapes().map((s) => s.id)).toEqual(['loose']);
+        });
+
+        it('stacks whole bands: reordering a group carries its members past another group', () => {
+            doc.addShape(rect('a', 0));
+            doc.addShape(rect('b', 1));
+            doc.addShape(rect('c', 2));
+            doc.addShape(rect('d', 3));
+            const g1 = doc.groupShapes(['a', 'b']);
+            const g2 = doc.groupShapes(['c', 'd']);
+            if (!g1 || !g2) throw new Error('group failed');
+            // g1 currently below g2. Bring g1 to the front: every member of g1 must
+            // now sit above every member of g2 in draw order.
+            doc.reorderShapes([g1], 'toFront');
+            const order = doc.readAllShapes().map((s) => s.id);
+            const g1Members = ['a', 'b'].map((id) => order.indexOf(id));
+            const g2Members = ['c', 'd'].map((id) => order.indexOf(id));
+            expect(Math.min(...g1Members)).toBeGreaterThan(Math.max(...g2Members));
         });
     });
 

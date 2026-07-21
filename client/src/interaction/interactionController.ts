@@ -11,6 +11,7 @@ import { RotationMath } from '../util/rotationMath';
 import { VectorMath } from '../util/vectorMath';
 import { GridMath } from '../util/gridMath';
 import { ArrowEndpoints } from '../util/arrowEndpoints';
+import { SceneTree } from '../util/sceneTree';
 
 /** Store surface the controller needs — a subset of uiStore's state + actions. */
 export interface InteractionStore {
@@ -19,6 +20,7 @@ export interface InteractionStore {
     camera: Camera;
     snapToGrid: boolean;
     selection: string[];
+    editingGroupId: string | null;
     setSelection: (ids: string[]) => void;
     toggleSelection: (id: string, additive: boolean) => void;
     clearSelection: () => void;
@@ -83,6 +85,7 @@ export class InteractionController {
             author: deps.author,
             newId: () => nanoid(),
             nextZ: () => deps.topZ() + 1,
+            editingGroupId: () => deps.getStore().editingGroupId,
             addShape: deps.doc.addShape,
             setSelection: (ids) => deps.getStore().setSelection(ids),
             toggleSelection: (id, additive) => deps.getStore().toggleSelection(id, additive),
@@ -260,9 +263,13 @@ export class InteractionController {
         const inter = this.interaction;
         let newCursor: string | null = null;
         if (inter.kind === 'none') {
-            if (store.selection.length === 1) {
+            const single = store.selection.length === 1
+                ? this.deps.shapes().find((s) => s.id === store.selection[0])
+                : undefined;
+            if (single && single.type !== 'group') {
                 newCursor = this.selectedShapeCursor(store, p);
-            } else if (store.selection.length > 1) {
+            } else if (store.selection.length >= 1) {
+                // A single group behaves like a multi-selection: one union frame.
                 newCursor = this.multiSelectionCursor(store, p);
             }
             // Over any shape body a click selects+moves it (see SelectTool), so
@@ -306,8 +313,8 @@ export class InteractionController {
 
     /** Hover cursor over a multi-selection's rotate handle (off the padded union frame), else null. */
     private multiSelectionCursor(store: InteractionStore, p: PointerInfo): string | null {
-        const selected = this.deps.shapes().filter((s) => store.selection.includes(s.id));
-        const union = this.shapeRegistry.unionBounds(selected);
+        const members = store.selection.flatMap((id) => SceneTree.boundableDescendants(this.deps.shapes(), id));
+        const union = this.shapeRegistry.unionBounds(members);
         if (!union) return null;
         const zoom = store.camera.zoom;
         const frame = Handles.padBounds(union, Handles.SELECTION_PAD / zoom);
@@ -342,7 +349,8 @@ export class InteractionController {
                 h: inter.curY - inter.startY,
             };
             if (Math.abs(rect.w) > 3 || Math.abs(rect.h) > 3) {
-                const inside = this.shapeRegistry.shapesInRect(this.deps.shapes(), rect).map((s) => s.id);
+                const enclosed = this.shapeRegistry.shapesInRect(this.deps.shapes(), rect);
+                const inside = this.resolveMarquee(enclosed.map((s) => s.id), store.editingGroupId);
                 store.setSelection(this.combineMarquee(inter.mode, store.selection, inside));
             }
         } else if (inter.kind === 'move') {
@@ -358,6 +366,23 @@ export class InteractionController {
 
     public onPointerLeave(): void {
         this.cursor = null;
+    }
+
+    /**
+     * Map marquee-enclosed leaf ids to what should actually be selected: each leaf's
+     * top-level container (so enclosing a group's members selects the group), deduped.
+     * While scoped inside a group, restrict to that group's own members.
+     */
+    private resolveMarquee(leafIds: string[], editingGroupId: string | null): string[] {
+        const shapes = this.deps.shapes();
+        let ids = leafIds;
+        if (editingGroupId) {
+            const scope = new Set(SceneTree.subtreeIds(shapes, editingGroupId));
+            ids = ids.filter((id) => id !== editingGroupId && scope.has(id));
+        }
+        const resolved = new Set<string>();
+        for (const id of ids) resolved.add(SceneTree.resolveContainer(shapes, id, editingGroupId));
+        return [...resolved];
     }
 
     /** Combine the marquee-enclosed ids with the prior selection per the drag's modifier mode. */

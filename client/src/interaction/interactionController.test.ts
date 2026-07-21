@@ -15,6 +15,7 @@ function makeStore(overrides: Partial<InteractionStore> = {}): InteractionStore 
         camera: { x: 0, y: 0, zoom: 1 },
         snapToGrid: false,
         selection: [],
+        editingGroupId: null,
         setSelection(ids) { this.selection = ids; },
         toggleSelection: () => {},
         clearSelection: () => {},

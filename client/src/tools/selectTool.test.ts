@@ -26,6 +26,7 @@ function makeCtx(shapes: Shape[], selection: string[] = [], zoom = 1): { ctx: To
         author: () => 'u',
         newId: () => 'new',
         nextZ: () => 0,
+        editingGroupId: () => null,
         addShape: () => {},
         setSelection: (ids) => { state.setSelectionCalls.push(ids); state.selection = ids; },
         toggleSelection: (id, additive) => { state.toggleCalls.push({ id, additive }); state.selection = [...state.selection, id]; },
@@ -183,6 +184,28 @@ describe('SelectTool', () => {
                 origins: new Map([['r2', { x: 300, y: 300 }], ['r1', { x: 0, y: 0 }]]), moved: false,
                 groupX: 0, groupY: 0,
             });
+        });
+    });
+
+    describe('grouped shapes: select and move/rotate as a unit', () => {
+        const grp = (): Shape => ({ id: 'g', type: 'group', x: 0, y: 0, z: 1, createdBy: 'u' });
+        const member = () => rect({ parentId: 'g' }); // id 'r1', bounds (0,0,100,50)
+
+        it('clicking a member selects the whole group and moves its members', () => {
+            const { ctx, state } = makeCtx([grp(), member()]);
+            const result = tool().onPointerDown(ctx, pointer(50, 25));
+            expect(state.setSelectionCalls).toEqual([['g']]);
+            expect(result).toMatchObject({ kind: 'move', ids: ['r1'] });
+        });
+
+        it('a selected group grabs the union-frame rotate handle over its members', () => {
+            const { ctx } = makeCtx([grp(), member()], ['g']);
+            // member bounds padded (-4,-4,108,58), center (50,25), handle at [50,-28].
+            const result = tool().onPointerDown(ctx, pointer(50, -28));
+            expect(result).toMatchObject({ kind: 'rotate-selection', pivot: { x: 50, y: 25 } });
+            const rs = result as Extract<typeof result, { kind: 'rotate-selection' }>;
+            expect(rs.origins.size).toBe(1);
+            expect(rs.origins.get('r1')).toEqual({ kind: 'box', cx: 50, cy: 25, hw: 50, hh: 25, origRotation: 0 });
         });
     });
 

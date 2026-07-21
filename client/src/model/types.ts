@@ -3,7 +3,7 @@
  * moving a shape is always "add delta to x/y" regardless of type. Type-specific
  * geometry is expressed relative to that anchor.
  */
-export type ShapeType = 'rectangle' | 'ellipse' | 'diamond' | 'arrow' | 'draw' | 'text' | 'note';
+export type ShapeType = 'rectangle' | 'ellipse' | 'diamond' | 'arrow' | 'draw' | 'text' | 'note' | 'group';
 
 /** A CSS color string (hex, rgb(), 'transparent', …) as stored on shapes and consumed by canvas 2D. */
 export type Color = string;
@@ -22,7 +22,12 @@ export interface BaseShape {
     type: ShapeType;
     x: number;
     y: number;
-    /** z-order; higher renders on top. */
+    /** Container (group) this shape belongs to; absent ⇒ top-level (root). A
+     *  `parentId` pointing at a missing container is treated as root (see
+     *  {@link SceneTree}), so a deleted container degrades to loose shapes. */
+    parentId?: string;
+    /** Stacking order *among siblings under the same parent* (no longer global);
+     *  higher renders on top within that parent. */
     z: number;
     /** awareness/user id of the creator (for attribution, not security). */
     createdBy: string;
@@ -135,6 +140,14 @@ export interface NoteShape extends BaseShape {
     fill: Color;
 }
 
+/** A container that holds shapes (and other groups) and stacks/moves/rotates as a
+ *  unit. It has no geometry of its own — its bounds are the union of its
+ *  descendants — and it draws nothing (see {@link GroupShapeDef}). Members point
+ *  at it via {@link BaseShape.parentId}. */
+export interface GroupShape extends BaseShape {
+    type: 'group';
+}
+
 export type Shape =
     | RectShape
     | EllipseShape
@@ -142,7 +155,8 @@ export type Shape =
     | ArrowShape
     | DrawShape
     | TextShape
-    | NoteShape;
+    | NoteShape
+    | GroupShape;
 
 export interface Bounds {
     x: number;
