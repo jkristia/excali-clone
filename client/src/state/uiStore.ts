@@ -1,6 +1,6 @@
 import type { Color, CornerStyle, EndpointCap, FillStyle, StrokeStyle, TextAlign, VerticalAlign } from '../model/types';
 import { ToolRegistry } from '../tools/toolRegistry';
-import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS } from '../util/palette';
+import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS, FontSize } from '../util/palette';
 
 export type Tool = 'select' | 'pan' | 'rectangle' | 'ellipse' | 'diamond' | 'line' | 'arrow' | 'draw' | 'text' | 'note';
 
@@ -92,8 +92,8 @@ export class UIStore {
                 strokeStyle: 'solid',
                 fillStyle: 'solid',
                 opacity: 1,
-                fontSize: 20,
-                labelFontSize: 16,
+                fontSize: FontSize.Medium,
+                labelFontSize: FontSize.Small,
                 labelHAlign: 'center',
                 labelVAlign: 'middle',
                 textAlign: 'left',

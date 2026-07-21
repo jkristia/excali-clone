@@ -7,6 +7,7 @@ import type {
     RectShape,
     TextShape,
 } from '../model/types';
+import { FontSize } from '../util/palette';
 
 /** Shared shape factories for specs. Each returns a valid shape with sensible defaults,
  *  overridable per test. File-level functions are allowed here (test-support). */
@@ -38,7 +39,7 @@ export function diamond(over: Partial<DiamondShape> = {}): DiamondShape {
 export function note(over: Partial<NoteShape> = {}): NoteShape {
     return {
         id: 'n1', type: 'note', x: 5, y: 5, z: 1, createdBy: 'u',
-        w: 100, h: 80, text: '', fill: '#ff0', fontSize: 16, textAlign: 'left',
+        w: 100, h: 80, text: '', fill: '#ff0', fontSize: FontSize.Small, textAlign: 'left',
         ...over,
     };
 }
@@ -46,7 +47,7 @@ export function note(over: Partial<NoteShape> = {}): NoteShape {
 export function text(over: Partial<TextShape> = {}): TextShape {
     return {
         id: 't1', type: 'text', x: 0, y: 0, z: 1, createdBy: 'u',
-        text: 'hi', fontSize: 20, color: '#000', textAlign: 'left', w: 20, h: 25,
+        text: 'hi', fontSize: FontSize.Medium, color: '#000', textAlign: 'left', w: 20, h: 25,
         ...over,
     };
 }

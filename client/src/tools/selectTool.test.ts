@@ -5,6 +5,7 @@ import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { Handle } from '../util/handles';
 import type { ArrowShape, RectShape, Shape } from '../model/types';
 import type { PointerInfo } from '../interaction/interaction';
+import { FontSize } from '../util/palette';
 
 /** Records the mutations the tool asks its context to perform. */
 interface CtxState {
@@ -20,7 +21,7 @@ function makeCtx(shapes: Shape[], selection: string[] = [], zoom = 1): { ctx: To
         selection: () => state.selection,
         camera: () => ({ x: 0, y: 0, zoom }),
         style: () => ({
-            stroke: '#000', fill: 'transparent', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', opacity: 1, fontSize: 20, labelFontSize: 16, labelHAlign: 'center', labelVAlign: 'middle', textAlign: 'left',
+            stroke: '#000', fill: 'transparent', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', opacity: 1, fontSize: FontSize.Medium, labelFontSize: FontSize.Small, labelHAlign: 'center', labelVAlign: 'middle', textAlign: 'left',
             noteFill: '#fff', startCap: 'none', endCap: 'arrow', edges: 'sharp',
         }),
         author: () => 'u',
