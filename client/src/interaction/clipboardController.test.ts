@@ -18,6 +18,9 @@ class FakeDoc {
     public getShape(id: string): Shape | null {
         return this.shapes.get(id) ?? null;
     }
+    public readAllShapes(): Shape[] {
+        return [...this.shapes.values()];
+    }
     public topZ(): number {
         let max = 0;
         for (const s of this.shapes.values()) if (s.z > max) max = s.z;
@@ -132,6 +135,28 @@ describe('ClipboardController', () => {
         const pastedEllipse = pasted.find((s) => s.type === 'ellipse')!;
         expect(pastedRect.x - pastedEllipse.x).toBe(a.x - b.x); // relative offset preserved
         expect(pastedRect.z).toBeLessThan(pastedEllipse.z); // z-order preserved
+    });
+
+    it('re-mints a pasted group and rewrites its members\' parentId', async () => {
+        const g: Shape = { id: 'g', type: 'group', x: 0, y: 0, z: 3, createdBy: 'u' };
+        const a = rect({ id: 'r1', parentId: 'g', z: 0 });
+        const b = rect({ id: 'r2', parentId: 'g', z: 1 });
+        doc.seed([g, a, b]);
+        uiStore.getState().setSelection(['g']); // select the group as a unit
+        await clipboard.copy();
+
+        await clipboard.paste(0, 0);
+
+        const pasted = doc.added[0];
+        expect(pasted).toHaveLength(3); // group + both members carried along
+        const newGroup = pasted.find((s) => s.type === 'group');
+        expect(newGroup).toBeDefined();
+        expect(newGroup?.id).not.toBe('g');
+        const members = pasted.filter((s) => s.type !== 'group');
+        expect(members).toHaveLength(2);
+        for (const m of members) expect(m.parentId).toBe(newGroup?.id);
+        // the pasted group is selected as a unit, not its members individually.
+        expect(uiStore.getState().selection).toEqual([newGroup?.id]);
     });
 
     it('stacks pastes on top with increasing z', async () => {

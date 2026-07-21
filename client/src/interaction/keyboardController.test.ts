@@ -8,6 +8,8 @@ import type { CanvasDocument } from '../document/canvasDocument';
 const canvasDocument = {
     undoManager: { undo: vi.fn(), redo: vi.fn() },
     reorderShapes: vi.fn(),
+    groupShapes: vi.fn(() => 'G1'),
+    ungroup: vi.fn(),
 } as unknown as CanvasDocument;
 
 const uiStore = new UIStore(new ToolRegistry(new ShapeRegistry()));
@@ -82,5 +84,20 @@ describe('KeyboardController', () => {
         const typingKeyboard = new KeyboardController(uiStore, canvasDocument, () => true);
         typingKeyboard.handleKeyDown(fakeEvent({ key: "'", ctrlKey: true }));
         expect(uiStore.getState().snapToGrid).toBe(false);
+    });
+
+    it('Ctrl+G groups the selection and selects the new group', () => {
+        uiStore.setState({ selection: ['a', 'b'] });
+        fire({ key: 'g', ctrlKey: true });
+        expect(canvasDocument.groupShapes).toHaveBeenCalledWith(['a', 'b']);
+        expect(uiStore.getState().selection).toEqual(['G1']);
+    });
+
+    it('Ctrl+Shift+G ungroups each selected id', () => {
+        uiStore.setState({ selection: ['G1', 'G2'] });
+        fire({ key: 'g', ctrlKey: true, shiftKey: true });
+        expect(canvasDocument.ungroup).toHaveBeenCalledWith('G1');
+        expect(canvasDocument.ungroup).toHaveBeenCalledWith('G2');
+        expect(canvasDocument.groupShapes).not.toHaveBeenCalled();
     });
 });

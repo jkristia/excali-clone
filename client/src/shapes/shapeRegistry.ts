@@ -9,6 +9,7 @@ import { ArrowShapeDef } from './arrowShapeDef';
 import { DrawShapeDef } from './drawShapeDef';
 import { TextShapeDef } from './textShapeDef';
 import { NoteShapeDef } from './noteShapeDef';
+import { GroupShapeDef } from './groupShapeDef';
 
 export class ShapeRegistry {
     /** The one switch: shape type -> its behavior. Add a shape by adding one entry here. */
@@ -20,6 +21,7 @@ export class ShapeRegistry {
         draw: new DrawShapeDef(),
         text: new TextShapeDef(),
         note: new NoteShapeDef(),
+        group: new GroupShapeDef(),
     };
 
     public getDefinition<S extends Shape>(shape: S): ShapeDefinition<S> {
@@ -63,13 +65,13 @@ export class ShapeRegistry {
         return def.hitTest(shape, px, py, tol);
     }
 
-    /** Return the topmost shape (highest z) hit at the given world point. */
+    /** Return the topmost shape hit at the given world point. `shapes` is expected
+     *  in draw order (as `readAllShapes` returns it), so the last hit is on top —
+     *  `z` alone is no longer comparable across different group parents. */
     public topShapeAt(shapes: Shape[], px: number, py: number): Shape | null {
         let best: Shape | null = null;
         for (const s of shapes) {
-            if (this.hitTest(s, px, py)) {
-                if (!best || s.z > best.z) best = s;
-            }
+            if (this.hitTest(s, px, py)) best = s;
         }
         return best;
     }
@@ -77,6 +79,7 @@ export class ShapeRegistry {
     public shapesInRect(shapes: Shape[], sel: Bounds): Shape[] {
         const n = Geometry.normalizeRect(sel.x, sel.y, sel.w, sel.h);
         return shapes.filter((s) => {
+            if (s.type === 'group') return false; // groups have no bounds; selected via members
             const b = this.getBounds(s);
             return b.x >= n.x && b.y >= n.y && b.x + b.w <= n.x + n.w && b.y + b.h <= n.y + n.h;
         });

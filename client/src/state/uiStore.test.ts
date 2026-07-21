@@ -32,6 +32,31 @@ describe('setTool applies each tool\'s defaultStyle', () => {
         uiStore.getState().setTool('select');
         expect(uiStore.getState().editingId).toBeNull();
     });
+
+    it('always clears editingGroupId', () => {
+        uiStore.setState({ editingGroupId: 'g1' });
+        uiStore.getState().setTool('select');
+        expect(uiStore.getState().editingGroupId).toBeNull();
+    });
+});
+
+describe('editingGroupId (entered group scope)', () => {
+    it('defaults to null', () => {
+        expect(uiStore.getState().editingGroupId).toBeNull();
+    });
+
+    it('setEditingGroup enters and exits the scope', () => {
+        uiStore.getState().setEditingGroup('g1');
+        expect(uiStore.getState().editingGroupId).toBe('g1');
+        uiStore.getState().setEditingGroup(null);
+        expect(uiStore.getState().editingGroupId).toBeNull();
+    });
+
+    it('clearSelection also exits the entered group', () => {
+        uiStore.getState().setEditingGroup('g1');
+        uiStore.getState().clearSelection();
+        expect(uiStore.getState().editingGroupId).toBeNull();
+    });
 });
 
 describe('snapToGrid', () => {

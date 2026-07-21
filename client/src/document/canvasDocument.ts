@@ -1,9 +1,11 @@
 import * as Y from 'yjs';
+import { nanoid } from 'nanoid';
 import { WebsocketProvider } from 'y-websocket';
 import { IndexeddbPersistence } from 'y-indexeddb';
 import type { Awareness } from 'y-protocols/awareness';
-import type { Shape } from '../model/types';
+import type { GroupShape, Shape } from '../model/types';
 import type { UserPresence } from '../model/types';
+import { SceneTree } from '../util/sceneTree';
 import { IdentityStore } from './identity';
 
 /** Transactions tagged with this origin are the ones the UndoManager tracks. */
@@ -67,11 +69,19 @@ export class CanvasDocument {
         return ym.toJSON() as Shape;
     }
 
-    public readAllShapes(): Shape[] {
+    /** The shapes as stored, in no particular order. Callers that need draw order
+     *  use {@link readAllShapes}; membership ops re-bucket via {@link SceneTree}. */
+    private allShapesRaw(): Shape[] {
         const out: Shape[] = [];
         this.yShapes.forEach((ym) => out.push(CanvasDocument.readShape(ym)));
-        out.sort((a, b) => a.z - b.z);
         return out;
+    }
+
+    /** All shapes in draw order: a depth-first traversal of the group tree, sorting
+     *  siblings by `z` at each level (see {@link SceneTree.flattenToPaintOrder}). Groups emit
+     *  before their members so members paint on top. */
+    public readAllShapes(): Shape[] {
+        return SceneTree.flattenToPaintOrder(this.allShapesRaw());
     }
 
     public getShape(id: string): Shape | null {
@@ -79,14 +89,19 @@ export class CanvasDocument {
         return ym ? CanvasDocument.readShape(ym) : null;
     }
 
-    /** Highest z currently in the document (for placing new shapes on top). */
-    public topZ(): number {
+    /** Highest `z` among the direct children of `parentId` (undefined ⇒ root) — for
+     *  placing a new sibling on top. `z` is sibling-scoped, so "top" is per-parent. */
+    public topZUnder(parentId?: string): number {
         let max = 0;
-        this.yShapes.forEach((ym) => {
-            const z = ym.get('z') as number;
-            if (typeof z === 'number' && z > max) max = z;
-        });
+        for (const s of SceneTree.childrenOf(this.allShapesRaw(), parentId)) {
+            if (s.z > max) max = s.z;
+        }
         return max;
+    }
+
+    /** Highest `z` at the root level (for placing new top-level shapes on top). */
+    public topZ(): number {
+        return this.topZUnder(undefined);
     }
 
     public addShape(shape: Shape): void {
@@ -123,27 +138,134 @@ export class CanvasDocument {
         });
     }
 
+    /** Delete the given shapes and, for any container among them, its whole subtree
+     *  (members are deleted with their group). One transaction ⇒ one undo step. */
     public deleteShapes(ids: string[]): void {
+        const raw = this.allShapesRaw();
+        const doomed = new Set<string>();
+        for (const id of ids) {
+            for (const sub of SceneTree.subtreeIds(raw, id)) doomed.add(sub);
+        }
         this.transact(() => {
-            for (const id of ids) this.yShapes.delete(id);
+            for (const id of doomed) this.yShapes.delete(id);
+        });
+    }
+
+    /**
+     * Group the given shapes under a new `group` container. Requires ≥2 shapes that
+     * share the same parent (rejects a mixed selection). The group takes a `z` on
+     * top of that shared parent's children; members are reparented to it and
+     * renumbered `0..n-1` in their prior relative order. Returns the new group id
+     * (so the caller can select it), or null when the selection is not groupable.
+     */
+    public groupShapes(ids: string[]): string | null {
+        const raw = this.allShapesRaw();
+        const byId = new Map(raw.map((s) => [s.id, s] as const));
+        const members = ids.map((id) => byId.get(id)).filter((s): s is Shape => s !== undefined);
+        if (members.length < 2) return null;
+
+        const parentId = members[0].parentId;
+        const sharedParent = members.every((m) => (m.parentId ?? undefined) === (parentId ?? undefined));
+        if (!sharedParent) return null;
+
+        const groupId = nanoid();
+        const groupZ = this.topZUnder(parentId) + 1;
+        const ordered = members.slice().sort((a, b) => a.z - b.z);
+        this.transact(() => {
+            const group: GroupShape = {
+                id: groupId,
+                type: 'group',
+                x: 0,
+                y: 0,
+                z: groupZ,
+                createdBy: String(this.awareness.clientID),
+                ...(parentId ? { parentId } : {}),
+            };
+            const gm = new Y.Map<unknown>();
+            for (const [k, v] of Object.entries(group)) gm.set(k, v);
+            this.yShapes.set(groupId, gm);
+
+            ordered.forEach((m, index) => {
+                const ym = this.yShapes.get(m.id);
+                if (!ym) return;
+                ym.set('parentId', groupId);
+                ym.set('z', index);
+            });
+        });
+        return groupId;
+    }
+
+    /**
+     * Dissolve a group: reparent its children to the group's own parent (in the
+     * group's former slot, preserving their internal order), then delete the group.
+     * Members survive — only {@link deleteShapes} removes them.
+     */
+    public ungroup(groupId: string): void {
+        const raw = this.allShapesRaw();
+        const group = raw.find((s) => s.id === groupId);
+        if (!group || group.type !== 'group') return;
+
+        const parentId = group.parentId;
+        const children = SceneTree.childrenOf(raw, groupId);
+        const siblings = SceneTree.childrenOf(raw, parentId); // includes the group
+
+        // Splice the children into the group's slot among its siblings.
+        const newOrder: string[] = [];
+        for (const s of siblings) {
+            if (s.id === groupId) newOrder.push(...children.map((c) => c.id));
+            else newOrder.push(s.id);
+        }
+
+        this.transact(() => {
+            for (const child of children) {
+                const ym = this.yShapes.get(child.id);
+                if (!ym) continue;
+                if (parentId) ym.set('parentId', parentId);
+                else ym.delete('parentId');
+            }
+            this.yShapes.delete(groupId);
+            newOrder.forEach((id, index) => {
+                const ym = this.yShapes.get(id);
+                if (ym && ym.get('z') !== index) ym.set('z', index);
+            });
         });
     }
 
     /**
    * Change the stacking order of the given shapes (like Excalidraw's layer ops).
-   * We compute the new ordering, then normalize every shape's `z` to a contiguous
-   * 0..n-1 sequence, writing back only the ones whose `z` actually changed. This
-   * keeps ordering gap-free so the four operations always compose cleanly.
+   * Reordering is **sibling-scoped**: it runs among one parent's children only, so
+   * a group's whole band moves as a unit (elevating a group id reorders it among
+   * its siblings, and its subtree rides along in the DFS). The selected ids are
+   * expected to share a parent (selection resolves to top-level containers, or to
+   * members inside an entered group); ids under a different parent are ignored.
+   * We renormalize that parent's children to a contiguous `0..n-1` so the four
+   * operations always compose cleanly.
    */
     public reorderShapes(ids: string[], op: ReorderOp): void {
         if (ids.length === 0) return;
-        const selected = new Set(ids);
-        const ordered = this.readAllShapes(); // ascending z (readAllShapes sorts)
-        if (ordered.length === 0) return;
+        const raw = this.allShapesRaw();
+        const first = raw.find((s) => s.id === ids[0]);
+        if (!first) return;
 
-        const isSel = (s: Shape) => selected.has(s.id);
+        const parentId = first.parentId;
+        const inScope = new Set(
+            ids.filter((id) => (raw.find((s) => s.id === id)?.parentId ?? undefined) === (parentId ?? undefined)),
+        );
+        if (inScope.size === 0) return;
+
+        const siblings = SceneTree.childrenOf(raw, parentId); // ascending z
+        const arr = CanvasDocument.applyReorder(siblings, (s) => inScope.has(s.id), op);
+
+        const patches: Array<{ id: string; patch: Partial<Shape> }> = [];
+        arr.forEach((s, index) => {
+            if (s.z !== index) patches.push({ id: s.id, patch: { z: index } });
+        });
+        if (patches.length) this.updateShapes(patches);
+    }
+
+    /** The four layer ops over one already-ordered sibling list. */
+    private static applyReorder(ordered: Shape[], isSel: (s: Shape) => boolean, op: ReorderOp): Shape[] {
         let arr = ordered.slice();
-
         switch (op) {
             case 'toFront':
                 arr = [...arr.filter((s) => !isSel(s)), ...arr.filter(isSel)];
@@ -168,12 +290,7 @@ export class CanvasDocument {
                 }
                 break;
         }
-
-        const patches: Array<{ id: string; patch: Partial<Shape> }> = [];
-        arr.forEach((s, index) => {
-            if (s.z !== index) patches.push({ id: s.id, patch: { z: index } });
-        });
-        if (patches.length) this.updateShapes(patches);
+        return arr;
     }
 
     public clearBoard(): void {

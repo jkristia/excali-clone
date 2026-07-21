@@ -1,7 +1,7 @@
 import { nanoid } from 'nanoid';
 import type { ArrowShape, Bounds, Shape } from '../model/types';
 import type { Camera, Style, Tool as ToolName } from '../state/uiStore';
-import type { Interaction, MarqueeMode, PointerInfo } from './interaction';
+import type { Interaction, MarqueeMode, PointerInfo, RotateOrigin } from './interaction';
 import type { ToolContext } from '../tools/tool';
 import { ToolRegistry } from '../tools/toolRegistry';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
@@ -11,6 +11,7 @@ import { RotationMath } from '../util/rotationMath';
 import { VectorMath } from '../util/vectorMath';
 import { GridMath } from '../util/gridMath';
 import { ArrowEndpoints } from '../util/arrowEndpoints';
+import { SceneTree } from '../util/sceneTree';
 
 /** Store surface the controller needs — a subset of uiStore's state + actions. */
 export interface InteractionStore {
@@ -19,6 +20,7 @@ export interface InteractionStore {
     camera: Camera;
     snapToGrid: boolean;
     selection: string[];
+    editingGroupId: string | null;
     setSelection: (ids: string[]) => void;
     toggleSelection: (id: string, additive: boolean) => void;
     clearSelection: () => void;
@@ -83,6 +85,7 @@ export class InteractionController {
             author: deps.author,
             newId: () => nanoid(),
             nextZ: () => deps.topZ() + 1,
+            editingGroupId: () => deps.getStore().editingGroupId,
             addShape: deps.doc.addShape,
             setSelection: (ids) => deps.getStore().setSelection(ids),
             toggleSelection: (id, additive) => deps.getStore().toggleSelection(id, additive),
@@ -137,6 +140,14 @@ export class InteractionController {
                 let rot = inter.origRotation + (Math.atan2(p.y - inter.cy, p.x - inter.cx) - inter.startPointerAngle);
                 if (shiftKey) rot = RotationMath.snap(rot);
                 this.deps.doc.updateShapes([{ id: inter.id, patch: { rotation: rot } }]);
+                break;
+            }
+            case 'rotate-selection': {
+                const { pivot } = inter;
+                let theta = Math.atan2(p.y - pivot.y, p.x - pivot.x) - inter.startPointerAngle;
+                if (shiftKey) theta = RotationMath.snap(theta);
+                const patches = [...inter.origins].map(([id, o]) => ({ id, patch: this.rotatePatch(o, pivot, theta) }));
+                this.deps.doc.updateShapes(patches);
                 break;
             }
             case 'arrow-endpoint': {
@@ -223,6 +234,27 @@ export class InteractionController {
         this.updateCursor(store, p);
     }
 
+    /** Geometry patch for one shape in a multi-selection rotate by `theta` about `pivot`.
+     *  Box shapes accumulate the `rotation` field; arrow/draw rotate coordinates directly. */
+    private rotatePatch(o: RotateOrigin, pivot: { x: number; y: number }, theta: number): Partial<Shape> {
+        if (o.kind === 'box') {
+            const c = RotationMath.rotatePoint(o.cx, o.cy, pivot.x, pivot.y, theta);
+            return { x: c.x - o.hw, y: c.y - o.hh, rotation: o.origRotation + theta };
+        }
+        if (o.kind === 'arrow') {
+            const s = RotationMath.rotatePoint(o.x, o.y, pivot.x, pivot.y, theta);
+            const e = RotationMath.rotatePoint(o.x + o.dx, o.y + o.dy, pivot.x, pivot.y, theta);
+            return { x: s.x, y: s.y, dx: e.x - s.x, dy: e.y - s.y };
+        }
+        const a = RotationMath.rotatePoint(o.x, o.y, pivot.x, pivot.y, theta);
+        const points: number[] = [];
+        for (let i = 0; i + 1 < o.points.length; i += 2) {
+            const rp = RotationMath.rotatePoint(o.points[i], o.points[i + 1], 0, 0, theta);
+            points.push(rp.x, rp.y);
+        }
+        return { x: a.x, y: a.y, points };
+    }
+
     private updateCursor(store: InteractionStore, p: PointerInfo): void {
         if (store.tool !== 'select') {
             this.cursor = null;
@@ -231,8 +263,14 @@ export class InteractionController {
         const inter = this.interaction;
         let newCursor: string | null = null;
         if (inter.kind === 'none') {
-            if (store.selection.length === 1) {
+            const single = store.selection.length === 1
+                ? this.deps.shapes().find((s) => s.id === store.selection[0])
+                : undefined;
+            if (single && single.type !== 'group') {
                 newCursor = this.selectedShapeCursor(store, p);
+            } else if (store.selection.length >= 1) {
+                // A single group behaves like a multi-selection: one union frame.
+                newCursor = this.multiSelectionCursor(store, p);
             }
             // Over any shape body a click selects+moves it (see SelectTool), so
             // show the move cursor there — but never over an anchor of the
@@ -242,7 +280,7 @@ export class InteractionController {
             }
         } else if (inter.kind === 'resize') {
             newCursor = Handles.cursor(inter.handle, inter.orig.rotation);
-        } else if (inter.kind === 'rotate') {
+        } else if (inter.kind === 'rotate' || inter.kind === 'rotate-selection') {
             newCursor = 'grabbing';
         } else if (inter.kind === 'arrow-endpoint') {
             newCursor = 'crosshair';
@@ -273,6 +311,18 @@ export class InteractionController {
         return null;
     }
 
+    /** Hover cursor over a multi-selection's rotate handle (off the padded union frame), else null. */
+    private multiSelectionCursor(store: InteractionStore, p: PointerInfo): string | null {
+        const members = store.selection.flatMap((id) => SceneTree.boundableDescendants(this.deps.shapes(), id));
+        const union = this.shapeRegistry.unionBounds(members);
+        if (!union) return null;
+        const zoom = store.camera.zoom;
+        const frame = Handles.padBounds(union, Handles.SELECTION_PAD / zoom);
+        const [rx, ry] = Handles.rotateHandlePoint(frame, Handles.ROTATE_OFFSET / zoom);
+        const radius = ArrowEndpoints.HIT_RADIUS / zoom;
+        return Math.hypot(p.x - rx, p.y - ry) <= radius ? 'grab' : null;
+    }
+
     public onPointerUp(): void {
         const store = this.deps.getStore();
         const inter = this.interaction;
@@ -299,7 +349,8 @@ export class InteractionController {
                 h: inter.curY - inter.startY,
             };
             if (Math.abs(rect.w) > 3 || Math.abs(rect.h) > 3) {
-                const inside = this.shapeRegistry.shapesInRect(this.deps.shapes(), rect).map((s) => s.id);
+                const enclosed = this.shapeRegistry.shapesInRect(this.deps.shapes(), rect);
+                const inside = this.resolveMarquee(enclosed.map((s) => s.id), store.editingGroupId);
                 store.setSelection(this.combineMarquee(inter.mode, store.selection, inside));
             }
         } else if (inter.kind === 'move') {
@@ -315,6 +366,23 @@ export class InteractionController {
 
     public onPointerLeave(): void {
         this.cursor = null;
+    }
+
+    /**
+     * Map marquee-enclosed leaf ids to what should actually be selected: each leaf's
+     * top-level container (so enclosing a group's members selects the group), deduped.
+     * While scoped inside a group, restrict to that group's own members.
+     */
+    private resolveMarquee(leafIds: string[], editingGroupId: string | null): string[] {
+        const shapes = this.deps.shapes();
+        let ids = leafIds;
+        if (editingGroupId) {
+            const scope = new Set(SceneTree.subtreeIds(shapes, editingGroupId));
+            ids = ids.filter((id) => id !== editingGroupId && scope.has(id));
+        }
+        const resolved = new Set<string>();
+        for (const id of ids) resolved.add(SceneTree.resolveContainer(shapes, id, editingGroupId));
+        return [...resolved];
     }
 
     /** Combine the marquee-enclosed ids with the prior selection per the drag's modifier mode. */

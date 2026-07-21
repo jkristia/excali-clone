@@ -58,7 +58,9 @@ function baseInput(shapes: Shape[]) {
         marquee: null,
         draft: null,
         editingId: null,
+        editingGroupId: null,
         showGrid: false,
+        rotatingSelection: false,
     };
 }
 
@@ -164,6 +166,35 @@ describe('renderScene characterization', () => {
         sceneRenderer.render({ ctx, ...baseInput([shape]) });
         expect(calls).toContain('fill()');
         expect(calls.some((c) => c.startsWith('fillText('))).toBe(true);
+    });
+});
+
+describe('multi-selection rotate handle', () => {
+    // r1 (0,0,10,10) + r2 (0,20,10,10) → union (0,0,10,30), padded (-4,-4,18,38),
+    // handle circle centered at [5, -4 - ROTATE_OFFSET] = [5, -28].
+    const twoRects: Shape[] = [
+        { id: 'r1', type: 'rectangle', x: 0, y: 0, z: 1, createdBy: 'u', w: 10, h: 10, fill: '#fff', stroke: '#000', strokeWidth: 2 },
+        { id: 'r2', type: 'rectangle', x: 0, y: 20, z: 2, createdBy: 'u', w: 10, h: 10, fill: '#fff', stroke: '#000', strokeWidth: 2 },
+    ];
+
+    it('draws the rotate handle circle on the padded union frame when 2+ are selected', () => {
+        const { ctx, calls } = createRecordingContext();
+        sceneRenderer.render({ ctx, ...baseInput(twoRects), selection: ['r1', 'r2'] });
+        expect(calls.some((c) => c.startsWith('arc(5,-28,'))).toBe(true);
+    });
+
+    it('draws no rotate handle when nothing is selected', () => {
+        const { ctx, calls } = createRecordingContext();
+        sceneRenderer.render({ ctx, ...baseInput(twoRects), selection: [] });
+        expect(calls.some((c) => c.startsWith('arc('))).toBe(false);
+    });
+
+    it('hides the rotate handle while a selection rotate is in progress', () => {
+        const { ctx, calls } = createRecordingContext();
+        sceneRenderer.render({ ctx, ...baseInput(twoRects), selection: ['r1', 'r2'], rotatingSelection: true });
+        expect(calls.some((c) => c.startsWith('arc('))).toBe(false);
+        // the dashed union box still draws so the set stays framed while turning
+        expect(calls.some((c) => c.startsWith('strokeRect('))).toBe(true);
     });
 });
 

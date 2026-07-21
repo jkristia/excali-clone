@@ -7,6 +7,9 @@ import { CameraMath } from '../../canvas/camera';
 import { SCENE_RENDERER, CANVAS_DOCUMENT, TOOL_REGISTRY, SHAPE_REGISTRY, CLIPBOARD_CONTROLLER } from '../di-tokens';
 import { InteractionController } from '../../interaction/interactionController';
 import type { PointerInfo } from '../../interaction/interaction';
+import { SceneTree } from '../../util/sceneTree';
+import { Geometry } from '../../util/geometry';
+import { Handles } from '../../util/handles';
 
 /** World-space offset applied to each duplicate, down-right from its source. */
 const DUPLICATE_OFFSET = 20;
@@ -41,6 +44,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
     private readonly snapToGrid = this.ui.select((s) => s.snapToGrid);
     private readonly camera = this.ui.select((s) => s.camera);
     private readonly editingId = this.ui.select((s) => s.editingId);
+    private readonly editingGroupId = this.ui.select((s) => s.editingGroupId);
 
     private shapesLatest: Shape[] = [];
     private peersLatest: PeerPresence[] = [];
@@ -90,6 +94,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
             void this.camera();
             void this.selection();
             void this.editingId();
+            void this.editingGroupId();
             void this.tool();
             void this.spacePan();
             void this.snapToGrid();
@@ -194,7 +199,9 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
 
         const onPointerDown = (e: PointerEvent) => {
             (e.target as Element).setPointerCapture(e.pointerId);
-            this.controller.onPointerDown(toPointerInfo(e), this.spaceDown);
+            const p = toPointerInfo(e);
+            this.maybeExitGroupScope(p);
+            this.controller.onPointerDown(p, this.spaceDown);
             this.scheduleRender();
         };
         const onPointerMove = (e: PointerEvent) => {
@@ -225,11 +232,20 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
             const cam = this.ui.snapshot.camera;
             const world = CameraMath.screenToWorld(e.clientX - rect.left, e.clientY - rect.top, cam);
             const hit = this.shapeRegistry.topShapeAt(this.shapesLatest, world.x, world.y);
-            // text/note edit their body; every other shape edits its centered caption.
-            if (hit) {
-                this.ui.snapshot.setSelection([hit.id]);
-                this.ui.snapshot.setEditing(hit.id);
+            if (!hit) return;
+            const store = this.ui.snapshot;
+            // If the hit resolves to a group we're not yet scoped into, enter it and
+            // select the member directly under it (descending one level per dblclick).
+            const container = SceneTree.resolveContainer(this.shapesLatest, hit.id, store.editingGroupId);
+            const containerShape = this.shapesLatest.find((s) => s.id === container);
+            if (containerShape?.type === 'group') {
+                store.setEditingGroup(container);
+                store.setSelection([SceneTree.resolveContainer(this.shapesLatest, hit.id, container)]);
+                return;
             }
+            // Otherwise inline-edit: text/note edit their body; others edit their caption.
+            store.setSelection([hit.id]);
+            store.setEditing(hit.id);
         };
         const onWheel = (e: WheelEvent) => {
             // The canvas fills the viewport, so we own all wheel input — never let the
@@ -276,6 +292,23 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
         for (const cleanup of this.cleanups) cleanup();
     }
 
+    /** Leave the entered-group scope when a pointer-down lands outside that group's
+     *  bounds — clicking within it (empty space or a member) keeps you scoped. */
+    private maybeExitGroupScope(p: PointerInfo): void {
+        const store = this.ui.snapshot;
+        const gid = store.editingGroupId;
+        if (!gid) return;
+        const members = SceneTree.boundableDescendants(this.shapesLatest, gid);
+        // A click on any member keeps you scoped even when that member's rotated
+        // hit area extends past the group's axis-aligned box, so hit-test the
+        // members first; the union-bounds check only covers empty space inside
+        // the frame.
+        if (members.some((s) => this.shapeRegistry.hitTest(s, p.x, p.y))) return;
+        const bounds = this.shapeRegistry.unionBounds(members);
+        const pad = Handles.SELECTION_PAD / store.camera.zoom;
+        if (!bounds || !Geometry.pointInBounds(p.x, p.y, bounds, pad)) store.setEditingGroup(null);
+    }
+
     /** Paste at the pointer, or the viewport center if the pointer hasn't been over the canvas yet.
      *  The world anchor is captured synchronously (before the async clipboard read) so paste lands
      *  where the pointer was at keypress. */
@@ -297,7 +330,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        const { camera, selection: sel, editingId, snapToGrid } = this.ui.snapshot;
+        const { camera, selection: sel, editingId, editingGroupId, snapToGrid } = this.ui.snapshot;
         const inter = this.controller.getInteraction();
 
         let draft: Shape | null = null;
@@ -313,8 +346,9 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
             shapes: this.shapesLatest,
             selection: sel,
             peers: this.peersLatest,
-            marquee, draft, editingId,
+            marquee, draft, editingId, editingGroupId,
             showGrid: snapToGrid,
+            rotatingSelection: inter.kind === 'rotate-selection',
         });
     }
 

@@ -15,6 +15,7 @@ function makeStore(overrides: Partial<InteractionStore> = {}): InteractionStore 
         camera: { x: 0, y: 0, zoom: 1 },
         snapToGrid: false,
         selection: [],
+        editingGroupId: null,
         setSelection(ids) { this.selection = ids; },
         toggleSelection: () => {},
         clearSelection: () => {},
@@ -197,6 +198,72 @@ describe('InteractionController', () => {
         const steps = rot / ((5 * Math.PI) / 180);
         expect(steps).toBeCloseTo(Math.round(steps), 6);
         expect(rot).toBeGreaterThan(0);
+    });
+
+    describe('multi-selection rotate about the union center', () => {
+        // Grab the union rotate handle and drag to (150, 50) — directly right of the
+        // pivot — which is a 90° clockwise turn from the handle's start angle (−π/2).
+        function rotate90(startHandle: [number, number]) {
+            controller.onPointerDown(pointer(startHandle[0], startHandle[1]), false);
+            expect(controller.getInteraction().kind).toBe('rotate-selection');
+            controller.onPointerMove(pointer(150, 50), false);
+        }
+        const last = (id: string) => patches.filter((p) => p.id === id).at(-1)?.patch;
+
+        it('orbits box anchors and accumulates each rotation', () => {
+            // r1 (0,0,100,50) + r2 (0,50,100,50) → union (0,0,100,100), pivot (50,50),
+            // handle at [50, -28].
+            const r2: Shape = { ...rect, id: 'r2', y: 50 };
+            shapes = [rect, r2];
+            store.selection = ['r1', 'r2'];
+            rotate90([50, -28]);
+            const p1 = last('r1') as { x: number; y: number; rotation: number };
+            expect(p1.x).toBeCloseTo(25, 6);
+            expect(p1.y).toBeCloseTo(25, 6);
+            expect(p1.rotation).toBeCloseTo(Math.PI / 2, 6);
+            const p2 = last('r2') as { x: number; y: number; rotation: number };
+            expect(p2.x).toBeCloseTo(-25, 6);
+            expect(p2.y).toBeCloseTo(25, 6);
+            expect(p2.rotation).toBeCloseTo(Math.PI / 2, 6);
+        });
+
+        it('rotates arrow endpoints and draw points explicitly (no rotation field)', () => {
+            const arrow: Shape = {
+                id: 'a1', type: 'arrow', x: 0, y: 0, z: 0, createdBy: 'u',
+                dx: 100, dy: 0, stroke: '#000', strokeWidth: 2, startCap: 'none', endCap: 'arrow',
+            };
+            const draw: Shape = {
+                id: 'd1', type: 'draw', x: 0, y: 0, z: 0, createdBy: 'u',
+                points: [0, 0, 0, 100], stroke: '#000', strokeWidth: 2,
+            };
+            shapes = [arrow, draw]; // union (0,0,100,100), pivot (50,50), handle [50,-28]
+            store.selection = ['a1', 'd1'];
+            rotate90([50, -28]);
+            const pa = last('a1') as { x: number; y: number; dx: number; dy: number };
+            expect(pa.x).toBeCloseTo(100, 6);
+            expect(pa.y).toBeCloseTo(0, 6);
+            expect(pa.dx).toBeCloseTo(0, 6);
+            expect(pa.dy).toBeCloseTo(100, 6);
+            expect('rotation' in (last('a1') as object)).toBe(false);
+            const pd = last('d1') as { x: number; y: number; points: number[] };
+            expect(pd.x).toBeCloseTo(100, 6);
+            expect(pd.y).toBeCloseTo(0, 6);
+            expect(pd.points[0]).toBeCloseTo(0, 6);
+            expect(pd.points[1]).toBeCloseTo(0, 6);
+            expect(pd.points[2]).toBeCloseTo(-100, 6);
+            expect(pd.points[3]).toBeCloseTo(0, 6);
+        });
+
+        it('shift snaps the rotation delta to 5-degree steps', () => {
+            const r2: Shape = { ...rect, id: 'r2', y: 50 };
+            shapes = [rect, r2];
+            store.selection = ['r1', 'r2'];
+            controller.onPointerDown(pointer(50, -28), false);
+            controller.onPointerMove(pointer(54, -19), true); // small drag, shift-snapped
+            const rot = (last('r1') as { rotation: number }).rotation;
+            const steps = rot / ((5 * Math.PI) / 180);
+            expect(steps).toBeCloseTo(Math.round(steps), 6);
+        });
     });
 
     it('rectangle tool: drag creates a draft and commits on pointer-up if big enough', () => {

@@ -43,6 +43,11 @@ export interface UIState {
     readonly selection: string[];
     /** id of the text/note currently being edited inline, if any. */
     readonly editingId: string | null;
+    /** id of the group currently "entered" for scoped editing, if any. Transient,
+     *  local-only view state (never in Yjs) — peers keep seeing the group as a unit.
+     *  While set, clicks/marquee act on that group's members and its bounds get a
+     *  dashed active-container outline. */
+    readonly editingGroupId: string | null;
 
     setTool: (tool: Tool) => void;
     setSpacePan: (active: boolean) => void;
@@ -57,6 +62,8 @@ export interface UIState {
     setEditing: (id: string | null) => void;
     /** Atomically switch to select tool and start editing id — no intermediate state where editingId is null. */
     activateEditing: (id: string) => void;
+    /** Enter (or, with null, exit) a group for scoped editing. */
+    setEditingGroup: (id: string | null) => void;
 }
 
 type SetState = (partial: Partial<UIState> | ((state: UIState) => Partial<UIState>), replace?: boolean) => void;
@@ -97,11 +104,13 @@ export class UIStore {
             },
             selection: [],
             editingId: null,
+            editingGroupId: null,
 
             setTool: (tool) =>
                 set((s) => ({
                     tool,
                     editingId: null,
+                    editingGroupId: null,
                     style: { ...s.style, ...toolRegistry.get(tool).defaultStyle?.(s.style) },
                 })),
             setSpacePan: (active) => set({ spacePan: active }),
@@ -125,9 +134,10 @@ export class UIStore {
                         ? { selection: s.selection.filter((x) => x !== id) }
                         : { selection: [...s.selection, id] };
                 }),
-            clearSelection: () => set({ selection: [] }),
+            clearSelection: () => set({ selection: [], editingGroupId: null }),
             setEditing: (id) => set({ editingId: id }),
             activateEditing: (id) => set({ tool: 'select', editingId: id }),
+            setEditingGroup: (id) => set({ editingGroupId: id }),
         };
         this.initialState = this.state;
     }
