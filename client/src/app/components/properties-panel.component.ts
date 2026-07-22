@@ -113,6 +113,37 @@ export class PropertiesPanelComponent {
         return this.hasSelection() || f.stroke || f.fill || f.width || f.ends || f.note || f.text || !!f.edges || !!f.strokeStyle || !!f.fillStyle || !!f.label;
     });
 
+    /** The selection's common value for a style property, read off each selected shape
+     *  (shapes that don't carry the property are ignored), or the global "next new shape"
+     *  style when nothing is selected, no selected shape carries it, or the values differ. */
+    private selectedCommon<K extends keyof Style>(key: K, getter: (s: Shape) => Style[K] | undefined): Style[K] {
+        const values: Style[K][] = [];
+        for (const s of this.selected()) {
+            const v = getter(s);
+            if (v !== undefined) values.push(v);
+        }
+        if (!values.length) return this.style()[key];
+        const first = values[0];
+        return values.every((v) => v === first) ? first : this.style()[key];
+    }
+    protected readonly selectedStroke = computed(() =>
+        this.selectedCommon('stroke', (s) => ('stroke' in s ? s.stroke : s.type === 'text' ? s.color : undefined)),
+    );
+    protected readonly selectedFill = computed(() => this.selectedCommon('fill', (s) => ('fill' in s && s.type !== 'note' ? s.fill : undefined)));
+    protected readonly selectedFillStyle = computed(() => this.selectedCommon('fillStyle', (s) => ('fillStyle' in s ? s.fillStyle : undefined)));
+    protected readonly selectedStrokeWidth = computed(() => this.selectedCommon('strokeWidth', (s) => ('strokeWidth' in s ? s.strokeWidth : undefined)));
+    protected readonly selectedStrokeStyle = computed(() => this.selectedCommon('strokeStyle', (s) => ('strokeStyle' in s ? s.strokeStyle : undefined)));
+    protected readonly selectedEdges = computed(() => this.selectedCommon('edges', (s) => ('edges' in s ? s.edges : undefined)));
+    protected readonly selectedStartCap = computed(() => this.selectedCommon('startCap', (s) => (s.type === 'arrow' ? s.startCap : undefined)));
+    protected readonly selectedEndCap = computed(() => this.selectedCommon('endCap', (s) => (s.type === 'arrow' ? s.endCap : undefined)));
+    protected readonly selectedNoteFill = computed(() => this.selectedCommon('noteFill', (s) => (s.type === 'note' ? s.fill : undefined)));
+    protected readonly selectedFontSize = computed(() =>
+        this.selectedCommon('fontSize', (s) => (s.type === 'text' || s.type === 'note' ? s.fontSize : undefined)),
+    );
+    protected readonly selectedTextAlign = computed(() =>
+        this.selectedCommon('textAlign', (s) => (s.type === 'text' || s.type === 'note' ? s.textAlign : undefined)),
+    );
+
     private apply(patch: Partial<Style>, shapePatch: (s: Shape) => Partial<Shape> | null): void {
         this.ui.snapshot.setStyle(patch);
         const selected = this.selected();

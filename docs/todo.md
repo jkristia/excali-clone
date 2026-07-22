@@ -9,15 +9,15 @@ issues found
 - ~~select a group and do shift-2 (zoom to selection) - it zoom 800% and offset is wrong~~ fixed
 
 ## properties
-- selecting a single shape should reflect to shapes properties
-	- rect: missing update to
-		- stroke color
-		- fill color
-		- fill style
-		- stroke width
-		- stroke style
-	- line / arrow - missing all
-	- text missing all
+- ~~selecting a single shape should reflect to shapes properties in the property panel~~ fixed
+	- ~~rect: missing update to~~
+		- ~~stroke color~~
+		- ~~fill color~~
+		- ~~fill style~~
+		- ~~stroke width~~
+		- ~~stroke style~~
+	- ~~line / arrow - missing all properties~~
+	- ~~text missing all properties~~
 
 ## fix flicker while resizing
 - canvas flicker while resizing the browser window
