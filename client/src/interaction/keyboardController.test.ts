@@ -18,6 +18,7 @@ const keyboard = new KeyboardController(uiStore, canvasDocument, () => false);
 function fakeEvent(init: Partial<KeyboardEvent> & { key: string }) {
     return {
         key: init.key,
+        code: init.code ?? '',
         ctrlKey: init.ctrlKey ?? false,
         metaKey: init.metaKey ?? false,
         shiftKey: init.shiftKey ?? false,
@@ -62,12 +63,30 @@ describe('KeyboardController', () => {
 
     it('Ctrl+] reorders forward when a shape is selected', () => {
         uiStore.setState({ selection: ['a'] });
-        fire({ key: ']', ctrlKey: true });
+        fire({ key: ']', code: 'BracketRight', ctrlKey: true });
         expect(canvasDocument.reorderShapes).toHaveBeenCalledWith(['a'], 'forward');
     });
 
+    it('Ctrl+[ reorders backward when a shape is selected', () => {
+        uiStore.setState({ selection: ['a'] });
+        fire({ key: '[', code: 'BracketLeft', ctrlKey: true });
+        expect(canvasDocument.reorderShapes).toHaveBeenCalledWith(['a'], 'backward');
+    });
+
+    it('Ctrl+Shift+] brings to front (matching browser key, not just code)', () => {
+        uiStore.setState({ selection: ['a'] });
+        fire({ key: '}', code: 'BracketRight', ctrlKey: true, shiftKey: true });
+        expect(canvasDocument.reorderShapes).toHaveBeenCalledWith(['a'], 'toFront');
+    });
+
+    it('Ctrl+Shift+[ sends to back (matching browser key, not just code)', () => {
+        uiStore.setState({ selection: ['a'] });
+        fire({ key: '{', code: 'BracketLeft', ctrlKey: true, shiftKey: true });
+        expect(canvasDocument.reorderShapes).toHaveBeenCalledWith(['a'], 'toBack');
+    });
+
     it('Ctrl+] is a no-op with no selection', () => {
-        fire({ key: ']', ctrlKey: true });
+        fire({ key: ']', code: 'BracketRight', ctrlKey: true });
         expect(canvasDocument.reorderShapes).not.toHaveBeenCalled();
     });
 

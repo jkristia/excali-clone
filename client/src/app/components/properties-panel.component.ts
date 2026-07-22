@@ -13,6 +13,8 @@ import { AlignIconComponent } from './align-icon.component';
 import { ValignIconComponent } from './valign-icon.component';
 import { AlignShapesIconComponent } from './align-shapes-icon.component';
 import { DuplicateIconComponent } from './duplicate-icon.component';
+import { GroupIconComponent } from './group-icon.component';
+import { UngroupIconComponent } from './ungroup-icon.component';
 import { ShapeAligner, type AlignOp } from '../../util/shapeAligner';
 
 /** World-space offset applied to each duplicate, down-right from its source. */
@@ -37,7 +39,15 @@ const ALIGN_OPS: { op: AlignOp; label: string }[] = [
 @Component({
     selector: 'app-properties-panel',
     standalone: true,
-    imports: [LayerIconComponent, AlignIconComponent, ValignIconComponent, AlignShapesIconComponent, DuplicateIconComponent],
+    imports: [
+        LayerIconComponent,
+        AlignIconComponent,
+        ValignIconComponent,
+        AlignShapesIconComponent,
+        DuplicateIconComponent,
+        GroupIconComponent,
+        UngroupIconComponent,
+    ],
     templateUrl: './properties-panel.component.html',
     styleUrl: './properties-panel.component.scss',
 })
@@ -77,6 +87,15 @@ export class PropertiesPanelComponent {
     protected readonly flags = computed(() => panelFlags(this.toolRegistry, this.shapeRegistry, this.tool(), this.selected()));
     protected readonly hasSelection = computed(() => this.selected().length > 0);
     protected readonly hasMultiSelection = computed(() => this.selected().length > 1);
+    /** Mirrors {@link CanvasDocument.groupShapes}'s own requirement (≥2 shapes, shared parent)
+     *  so the button only appears enabled when clicking it would actually do something. */
+    protected readonly canGroup = computed(() => {
+        const selected = this.selected();
+        if (selected.length < 2) return false;
+        const parentId = selected[0].parentId;
+        return selected.every((s) => (s.parentId ?? undefined) === (parentId ?? undefined));
+    });
+    protected readonly canUngroup = computed(() => this.selected().some((s) => s.type === 'group'));
     /** True when at least one selected shape carries a non-empty caption. The caption styling
      *  controls (size/alignment) only apply once a label exists — a captionless shape hides them. */
     protected readonly hasLabel = computed(() => this.selected().some((s) => (s.label ?? '') !== ''));
@@ -230,5 +249,15 @@ export class PropertiesPanelComponent {
     }
     protected duplicate(): void {
         this.clipboard.duplicate(DUPLICATE_OFFSET, DUPLICATE_OFFSET);
+    }
+    protected group(): void {
+        const groupId = this.canvasDocument.groupShapes(this.selection());
+        if (groupId) this.ui.snapshot.setSelection([groupId]);
+    }
+    protected ungroup(): void {
+        // Mirrors the Ctrl+Shift+G shortcut: ungroup every selected id that is a
+        // group; ungroup() is a no-op for ids that aren't, so this is safe to call
+        // over a mixed selection.
+        for (const id of this.selection()) this.canvasDocument.ungroup(id);
     }
 }

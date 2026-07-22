@@ -222,6 +222,16 @@
                     <button class="layer-btn" title="Duplicate (Ctrl+D)" (click)="duplicate()">
                         <app-duplicate-icon />
                     </button>
+                    @if (canGroup()) {
+                        <button class="layer-btn" title="Group (Ctrl+G)" (click)="group()">
+                            <app-group-icon />
+                        </button>
+                    }
+                    @if (canUngroup()) {
+                        <button class="layer-btn" title="Ungroup (Ctrl+Shift+G)" (click)="ungroup()">
+                            <app-ungroup-icon />
+                        </button>
+                    }
                 </div>
             </div>
         }

@@ -16,12 +16,24 @@ import { arrow, diamond, draw, ellipse, group, note, rect, text } from '../../te
 class FakeCanvasDocument {
     public readonly updateCalls: Array<Array<{ id: string; patch: Partial<Shape> }>> = [];
     public readonly reorderCalls: Array<{ ids: string[]; op: ReorderOp }> = [];
+    public readonly groupCalls: string[][] = [];
+    public readonly ungroupCalls: string[] = [];
+    /** Set by a spec to control what groupShapes returns, mirroring the real
+     *  "not groupable" (mixed parent, <2 shapes) -> null case. */
+    public groupShapesReturns: string | null = 'new-group';
 
     public updateShapes(patches: Array<{ id: string; patch: Partial<Shape> }>): void {
         this.updateCalls.push(patches);
     }
     public reorderShapes(ids: string[], op: ReorderOp): void {
         this.reorderCalls.push({ ids, op });
+    }
+    public groupShapes(ids: string[]): string | null {
+        this.groupCalls.push(ids);
+        return this.groupShapesReturns;
+    }
+    public ungroup(id: string): void {
+        this.ungroupCalls.push(id);
     }
 }
 
@@ -333,6 +345,60 @@ describe('PropertiesPanelComponent', () => {
         it('duplicate delegates to the clipboard controller with the down-right offset', () => {
             (ctx.component as unknown as { duplicate: () => void })['duplicate']();
             expect(ctx.clipboard.duplicateCalls).toEqual([{ dx: 20, dy: 20 }]);
+        });
+    });
+
+    describe('group / ungroup actions', () => {
+        const canGroup = () => (ctx.component as unknown as { canGroup: Signal<boolean> })['canGroup']();
+        const canUngroup = () => (ctx.component as unknown as { canUngroup: Signal<boolean> })['canUngroup']();
+
+        it('canGroup is false for a single selected shape', () => {
+            ctx.setSelection([rect({ id: 'a' })]);
+            expect(canGroup()).toBe(false);
+        });
+
+        it('canGroup is true for multiple shapes sharing a parent', () => {
+            ctx.setSelection([rect({ id: 'a' }), rect({ id: 'b' })]);
+            expect(canGroup()).toBe(true);
+        });
+
+        it('canGroup is false when the selection spans different parents', () => {
+            ctx.setSelection([rect({ id: 'a', parentId: 'p1' }), rect({ id: 'b', parentId: 'p2' })]);
+            expect(canGroup()).toBe(false);
+        });
+
+        it('canUngroup is true when a group shape is selected', () => {
+            ctx.setSelection([group({ id: 'g' })]);
+            expect(canUngroup()).toBe(true);
+        });
+
+        it('canUngroup is false for a plain shape selection', () => {
+            ctx.setSelection([rect({ id: 'a' })]);
+            expect(canUngroup()).toBe(false);
+        });
+
+        it('group forwards the selection to the document and selects the returned group id', () => {
+            ctx.setSelection([rect({ id: 'a' }), rect({ id: 'b' })]);
+            ctx.doc.groupShapesReturns = 'G1';
+            (ctx.component as unknown as { group: () => void })['group']();
+
+            expect(ctx.doc.groupCalls).toEqual([['a', 'b']]);
+            expect(ctx.uiStore.getState().selection).toEqual(['G1']);
+        });
+
+        it('group leaves the selection untouched when the document rejects it', () => {
+            ctx.setSelection([rect({ id: 'a', parentId: 'p1' }), rect({ id: 'b', parentId: 'p2' })]);
+            ctx.doc.groupShapesReturns = null;
+            (ctx.component as unknown as { group: () => void })['group']();
+
+            expect(ctx.uiStore.getState().selection).toEqual(['a', 'b']);
+        });
+
+        it('ungroup calls the document for every selected id', () => {
+            ctx.setSelection([group({ id: 'g1' }), group({ id: 'g2' })]);
+            (ctx.component as unknown as { ungroup: () => void })['ungroup']();
+
+            expect(ctx.doc.ungroupCalls).toEqual(['g1', 'g2']);
         });
     });
 });
