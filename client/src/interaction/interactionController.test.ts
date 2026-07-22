@@ -90,26 +90,26 @@ describe('InteractionController', () => {
             store.selection = ['r1']; // the lower shape is selected
         });
 
-        it('drag over the overlap moves the selected (lower) shape, not the top one', () => {
+        it('drag over the overlap switches to and moves the top shape — a lone selection never steals the drag', () => {
             let selected: string[] | null = null;
-            store.setSelection = (ids) => { selected = ids; };
+            store.setSelection = (ids) => { selected = ids; store.selection = ids; };
 
             controller.onPointerDown(pointer(50, 25), false);
+            expect(selected).toEqual(['r2']); // switches immediately, no defer
             expect(controller.getInteraction().kind).toBe('move');
             controller.onPointerMove(pointer(60, 45), false);
             controller.onPointerUp();
 
-            expect(patches).toEqual([{ id: 'r1', patch: { x: 10, y: 20 } }]);
-            expect(selected).toBeNull(); // selection untouched by a drag
+            expect(patches).toEqual([{ id: 'r2', patch: { x: 10, y: 20 } }]);
         });
 
-        it('click over the overlap selects the top shape on pointer-up', () => {
+        it('click over the overlap selects the top shape immediately', () => {
             let selected: string[] | null = null;
             store.setSelection = (ids) => { selected = ids; };
 
             controller.onPointerDown(pointer(50, 25), false);
-            controller.onPointerUp(); // no move: a plain click
             expect(selected).toEqual(['r2']);
+            controller.onPointerUp(); // no move: a plain click
             expect(patches).toEqual([]);
         });
 

@@ -214,10 +214,27 @@ describe('SelectTool', () => {
         // r2 sits on top of the selected r1, overlapping it at (50, 25).
         const shapes = () => [rect(), rect({ id: 'r2', z: 1 })];
 
-        it('drags the selected lower shape and defers switching to the top one', () => {
+        it('a single selected shape never steals a drag aimed at a different overlapping shape — it switches immediately', () => {
             const { ctx, state } = makeCtx(shapes(), ['r1']);
             const result = tool().onPointerDown(ctx, pointer(50, 25));
+            expect(state.setSelectionCalls).toEqual([['r2']]); // switches right away, no defer
+            expect(result).toMatchObject({ kind: 'move', ids: ['r2'] });
+        });
+
+        it('a real multi-selection drags as a unit and defers switching to the overlapping top shape', () => {
+            const shapesWithThird = [...shapes(), rect({ id: 'r3', x: 200, y: 200 })];
+            const { ctx, state } = makeCtx(shapesWithThird, ['r1', 'r3']);
+            const result = tool().onPointerDown(ctx, pointer(50, 25));
             expect(state.setSelectionCalls).toEqual([]); // selection kept for the drag
+            expect(result).toMatchObject({ kind: 'move', ids: ['r1', 'r3'], pendingSelect: 'r2' });
+        });
+
+        it('a selected group (standing in for its members) drags as a unit and defers switching', () => {
+            const grp: Shape = { id: 'g', type: 'group', x: 0, y: 0, z: 1, createdBy: 'u' };
+            const member = rect({ id: 'r1', parentId: 'g' });
+            const { ctx, state } = makeCtx([grp, member, rect({ id: 'r2', z: 1 })], ['g']);
+            const result = tool().onPointerDown(ctx, pointer(50, 25));
+            expect(state.setSelectionCalls).toEqual([]);
             expect(result).toMatchObject({ kind: 'move', ids: ['r1'], pendingSelect: 'r2' });
         });
     });

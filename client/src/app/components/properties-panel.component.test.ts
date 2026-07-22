@@ -9,7 +9,7 @@ import { ToolRegistry } from '../../tools/toolRegistry';
 import { UIStore } from '../../state/uiStore';
 import type { ReorderOp } from '../../document/canvasDocument';
 import type { Shape } from '../../model/types';
-import { arrow, diamond, draw, ellipse, note, rect, text } from '../../test-support/shapeFactories';
+import { arrow, diamond, draw, ellipse, group, note, rect, text } from '../../test-support/shapeFactories';
 
 /** Records the calls the panel forwards to the CanvasDocument, so specs can assert the
  *  per-shape patches it built without a real Yjs document. */
@@ -294,6 +294,25 @@ describe('PropertiesPanelComponent', () => {
             const patches = lastPatches(ctx.doc);
             expect(patches.get('r')).toEqual({ opacity: 0.4 });
             expect(patches.get('a')).toEqual({ opacity: 0.4 });
+        });
+
+        it('onOpacityInput cascades into a selected group\'s members, including nested groups', () => {
+            // g1 (selected) contains rect r and nested group g2, which contains rect n.
+            ctx.collab.setShapes([
+                group({ id: 'g1' }),
+                rect({ id: 'r', parentId: 'g1' }),
+                group({ id: 'g2', parentId: 'g1' }),
+                rect({ id: 'n', parentId: 'g2' }),
+            ]);
+            ctx.uiStore.getState().setSelection(['g1']);
+            const event = { target: { value: '25' } } as unknown as Event;
+            (ctx.component as unknown as { onOpacityInput: (e: Event) => void })['onOpacityInput'](event);
+
+            const patches = lastPatches(ctx.doc);
+            expect(patches.get('g1')).toEqual({ opacity: 0.25 });
+            expect(patches.get('r')).toEqual({ opacity: 0.25 });
+            expect(patches.get('g2')).toEqual({ opacity: 0.25 });
+            expect(patches.get('n')).toEqual({ opacity: 0.25 });
         });
 
         it('updates the common style but issues no shape patch when nothing is selected', () => {

@@ -2,11 +2,11 @@
 
 issues found
 ## grouping
-- opacity not applied to shapes
-- edit goup, cannot move text shape
-- range selection, no select frame shown for group
-- aligning groups does not work
-- select a group and do shift-2 (zoom to selection) - it zoom 800% and offset is wrong
+- ~~opacity not applied to shapes~~ fixed
+- ~~edit goup, cannot move text shape~~ fixed
+- ~~range selection, no select frame shown for group~~ fixed
+- ~~aligning groups does not work~~ fixed
+- ~~select a group and do shift-2 (zoom to selection) - it zoom 800% and offset is wrong~~ fixed
 
 ## properties
 - selecting a single shape should reflect to shapes properties

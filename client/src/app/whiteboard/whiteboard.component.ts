@@ -166,9 +166,12 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
                     this.ui.snapshot.setCamera(CameraMath.fitBounds(bounds, this.size.width, this.size.height));
                 }
             } else if (e.shiftKey && e.code === 'Digit2') {
-                const ids = new Set(this.ui.snapshot.selection);
-                const selected = this.shapesLatest.filter((s) => ids.has(s.id));
-                const bounds = this.shapeRegistry.unionBounds(selected);
+                // A selected group has no bounds of its own (a zero box at its anchor) — fit
+                // its concrete member leaves instead, same expansion move/rotate/align use.
+                const members = this.ui.snapshot.selection.flatMap(
+                    (id) => SceneTree.boundableDescendants(this.shapesLatest, id),
+                );
+                const bounds = this.shapeRegistry.unionBounds(members);
                 if (bounds) {
                     this.ui.snapshot.setCamera(CameraMath.fitBounds(bounds, this.size.width, this.size.height));
                 }

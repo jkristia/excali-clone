@@ -3,6 +3,7 @@ import type {
     DiamondShape,
     DrawShape,
     EllipseShape,
+    GroupShape,
     NoteShape,
     RectShape,
     TextShape,
@@ -65,6 +66,13 @@ export function draw(over: Partial<DrawShape> = {}): DrawShape {
     return {
         id: 'd1', type: 'draw', x: 0, y: 0, z: 1, createdBy: 'u',
         points: [0, 0, 10, 10, 20, 0], stroke: '#000', strokeWidth: 2,
+        ...over,
+    };
+}
+
+export function group(over: Partial<GroupShape> = {}): GroupShape {
+    return {
+        id: 'g1', type: 'group', x: 0, y: 0, z: 1, createdBy: 'u',
         ...over,
     };
 }
