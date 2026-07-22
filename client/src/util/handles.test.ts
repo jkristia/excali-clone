@@ -31,6 +31,26 @@ describe('Handles.hitTest', () => {
     });
 });
 
+describe('Handles.activeHandles', () => {
+    it("exposes only left/right (E/W) for the 'x' axis", () => {
+        expect(Handles.activeHandles('x')).toEqual([Handle.E, Handle.W]);
+    });
+
+    it("exposes all 8 for 'both' or when unspecified", () => {
+        expect(Handles.activeHandles('both')).toHaveLength(8);
+        expect(Handles.activeHandles(undefined)).toHaveLength(8);
+    });
+});
+
+describe('Handles.hitTest allowed filter', () => {
+    it('ignores handles outside the allowed subset', () => {
+        // N is at [60, 20]; with only E/W allowed it must not match.
+        expect(Handles.hitTest(b, 60, 20, 5, [Handle.E, Handle.W])).toBe(-1);
+        // E is at [110, 45]; it is in the subset.
+        expect(Handles.hitTest(b, 110, 45, 5, [Handle.E, Handle.W])).toBe(Handle.E);
+    });
+});
+
 describe('Handles.rotateHandlePoint', () => {
     it('floats above the top-edge midpoint by the given world offset', () => {
         expect(Handles.rotateHandlePoint(b, 24)).toEqual([60, -4]);

@@ -7,6 +7,7 @@ import { ToolRegistry } from '../tools/toolRegistry';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { Handles } from '../util/handles';
 import { ResizeMath } from '../util/resizeMath';
+import type { ResizeGeometry } from '../util/resizeMath';
 import { RotationMath } from '../util/rotationMath';
 import { VectorMath } from '../util/vectorMath';
 import { GridMath } from '../util/gridMath';
@@ -27,6 +28,7 @@ export interface InteractionStore {
     setTool: (tool: ToolName) => void;
     panBy: (dxScreen: number, dyScreen: number) => void;
     activateEditing: (id: string) => void;
+    setEditing: (id: string | null, caret?: { x: number; y: number } | null) => void;
 }
 
 /** Document mutation surface (document/canvasDocument.ts), injected so the controller stays testable. */
@@ -41,6 +43,9 @@ export interface InteractionDeps {
     doc: InteractionDoc;
     author: () => string;
     topZ: () => number;
+    /** Height a text shape's word-wrapped text needs at the given fixed width. Injected so the
+     *  controller can reflow text on horizontal resize without depending on the DOM measurer. */
+    measureTextWrap: (text: string, fontSize: number, width: number) => number;
 }
 
 /**
@@ -128,12 +133,7 @@ export class InteractionController {
                 const geom = inter.orig.rotation
                     ? ResizeMath.computeRotated(inter.orig, inter.handle, inter.orig.rotation, p.x, p.y, shiftKey)
                     : ResizeMath.compute(inter.orig, inter.handle, rx, ry, shiftKey);
-                this.deps.doc.updateShapes([{ id: inter.id, patch: {
-                    x: geom.w < 0 ? geom.x + geom.w : geom.x,
-                    y: geom.h < 0 ? geom.y + geom.h : geom.y,
-                    w: Math.abs(geom.w),
-                    h: Math.abs(geom.h),
-                } }]);
+                this.deps.doc.updateShapes([{ id: inter.id, patch: this.resizePatch(inter, geom) }]);
                 break;
             }
             case 'rotate': {
@@ -234,6 +234,30 @@ export class InteractionController {
         this.updateCursor(store, p);
     }
 
+    /** Minimum width a text shape can be dragged to before its text stops wrapping narrower. */
+    private static readonly MIN_TEXT_WIDTH = 20;
+
+    /** The shape patch for a resize step. Text resizes width only: it fixes the wrap width,
+     *  flags `wrap`, and derives height from the wrapped line count. Everything else is a
+     *  generic box resize (normalizing a negative-extent drag to a top-left origin). */
+    private resizePatch(inter: Extract<Interaction, { kind: 'resize' }>, geom: ResizeGeometry): Partial<Shape> {
+        if (inter.orig.type === 'text') {
+            const shape = this.deps.shapes().find((s) => s.id === inter.id);
+            if (shape && shape.type === 'text') {
+                const width = Math.max(InteractionController.MIN_TEXT_WIDTH, Math.abs(geom.w));
+                const h = this.deps.measureTextWrap(shape.text, shape.fontSize, width);
+                const x = geom.w < 0 ? geom.x + geom.w : geom.x;
+                return { x, w: width, wrap: true, h } as Partial<Shape>;
+            }
+        }
+        return {
+            x: geom.w < 0 ? geom.x + geom.w : geom.x,
+            y: geom.h < 0 ? geom.y + geom.h : geom.y,
+            w: Math.abs(geom.w),
+            h: Math.abs(geom.h),
+        };
+    }
+
     /** Geometry patch for one shape in a multi-selection rotate by `theta` about `pivot`.
      *  Box shapes accumulate the `rotation` field; arrow/draw rotate coordinates directly. */
     private rotatePatch(o: RotateOrigin, pivot: { x: number; y: number }, theta: number): Partial<Shape> {
@@ -305,7 +329,8 @@ export class InteractionController {
             if (Math.hypot(local.x - rx, local.y - ry) <= radius) return 'grab';
         }
         if (this.shapeRegistry.isResizable(selShape)) {
-            const h = Handles.hitTest(bounds, local.x, local.y, radius);
+            const allowed = Handles.activeHandles(this.shapeRegistry.resizeAxis(selShape));
+            const h = Handles.hitTest(bounds, local.x, local.y, radius, allowed);
             if (h !== -1) return Handles.cursor(h, selShape.rotation ?? 0);
         }
         return null;
@@ -358,6 +383,11 @@ export class InteractionController {
             // click, not a drag — a drag has already moved the existing selection.
             if (!inter.moved && inter.pendingSelect !== undefined) {
                 store.setSelection([inter.pendingSelect]);
+            }
+            // A plain click on the already-selected inline-editable shape opens its
+            // editor with the caret at the click point (a drag moved it instead).
+            if (!inter.moved && inter.pendingEdit) {
+                store.setEditing(inter.pendingEdit.id, { x: inter.pendingEdit.x, y: inter.pendingEdit.y });
             }
         }
 

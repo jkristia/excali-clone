@@ -40,6 +40,31 @@ describe('setTool applies each tool\'s defaultStyle', () => {
     });
 });
 
+describe('editingCaret (where the inline editor opens its caret)', () => {
+    it('defaults to null (select-all)', () => {
+        expect(uiStore.getState().editingCaret).toBeNull();
+    });
+
+    it('setEditing carries a caret point for click-to-edit', () => {
+        uiStore.getState().setEditing('t1', { x: 12, y: 34 });
+        expect(uiStore.getState().editingId).toBe('t1');
+        expect(uiStore.getState().editingCaret).toEqual({ x: 12, y: 34 });
+    });
+
+    it('setEditing defaults the caret to null (double-click select-all)', () => {
+        uiStore.getState().setEditing('t1', { x: 12, y: 34 });
+        uiStore.getState().setEditing('t1');
+        expect(uiStore.getState().editingCaret).toBeNull();
+    });
+
+    it('activateEditing clears any stale caret so a new shape selects-all', () => {
+        uiStore.getState().setEditing('t1', { x: 12, y: 34 });
+        uiStore.getState().activateEditing('t2');
+        expect(uiStore.getState().editingId).toBe('t2');
+        expect(uiStore.getState().editingCaret).toBeNull();
+    });
+});
+
 describe('editingGroupId (entered group scope)', () => {
     it('defaults to null', () => {
         expect(uiStore.getState().editingGroupId).toBeNull();

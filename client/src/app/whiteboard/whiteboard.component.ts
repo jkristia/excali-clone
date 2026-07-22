@@ -4,7 +4,7 @@ import { CollabService } from '../collab/collab.service';
 import { InlineEditorComponent } from '../components/inline-editor.component';
 import type { Bounds, PeerPresence, Shape } from '../../model/types';
 import { CameraMath } from '../../canvas/camera';
-import { SCENE_RENDERER, CANVAS_DOCUMENT, TOOL_REGISTRY, SHAPE_REGISTRY, CLIPBOARD_CONTROLLER } from '../di-tokens';
+import { SCENE_RENDERER, CANVAS_DOCUMENT, TOOL_REGISTRY, SHAPE_REGISTRY, CLIPBOARD_CONTROLLER, TEXT_MEASURE } from '../di-tokens';
 import { InteractionController } from '../../interaction/interactionController';
 import type { PointerInfo } from '../../interaction/interaction';
 import { SceneTree } from '../../util/sceneTree';
@@ -28,6 +28,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
     private readonly sceneRenderer = inject(SCENE_RENDERER);
     private readonly toolRegistry = inject(TOOL_REGISTRY);
     private readonly shapeRegistry = inject(SHAPE_REGISTRY);
+    private readonly textMeasure = inject(TEXT_MEASURE);
 
     private readonly author = () => String(this.canvasDocument.awareness.clientID);
 
@@ -67,6 +68,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
         },
         author: this.author,
         topZ: this.canvasDocument.topZ.bind(this.canvasDocument),
+        measureTextWrap: (text, fontSize, width) => this.textMeasure.measureTextWrapped(text, fontSize, width).h,
     }, this.toolRegistry, this.shapeRegistry);
 
     private spaceDown = false;

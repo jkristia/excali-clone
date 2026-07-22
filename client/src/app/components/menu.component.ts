@@ -16,7 +16,7 @@ interface MenuItem {
  *  so a shape placed at centre lands in the same spot after a reload. */
 const IDENTITY_CAMERA = { x: 0, y: 0, zoom: 1 } as const;
 
-const FILE_TYPES: FilePickerAcceptType[] = [{ description: 'Whiteboard', accept: { 'application/json': ['.json'] } }];
+const FILE_TYPES: FilePickerAcceptType[] = [{ description: 'JSON', accept: { 'application/json': ['.json'] } }];
 
 /**
  * Burger menu with Open / Save. The pure file format lives in the framework-agnostic
@@ -113,6 +113,7 @@ export class MenuComponent implements OnInit, OnDestroy {
 
     /** Quick save: overwrite the current file, or fall back to Save-As when none is set. */
     private async save(): Promise<void> {
+        this.open.set(false);
         const handle = this.currentFile.handle;
         if (!handle) {
             await this.saveAs();

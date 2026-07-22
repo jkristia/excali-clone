@@ -50,6 +50,9 @@ class FakeTextMeasure {
     public measureText(text: string, fontSize: number): { w: number; h: number } {
         return { w: text.length * fontSize, h: fontSize };
     }
+    public measureTextWrapped(_text: string, fontSize: number, width: number): { w: number; h: number } {
+        return { w: width, h: fontSize * 2 }; // deterministic stand-in; a real text re-wraps to width
+    }
     public measureNote(_text: string, fontSize: number, width: number): number {
         return fontSize + width; // deterministic stand-in; a real note re-flows to its width
     }

@@ -16,7 +16,7 @@
             [style.line-height]="lineHeight"
             [style.color]="shape.color"
             [style.text-align]="shape.textAlign"
-            [style.width.px]="Math.max(40, shape.w + 8)"
+            [style.width.px]="shape.wrap ? shape.w : Math.max(40, shape.w + 8)"
         ></textarea>
     } @else if (shape.type === 'note') {
         <textarea

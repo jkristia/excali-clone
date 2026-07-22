@@ -127,6 +127,10 @@ export interface TextShape extends BaseShape {
     /** measured width/height, kept for hit-testing. */
     w: number;
     h: number;
+    /** When true the shape has a fixed width (`w`, set by horizontal resize) and its text
+     *  word-wraps to it; height follows the wrapped line count. Absent/false ⇒ auto-width:
+     *  `w` is measured from the widest line and text only breaks on explicit newlines. */
+    wrap?: boolean;
 }
 
 export interface NoteShape extends BaseShape {

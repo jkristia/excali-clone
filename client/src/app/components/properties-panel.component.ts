@@ -204,7 +204,10 @@ export class PropertiesPanelComponent {
         // a note keeps its fixed width but grows/shrinks its height to fit.
         this.apply({ fontSize: size }, (s) => {
             if (s.type === 'text') {
-                const { w, h } = this.textMeasure.measureText(s.text, size);
+                // Fixed-width text keeps its wrap width and re-wraps; auto text re-fits both dims.
+                const { w, h } = s.wrap
+                    ? this.textMeasure.measureTextWrapped(s.text, size, s.w)
+                    : this.textMeasure.measureText(s.text, size);
                 return { fontSize: size, w, h };
             }
             return s.type === 'note' ? { fontSize: size, h: this.textMeasure.measureNote(s.text, size, s.w) } : null;

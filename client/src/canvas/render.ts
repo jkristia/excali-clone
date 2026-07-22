@@ -128,7 +128,7 @@ export class SceneRenderer {
             } else {
                 this.withShapeTransform(ctx, s, () => {
                     const b = this.shapeRegistry.getBounds(s);
-                    if (this.shapeRegistry.isResizable(s)) this.drawHandles(ctx, b, camera.zoom);
+                    if (this.shapeRegistry.isResizable(s)) this.drawHandles(ctx, b, camera.zoom, this.shapeRegistry.resizeAxis(s));
                     if (this.shapeRegistry.isRotatable(s)) this.drawRotateHandle(ctx, b, camera.zoom);
                 });
             }
@@ -262,14 +262,16 @@ export class SceneRenderer {
         ctx.restore();
     }
 
-    private drawHandles(ctx: CanvasRenderingContext2D, b: Bounds, zoom: number): void {
+    private drawHandles(ctx: CanvasRenderingContext2D, b: Bounds, zoom: number, axis: 'both' | 'x' = 'both'): void {
         const s = SceneRenderer.HANDLE_SIZE / zoom;
         const pts = Handles.points(b);
+        const active = Handles.activeHandles(axis);
         ctx.save();
         ctx.fillStyle = '#fff';
         ctx.strokeStyle = SceneRenderer.SELECT_COLOR;
         ctx.lineWidth = 1.5 / zoom;
-        for (const [px, py] of pts) {
+        for (const h of active) {
+            const [px, py] = pts[h];
             ctx.beginPath();
             ctx.rect(px - s / 2, py - s / 2, s, s);
             ctx.fill();

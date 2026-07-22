@@ -4,7 +4,7 @@ import { CollabService } from '../collab/collab.service';
 import { CANVAS_DOCUMENT, SHAPE_REGISTRY, TEXT_MEASURE } from '../di-tokens';
 import { CameraMath } from '../../canvas/camera';
 import { TEXT_LINE_HEIGHT } from '../../shapes/textShapeDef';
-import { NOTE_PADDING } from '../../shapes/noteShapeDef';
+import { NOTE_LINE_HEIGHT, NOTE_PADDING } from '../../shapes/noteShapeDef';
 import { CanvasDraw } from '../../util/canvasDraw';
 import type { NoteShape, Shape, TextAlign, TextShape } from '../../model/types';
 
@@ -26,6 +26,7 @@ export class InlineEditorComponent {
     protected readonly lineHeight = TEXT_LINE_HEIGHT;
 
     protected readonly editingId = this.ui.select((s) => s.editingId);
+    protected readonly editingCaret = this.ui.select((s) => s.editingCaret);
     protected readonly camera = this.ui.select((s) => s.camera);
     protected readonly shapes = this.collab.shapes;
 
@@ -93,7 +94,7 @@ export class InlineEditorComponent {
                 const s = this.shape();
                 if (el) {
                     el.focus();
-                    el.select();
+                    this.applyInitialSelection(el, s);
                     if (s?.type === 'text') {
                         el.style.height = 'auto';
                         el.style.height = `${el.scrollHeight}px`;
@@ -103,11 +104,45 @@ export class InlineEditorComponent {
         });
     }
 
+    /** Place the caret at the click point (click-to-edit) or, with no point, select all
+     *  (double-click / new shape). Only text/note bodies support point placement today. */
+    private applyInitialSelection(el: HTMLTextAreaElement, shape: Shape | null): void {
+        const caret = this.editingCaret();
+        if (!caret || !shape) {
+            el.select();
+            return;
+        }
+        if (shape.type === 'text') {
+            const i = this.textMeasure.caretIndexAt(shape.text, shape.fontSize, caret.x - shape.x, caret.y - shape.y, {
+                lineHeight: TEXT_LINE_HEIGHT,
+                textAlign: shape.textAlign ?? 'left',
+                boxWidth: shape.w,
+                wrap: shape.wrap ?? false,
+            });
+            el.setSelectionRange(i, i);
+            return;
+        }
+        if (shape.type === 'note') {
+            const i = this.textMeasure.caretIndexAt(
+                shape.text, shape.fontSize,
+                caret.x - shape.x - NOTE_PADDING, caret.y - shape.y - this.noteTop(),
+                { lineHeight: NOTE_LINE_HEIGHT, textAlign: shape.textAlign ?? 'left', boxWidth: shape.w - NOTE_PADDING * 2, wrap: true },
+            );
+            el.setSelectionRange(i, i);
+            return;
+        }
+        el.select();
+    }
+
     protected onChangeText(shape: TextShape, e: Event): void {
         const el = e.target as HTMLTextAreaElement;
         const text = el.value;
-        const { w, h } = this.textMeasure.measureText(text, shape.fontSize);
-        this.canvasDocument.updateShape(shape.id, { text, w, h } as Partial<TextShape>);
+        // Fixed-width (wrapped) text keeps its width and re-wraps to fit; auto-width text
+        // grows both dimensions to the longest line.
+        const patch = shape.wrap
+            ? { text, h: this.textMeasure.measureTextWrapped(text, shape.fontSize, shape.w).h }
+            : { text, ...this.textMeasure.measureText(text, shape.fontSize) };
+        this.canvasDocument.updateShape(shape.id, patch as Partial<TextShape>);
         // Height is set imperatively (no style binding), so grow the textarea as
         // lines are added — otherwise a new last line stays hidden until reopen.
         el.style.height = 'auto';
