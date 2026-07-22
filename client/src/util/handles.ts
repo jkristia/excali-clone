@@ -29,14 +29,24 @@ export class Handles {
         ];
     }
 
-    /** The handle within `radius` of (px, py), or -1 if none. */
-    public static hitTest(b: Bounds, px: number, py: number, radius: number): Handle | -1 {
+    /** The handle within `radius` of (px, py), or -1 if none. `allowed`, when given, restricts
+     *  the test to that subset (e.g. horizontal-only resize exposes just E/W). */
+    public static hitTest(b: Bounds, px: number, py: number, radius: number, allowed?: readonly Handle[]): Handle | -1 {
         const pts = Handles.points(b);
         for (let i = 0; i < pts.length; i++) {
+            if (allowed && !allowed.includes(i as Handle)) continue;
             if (Math.abs(px - pts[i][0]) <= radius && Math.abs(py - pts[i][1]) <= radius) return i as Handle;
         }
         return -1;
     }
+
+    /** Which handles a shape exposes for its resize axis: 'x' → left/right only, else all 8.
+     *  Single source shared by drawing and hit-testing so the two never disagree. */
+    public static activeHandles(axis: 'both' | 'x' | undefined): readonly Handle[] {
+        return axis === 'x' ? [Handle.E, Handle.W] : Handles.ALL;
+    }
+
+    private static readonly ALL: readonly Handle[] = [Handle.NW, Handle.N, Handle.NE, Handle.E, Handle.SE, Handle.S, Handle.SW, Handle.W];
 
     /** Corner handles sit on even values in the clockwise layout; edges are odd. */
     public static isCorner(handle: Handle): boolean {

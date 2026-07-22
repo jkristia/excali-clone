@@ -50,7 +50,8 @@ export class SelectTool implements Tool {
                     }
                 }
                 if (this.shapeRegistry.isResizable(selShape)) {
-                    const hIdx = Handles.hitTest(bounds, local.x, local.y, radius);
+                    const allowed = Handles.activeHandles(this.shapeRegistry.resizeAxis(selShape));
+                    const hIdx = Handles.hitTest(bounds, local.x, local.y, radius, allowed);
                     if (hIdx !== -1) {
                         return {
                             kind: 'resize', id: selShape.id, handle: hIdx,
@@ -77,7 +78,15 @@ export class SelectTool implements Tool {
                 return this.startMove(ctx, ctx.selection(), p);
             }
             if (already) {
-                return this.startMove(ctx, selection, p);
+                const move = this.startMove(ctx, selection, p);
+                // A plain click (no drag) on the single already-selected inline-editable
+                // shape opens its editor with the caret at the click point — resolved on
+                // pointer-up so a drag still moves it. Double-click (select-all) is handled
+                // separately by the canvas dblclick handler.
+                if (selShape && this.isInlineEditable(selShape) && !p.ctrlKey && !p.metaKey) {
+                    move.pendingEdit = { id: selShape.id, x: p.x, y: p.y };
+                }
+                return move;
             }
             // `target` is unselected. If the CURRENT selection is plural (several ids, or
             // a single group standing in for its members) and one of its shapes sits under
@@ -139,7 +148,13 @@ export class SelectTool implements Tool {
         return { kind: 'box', cx: c.x, cy: c.y, hw: b.w / 2, hh: b.h / 2, origRotation: s.rotation ?? 0 };
     }
 
-    private startMove(ctx: ToolContext, ids: string[], p: PointerInfo, pendingSelect?: string): Interaction {
+    /** Shapes whose body is edited inline via a textarea (text/note). Structured as a
+     *  predicate so click-to-edit can later extend to captioned shapes. */
+    private isInlineEditable(shape: Shape): boolean {
+        return shape.type === 'text' || shape.type === 'note';
+    }
+
+    private startMove(ctx: ToolContext, ids: string[], p: PointerInfo, pendingSelect?: string): Extract<Interaction, { kind: 'move' }> {
         // Expand any selected group id to its descendant leaves — the group shape
         // itself has no geometry, so we move its members (and never its 0×0 anchor,
         // which would corrupt the snap bounding box).

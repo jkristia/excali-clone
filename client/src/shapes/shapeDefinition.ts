@@ -33,6 +33,9 @@ export interface ShapeDefinition<S extends Shape = Shape> {
     /** Whether the select tool shows drag-to-resize box handles. Arrow has its own
      *  endpoint handles and is not "resizable" in this box-handle sense. */
     readonly resizable: boolean;
+    /** Which resize handles a resizable shape exposes: 'both' (all 8, default) or 'x'
+     *  (left/right only — text, which resizes width to set its wrap and auto-sizes height). */
+    readonly resizeAxis?: 'both' | 'x';
     /** Whether the select tool shows the rotate handle. True for the box shapes
      *  (rectangle/ellipse/note/text); arrow/draw rotate via their own geometry. */
     readonly rotatable: boolean;

@@ -23,6 +23,7 @@ function makeStore(overrides: Partial<InteractionStore> = {}): InteractionStore 
         setTool: () => {},
         panBy: () => {},
         activateEditing: () => {},
+        setEditing: () => {},
         ...overrides,
     };
 }
@@ -34,6 +35,12 @@ function pointer(x: number, y: number, extra: Partial<PointerInfo> = {}): Pointe
 const rect: Shape = {
     id: 'r1', type: 'rectangle', x: 0, y: 0, z: 0, createdBy: 'u',
     w: 100, h: 50, fill: 'transparent', stroke: '#000', strokeWidth: 2,
+};
+
+// 100x20 text at the origin: body center (50,10); E/W resize handles at (100,10)/(0,10).
+const textShape: Shape = {
+    id: 't1', type: 'text', x: 0, y: 0, z: 0, createdBy: 'u',
+    text: 'hello', fontSize: 16, color: '#000', textAlign: 'left', w: 100, h: 20,
 };
 
 describe('InteractionController', () => {
@@ -58,6 +65,7 @@ describe('InteractionController', () => {
             },
             author: () => 'u',
             topZ: () => 0,
+            measureTextWrap: (text, fontSize) => (text.split('\n').length || 1) * fontSize * 1.25,
         }, new ToolRegistry(shapeRegistry), shapeRegistry);
     });
 
@@ -179,6 +187,41 @@ describe('InteractionController', () => {
         expect(controller.getInteraction().kind).toBe('resize');
         controller.onPointerMove(pointer(10, 5), false);
         expect(patches).toEqual([{ id: 'r1', patch: { x: 10, y: 5, w: 90, h: 45 } }]);
+    });
+
+    it('click on the already-selected text opens its editor with the caret at the click point', () => {
+        shapes = [textShape];
+        store.selection = ['t1'];
+        let edited: { id: string | null; caret: { x: number; y: number } | null | undefined } | null = null;
+        store.setEditing = (id, caret) => { edited = { id, caret }; };
+
+        controller.onPointerDown(pointer(50, 10), false); // body center, not a handle
+        expect(controller.getInteraction().kind).toBe('move');
+        controller.onPointerUp(); // a click (no move) arms the edit
+        expect(edited).toEqual({ id: 't1', caret: { x: 50, y: 10 } });
+    });
+
+    it('a drag of the selected text moves it and does not open the editor', () => {
+        shapes = [textShape];
+        store.selection = ['t1'];
+        let edited = false;
+        store.setEditing = () => { edited = true; };
+
+        controller.onPointerDown(pointer(50, 10), false);
+        controller.onPointerMove(pointer(70, 10), false); // moved past the threshold
+        controller.onPointerUp();
+        expect(edited).toBe(false);
+        expect(patches.at(-1)).toEqual({ id: 't1', patch: { x: 20, y: 0 } });
+    });
+
+    it('horizontal resize of text sets a fixed wrap width, flags wrap, and re-measures height', () => {
+        shapes = [textShape];
+        store.selection = ['t1'];
+        controller.onPointerDown(pointer(100, 10), false); // grab the E (right) handle
+        expect(controller.getInteraction().kind).toBe('resize');
+        controller.onPointerMove(pointer(60, 10), false); // drag the right edge in to x=60
+        // Fake measureTextWrap: 1 line * 16 * 1.25 = 20.
+        expect(patches.at(-1)).toEqual({ id: 't1', patch: { x: 0, w: 60, wrap: true, h: 20 } });
     });
 
     it('select tool: rotate handle drag patches the shape rotation', () => {

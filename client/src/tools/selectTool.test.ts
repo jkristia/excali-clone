@@ -3,7 +3,7 @@ import { SelectTool } from './selectTool';
 import type { ToolContext } from './tool';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { Handle } from '../util/handles';
-import type { ArrowShape, RectShape, Shape } from '../model/types';
+import type { ArrowShape, RectShape, Shape, TextShape } from '../model/types';
 import type { PointerInfo } from '../interaction/interaction';
 import { FontSize } from '../util/palette';
 
@@ -54,6 +54,14 @@ function arrow(over: Partial<ArrowShape> = {}): ArrowShape {
     return {
         id: 'a1', type: 'arrow', x: 0, y: 0, z: 0, createdBy: 'u',
         dx: 100, dy: 0, stroke: '#000', strokeWidth: 2, startCap: 'none', endCap: 'arrow', ...over,
+    };
+}
+
+// 100x20 text at the origin: body center (50,10); E/W resize handles at (100,10)/(0,10).
+function text(over: Partial<TextShape> = {}): TextShape {
+    return {
+        id: 't1', type: 'text', x: 0, y: 0, z: 0, createdBy: 'u',
+        text: 'hello', fontSize: 16, color: '#000', textAlign: 'left', w: 100, h: 20, ...over,
     };
 }
 
@@ -173,6 +181,31 @@ describe('SelectTool', () => {
             const result = tool().onPointerDown(ctx, pointer(50, 25));
             expect(state.setSelectionCalls).toEqual([]);
             expect(result).toMatchObject({ kind: 'move', ids: ['r1'] });
+        });
+
+        it('a plain click on the already-selected text arms an edit at the click point', () => {
+            const { ctx, state } = makeCtx([text()], ['t1']);
+            const result = tool().onPointerDown(ctx, pointer(50, 10));
+            expect(state.setSelectionCalls).toEqual([]); // already selected, untouched
+            expect(result).toMatchObject({ kind: 'move', ids: ['t1'], pendingEdit: { id: 't1', x: 50, y: 10 } });
+        });
+
+        it('does not arm an edit when the text is not yet selected (first click just selects)', () => {
+            const { ctx } = makeCtx([text()]);
+            const result = tool().onPointerDown(ctx, pointer(50, 10));
+            expect(result).not.toHaveProperty('pendingEdit');
+        });
+
+        it('does not arm an edit on a ctrl-click of the selected text', () => {
+            const { ctx } = makeCtx([text()], ['t1']);
+            const result = tool().onPointerDown(ctx, pointer(50, 10, { ctrlKey: true }));
+            expect(result).not.toHaveProperty('pendingEdit');
+        });
+
+        it('does not arm an edit for a non-inline-editable shape (rectangle)', () => {
+            const { ctx } = makeCtx([rect()], ['r1']);
+            const result = tool().onPointerDown(ctx, pointer(50, 25));
+            expect(result).not.toHaveProperty('pendingEdit');
         });
 
         it('shift-click adds the shape to the selection and moves the whole set', () => {

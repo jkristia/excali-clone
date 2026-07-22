@@ -48,6 +48,11 @@ export class ShapeRegistry {
         return this.getDefinition(shape).rotatable;
     }
 
+    /** Which resize handles this shape exposes: 'x' (left/right only) or 'both' (default). */
+    public resizeAxis(shape: Shape): 'both' | 'x' {
+        return this.getDefinition(shape).resizeAxis ?? 'both';
+    }
+
     /** Axis-aligned bounding box of a shape in world coordinates. */
     public getBounds(shape: Shape): Bounds {
         return this.getDefinition(shape).getBounds(shape);

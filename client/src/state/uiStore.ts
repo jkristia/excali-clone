@@ -43,6 +43,9 @@ export interface UIState {
     readonly selection: string[];
     /** id of the text/note currently being edited inline, if any. */
     readonly editingId: string | null;
+    /** Where to place the caret when the inline editor opens: a world point places the
+     *  caret nearest that point (click-to-edit); null selects all (double-click / new shape). */
+    readonly editingCaret: { x: number; y: number } | null;
     /** id of the group currently "entered" for scoped editing, if any. Transient,
      *  local-only view state (never in Yjs) — peers keep seeing the group as a unit.
      *  While set, clicks/marquee act on that group's members and its bounds get a
@@ -59,7 +62,7 @@ export interface UIState {
     setSelection: (ids: string[]) => void;
     toggleSelection: (id: string, additive: boolean) => void;
     clearSelection: () => void;
-    setEditing: (id: string | null) => void;
+    setEditing: (id: string | null, caret?: { x: number; y: number } | null) => void;
     /** Atomically switch to select tool and start editing id — no intermediate state where editingId is null. */
     activateEditing: (id: string) => void;
     /** Enter (or, with null, exit) a group for scoped editing. */
@@ -104,6 +107,7 @@ export class UIStore {
             },
             selection: [],
             editingId: null,
+            editingCaret: null,
             editingGroupId: null,
 
             setTool: (tool) =>
@@ -135,8 +139,8 @@ export class UIStore {
                         : { selection: [...s.selection, id] };
                 }),
             clearSelection: () => set({ selection: [], editingGroupId: null }),
-            setEditing: (id) => set({ editingId: id }),
-            activateEditing: (id) => set({ tool: 'select', editingId: id }),
+            setEditing: (id, caret = null) => set({ editingId: id, editingCaret: caret }),
+            activateEditing: (id) => set({ tool: 'select', editingId: id, editingCaret: null }),
             setEditingGroup: (id) => set({ editingGroupId: id }),
         };
         this.initialState = this.state;

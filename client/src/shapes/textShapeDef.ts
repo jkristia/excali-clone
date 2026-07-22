@@ -1,6 +1,7 @@
 import type { Bounds, TextShape } from '../model/types';
 import type { ShapeDefinition } from './shapeDefinition';
 import { Geometry } from '../util/geometry';
+import { CanvasDraw } from '../util/canvasDraw';
 
 /** Line-height for text shapes. Shared with the inline <textarea> editor and
  *  measureText so the canvas and the DOM editor lay text out identically. */
@@ -8,8 +9,18 @@ export const TEXT_LINE_HEIGHT = 1.25;
 
 export class TextShapeDef implements ShapeDefinition<TextShape> {
     public readonly capabilities = { stroke: true, fill: false, width: false, ends: false, text: true };
-    public readonly resizable = false;
+    // Text resizes width only: dragging a side handle sets a fixed wrap width and the
+    // height auto-follows the wrapped line count (see the 'x' resizeAxis handling).
+    public readonly resizable = true;
+    public readonly resizeAxis = 'x' as const;
     public readonly rotatable = true;
+
+    /** Height a wrapped text shape needs to fit `text` word-wrapped to `width` at `fontSize`.
+     *  `measureCtx` must already have the text font applied. Mirrors {@link NoteShapeDef.measureHeight}. */
+    public static measureWrapHeight(measureCtx: CanvasRenderingContext2D, text: string, fontSize: number, width: number): number {
+        const lines = CanvasDraw.wrapLines(measureCtx, text, width);
+        return Math.max(fontSize * TEXT_LINE_HEIGHT, lines.length * fontSize * TEXT_LINE_HEIGHT);
+    }
 
     public getBounds(shape: TextShape): Bounds {
         // shape.y is the line-box top and h spans full 1.25 line boxes, so the box
@@ -37,7 +48,9 @@ export class TextShapeDef implements ShapeDefinition<TextShape> {
         const lineBox = shape.fontSize * TEXT_LINE_HEIGHT;
         const m = ctx.measureText('Mg');
         const baseline = lineBox / 2 + (m.fontBoundingBoxAscent - m.fontBoundingBoxDescent) / 2;
-        shape.text.split('\n').forEach((line, i) => {
+        // Fixed-width text word-wraps to shape.w; auto-width text breaks only on newlines.
+        const lines = shape.wrap ? CanvasDraw.wrapLines(ctx, shape.text, shape.w) : shape.text.split('\n');
+        lines.forEach((line, i) => {
             ctx.fillText(line, anchorX, shape.y + i * lineBox + baseline);
         });
     }
