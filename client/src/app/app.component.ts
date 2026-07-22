@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { PresenceBarComponent } from './components/presence-bar.component';
 import { ToolbarComponent } from './components/toolbar.component';
 import { PropertiesPanelComponent } from './components/properties-panel.component';
+import { FileLabelComponent } from './components/file-label.component';
 import { WhiteboardComponent } from './whiteboard/whiteboard.component';
 import { KeyboardController, defaultIsTyping } from '../interaction/keyboardController';
 import { UI_STORE, CANVAS_DOCUMENT } from './di-tokens';
@@ -9,7 +10,7 @@ import { UI_STORE, CANVAS_DOCUMENT } from './di-tokens';
 @Component({
     selector: 'app-root',
     standalone: true,
-    imports: [PresenceBarComponent, ToolbarComponent, PropertiesPanelComponent, WhiteboardComponent],
+    imports: [PresenceBarComponent, ToolbarComponent, PropertiesPanelComponent, FileLabelComponent, WhiteboardComponent],
     templateUrl: './app.component.html',
     styleUrl: './app.component.scss',
 })

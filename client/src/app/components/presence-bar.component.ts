@@ -1,5 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { CollabService } from '../collab/collab.service';
+import { MenuComponent } from './menu.component';
 import { CANVAS_DOCUMENT } from '../di-tokens';
 
 function initials(name: string): string {
@@ -9,6 +10,7 @@ function initials(name: string): string {
 @Component({
     selector: 'app-presence-bar',
     standalone: true,
+    imports: [MenuComponent],
     templateUrl: './presence-bar.component.html',
     styleUrl: './presence-bar.component.scss',
 })

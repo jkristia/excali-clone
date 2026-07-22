@@ -167,4 +167,23 @@ describe('CanvasDocument', () => {
         doc.clearBoard();
         expect(doc.readAllShapes()).toEqual([]);
     });
+
+    describe('replaceAllShapes', () => {
+        it('drops existing shapes and inserts the new ones with their original ids', () => {
+            doc.addShape(rect('old', 0));
+            doc.replaceAllShapes([rect('a', 0), rect('b', 1)]);
+            expect(doc.readAllShapes().map((s) => s.id)).toEqual(['a', 'b']);
+            expect(doc.getShape('old')).toBeNull();
+        });
+
+        it('undoes the whole replace in a single step', () => {
+            doc.addShape(rect('original', 0));
+            // Force an undo boundary so the replace is its own item, not merged with the
+            // setup add by the UndoManager's captureTimeout.
+            doc.undoManager.stopCapturing();
+            doc.replaceAllShapes([rect('a', 0), rect('b', 1)]);
+            doc.undoManager.undo();
+            expect(doc.readAllShapes().map((s) => s.id)).toEqual(['original']);
+        });
+    });
 });
