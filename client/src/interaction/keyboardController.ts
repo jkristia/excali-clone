@@ -58,13 +58,15 @@ export class KeyboardController {
             return;
         }
 
-        // Layer / z-order shortcuts (match Excalidraw).
-        if (mod && (e.key === ']' || e.key === '[')) {
+        // Layer / z-order shortcuts (match Excalidraw). Keyed off e.code, not
+        // e.key: holding Shift changes e.key for ']'/'[' to '}'/'{', so
+        // matching on e.key would make the Shift (toFront/toBack) variants dead.
+        if (mod && (e.code === 'BracketRight' || e.code === 'BracketLeft')) {
             e.preventDefault();
             const sel = this.uiStore.getState().selection;
             if (sel.length) {
                 const op: ReorderOp =
-                    e.key === ']'
+                    e.code === 'BracketRight'
                         ? e.shiftKey
                             ? 'toFront'
                             : 'forward'

@@ -23,8 +23,8 @@ issues found
 - canvas flicker while resizing the browser window
 
 ## action
-- show group / ungroup in action
-- ctrl-shift + ] / [  does not bring to back and to front
+- ~~show group / ungroup in action~~ fixed
+- ~~ctrl-shift + ] / [  does not bring to back and to front~~ fixed
 
 ## text editing
 - to many clicks to edit a text, it should only require 2 clicks
