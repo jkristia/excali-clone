@@ -91,12 +91,20 @@ export class SceneRenderer {
             if (b) this.drawActiveContainer(ctx, b, camera.zoom);
         }
 
-        // Local selection with handles. Groups have no bounds of their own — they
-        // are shown via the union frame below, not a per-shape outline.
+        // Local selection with handles. A lone selected group has no bounds of its
+        // own — it's shown via the union frame below instead of a per-shape outline.
+        // Within a multi-selection, though, a member group still gets its own outline
+        // (over its descendants' union) so it stands out the same way a plain member
+        // shape does — matching the peer-selection outline below.
         const selected = input.selection.map((id) => selById.get(id)).filter(Boolean) as Shape[];
         for (const s of selected) {
             if (s.id === input.editingId) continue; // no selection rect while inline-editing
-            if (s.type === 'group') continue;
+            if (s.type === 'group') {
+                if (selected.length === 1) continue;
+                const b = this.shapeRegistry.unionBounds(SceneTree.boundableDescendants(input.shapes, s.id));
+                if (b) this.drawOutline(ctx, b, SceneRenderer.SELECT_COLOR, camera.zoom, 2);
+                continue;
+            }
             this.withShapeTransform(ctx, s, () => this.drawOutline(ctx, this.shapeRegistry.getBounds(s), SceneRenderer.SELECT_COLOR, camera.zoom, 2));
         }
         // A multi-selection, or a single group, gets the dashed union frame + rotate

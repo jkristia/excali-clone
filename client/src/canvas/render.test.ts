@@ -199,6 +199,31 @@ describe('multi-selection rotate handle', () => {
     });
 });
 
+describe('selection outline: groups within a multi-selection', () => {
+    // g is a group over r1 (0,0,10,10); r2 (0,20,10,10) is a separate, ungrouped shape.
+    const groupAndShape: Shape[] = [
+        { id: 'g', type: 'group', x: 0, y: 0, z: 1, createdBy: 'u' },
+        { id: 'r1', type: 'rectangle', x: 0, y: 0, z: 1, createdBy: 'u', w: 10, h: 10, fill: '#fff', stroke: '#000', strokeWidth: 2, parentId: 'g' },
+        { id: 'r2', type: 'rectangle', x: 0, y: 20, z: 2, createdBy: 'u', w: 10, h: 10, fill: '#fff', stroke: '#000', strokeWidth: 2 },
+    ];
+
+    it('a lone selected group draws no per-shape outline — only the framed union box covers it', () => {
+        const { ctx, calls } = createRecordingContext();
+        sceneRenderer.render({ ctx, ...baseInput(groupAndShape), selection: ['g'] });
+        // drawOutline (the per-shape outline) pads by 2px; the framed union box pads by 4px.
+        expect(calls).not.toContain('strokeRect(-2,-2,14,14)'); // no individual outline for the lone group
+        expect(calls).toContain('strokeRect(-4,-4,18,18)'); // framed union box over its member r1
+    });
+
+    it('a group selected alongside another shape gets its own outline, same as the plain shape', () => {
+        const { ctx, calls } = createRecordingContext();
+        sceneRenderer.render({ ctx, ...baseInput(groupAndShape), selection: ['g', 'r2'] });
+        // drawOutline pads its box by 2px (the SELECT_COLOR outline's padScreen) before stroking.
+        expect(calls).toContain('strokeRect(-2,-2,14,14)'); // group's own outline, over its member r1's bounds
+        expect(calls).toContain('strokeRect(-2,18,14,14)'); // r2's own outline
+    });
+});
+
 describe('snap-to-grid line grid', () => {
     it('draws dashed minor + solid major lines only when showGrid is true', () => {
         const on = createRecordingContext();

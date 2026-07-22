@@ -7,6 +7,7 @@ import type { Color, CornerStyle, EndpointCap, FillStyle, Shape, StrokeStyle, Te
 import type { Style } from '../../state/uiStore';
 import { panelFlags } from '../../util/panelCapabilities';
 import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS, WIDTHS, CAPS, FONT_SIZES, TEXT_ALIGNS, VERTICAL_ALIGNS, EDGES, STROKE_STYLES, FILL_STYLES } from '../../util/palette';
+import { SceneTree } from '../../util/sceneTree';
 import { LayerIconComponent } from './layer-icon.component';
 import { AlignIconComponent } from './align-icon.component';
 import { ValignIconComponent } from './valign-icon.component';
@@ -181,13 +182,19 @@ export class PropertiesPanelComponent {
     protected onOpacityInput(event: Event): void {
         const target = event.target as HTMLInputElement;
         const opacity = Number(target.value) / 100;
-        this.apply({ opacity }, () => ({ opacity }));
+        this.ui.snapshot.setStyle({ opacity });
+        // A selected group carries no render of its own — opacity only has a visible
+        // effect on its (possibly nested) leaf members, so walk each selected id's whole
+        // subtree rather than patching just the directly-selected shapes.
+        const allShapes = this.shapes();
+        const ids = new Set(this.selection().flatMap((id) => SceneTree.subtreeIds(allShapes, id)));
+        if (ids.size) this.canvasDocument.updateShapes([...ids].map((id) => ({ id, patch: { opacity } })));
     }
     protected reorder(op: ReorderOp): void {
         this.canvasDocument.reorderShapes(this.selection(), op);
     }
     protected align(op: AlignOp): void {
-        const patches = this.aligner.align(this.selected(), op);
+        const patches = this.aligner.align(this.shapes(), this.selection(), op);
         if (patches.length) this.canvasDocument.updateShapes(patches);
     }
     protected duplicate(): void {

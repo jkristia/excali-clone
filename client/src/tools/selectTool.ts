@@ -79,10 +79,15 @@ export class SelectTool implements Tool {
             if (already) {
                 return this.startMove(ctx, selection, p);
             }
-            // `target` is unselected. If a currently-selected shape (resolved to its
-            // container) sits under the pointer too, a drag should move the existing
-            // selection and only a plain click should switch — defer to pointer-up.
-            const overlapsSelection = ctx.shapes().some(
+            // `target` is unselected. If the CURRENT selection is plural (several ids, or
+            // a single group standing in for its members) and one of its shapes sits under
+            // the pointer too, a drag should move that existing selection and only a plain
+            // click should switch — defer to pointer-up. A lone selected shape never steals
+            // a drag aimed at a different shape that merely overlaps it at this point —
+            // that click means "grab the thing under the pointer," not "keep dragging what
+            // I had selected before."
+            const isPluralSelection = selection.length > 1 || (selShape && selShape.type === 'group');
+            const overlapsSelection = isPluralSelection && ctx.shapes().some(
                 (s) => this.shapeRegistry.hitTest(s, p.x, p.y)
                     && selection.includes(SceneTree.resolveContainer(ctx.shapes(), s.id, ctx.editingGroupId())),
             );
