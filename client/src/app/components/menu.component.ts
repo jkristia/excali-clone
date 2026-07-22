@@ -3,13 +3,18 @@ import { BurgerIconComponent } from './burger-icon.component';
 import { CANVAS_DOCUMENT, DOCUMENT_FILE } from '../di-tokens';
 import { UiStoreService } from '../state/ui-store.service';
 import { CurrentFileService } from '../state/current-file.service';
+import { ConfirmDialogService } from './confirm-dialog.service';
 
 interface MenuItem {
     readonly label: string;
     readonly shortcut: string;
-    readonly icon: 'open' | 'save' | 'download';
+    readonly icon: 'open' | 'save' | 'download' | 'clear';
     readonly action: () => void;
 }
+
+/** Blank-board camera: 100% zoom, no pan — the same identity the store starts at,
+ *  so a shape placed at centre lands in the same spot after a reload. */
+const IDENTITY_CAMERA = { x: 0, y: 0, zoom: 1 } as const;
 
 const FILE_TYPES: FilePickerAcceptType[] = [{ description: 'Whiteboard', accept: { 'application/json': ['.json'] } }];
 
@@ -40,6 +45,7 @@ export class MenuComponent implements OnInit, OnDestroy {
     private readonly documentFile = inject(DOCUMENT_FILE);
     private readonly ui = inject(UiStoreService);
     private readonly currentFile = inject(CurrentFileService);
+    private readonly confirmDialog = inject(ConfirmDialogService);
     private readonly fileInput = viewChild.required<ElementRef<HTMLInputElement>>('fileInput');
 
     protected readonly open = signal(false);
@@ -53,6 +59,7 @@ export class MenuComponent implements OnInit, OnDestroy {
             items.push({ label: 'Save to current file', shortcut: 'Ctrl+S', icon: 'save', action: () => this.run(() => this.save()) });
         }
         items.push({ label: 'Save to…', shortcut: '', icon: 'download', action: () => this.run(() => this.saveAs()) });
+        items.push({ label: 'Clear Whiteboard', shortcut: '', icon: 'clear', action: () => void this.clearWhiteboard() });
         return items;
     });
 
@@ -138,10 +145,26 @@ export class MenuComponent implements OnInit, OnDestroy {
         if (this.loadFromText(await file.text())) this.currentFile.set(handle);
     }
 
+    /** Reset to a blank board: drop every shape, recentre the camera at 100%, and
+     *  unbind the current file so the next save can't overwrite the loaded document. */
+    private async clearWhiteboard(): Promise<void> {
+        this.open.set(false);
+        const confirmed = await this.confirmDialog.ask({
+            title: 'Clear whiteboard?',
+            message: 'This removes all shapes for everyone in the room.',
+            confirmLabel: 'Clear',
+            danger: true,
+        });
+        if (!confirmed) return;
+        this.canvasDocument.clearBoard();
+        this.ui.snapshot.setCamera({ ...IDENTITY_CAMERA });
+        this.currentFile.clear();
+    }
+
     private loadFromText(text: string): boolean {
         const parsed = this.documentFile.deserialize(text);
         if (!parsed) {
-            window.alert('That file is not a whiteboard document.');
+            void this.confirmDialog.alert({ title: 'Invalid file', message: 'That file is not a whiteboard document.' });
             return false;
         }
         this.canvasDocument.replaceAllShapes(parsed.shapes);
@@ -182,7 +205,7 @@ export class MenuComponent implements OnInit, OnDestroy {
         void task().catch((e: unknown) => {
             if (e instanceof DOMException && e.name === 'AbortError') return; // dialog dismissed
             console.error(e);
-            window.alert('Sorry — that file operation failed.');
+            void this.confirmDialog.alert({ title: 'File operation failed', message: 'Sorry — that file operation failed.' });
         });
     }
 }

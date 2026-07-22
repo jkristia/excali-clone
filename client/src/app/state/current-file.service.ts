@@ -23,4 +23,11 @@ export class CurrentFileService {
         this.handleRef = handle;
         this.nameSig.set(handle.name);
     }
+
+    /** Unbind the board from its file, so a later save can't silently overwrite it
+     *  (used when clearing to a blank whiteboard). */
+    public clear(): void {
+        this.handleRef = null;
+        this.nameSig.set(null);
+    }
 }
