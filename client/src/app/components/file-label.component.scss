@@ -1,0 +1,22 @@
+:host {
+    position: absolute;
+    left: 12px;
+    bottom: 3px;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.file-label {
+    display: inline-block;
+    max-width: 40vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--muted);
+    font-size: 12px;
+    // background: var(--panel);
+    // padding: 4px 9px;
+    // border-radius: var(--radius);
+    // box-shadow: var(--shadow);
+    // pointer-events: auto;
+}

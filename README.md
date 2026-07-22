@@ -15,6 +15,7 @@ Edits sync in real time using [Yjs](https://yjs.dev), so people can draw at the 
 - Infinite canvas with pan & zoom
 - Undo/redo (only undoes your own edits)
 - Copy/paste shapes (pastes at the pointer)
+- Save/open boards as a local `.json` file (menu, or `Ctrl/⌘ + S` / `O`)
 - Boards can persist across server restarts
 
 For how it's built under the hood, see [DESIGN.md](docs/DESIGN.md).
@@ -87,6 +88,12 @@ npm start            # run the built server (after npm run build)
 | `Shift + 1` | Zoom to fit | &nbsp; | `Ctrl`+scroll | Zoom |
 | `Shift + 2` | Zoom to selection | &nbsp; | scroll / `Shift`+scroll | Pan / Pan horizontally |
 | `Ctrl/⌘ + '` | Toggle snap to grid | &nbsp; | | |
+
+**File**
+
+| Key | Action | &nbsp; | Key | Action |
+| --- | ------ | :---: | --- | ------ |
+| `Ctrl/⌘ + S` | Save to file (reuses the last file; prompts if none) | &nbsp; | `Ctrl/⌘ + O` | Open a board file |
 
 ## License
 

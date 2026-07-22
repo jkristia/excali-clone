@@ -111,11 +111,24 @@ export class CanvasDocument {
     /** Add several shapes in one transaction, so they undo/redo as a single step. */
     public addShapes(shapes: Shape[]): void {
         this.transact(() => {
-            for (const shape of shapes) {
-                const ym = new Y.Map<unknown>();
-                for (const [k, v] of Object.entries(shape)) ym.set(k, v);
-                this.yShapes.set(shape.id, ym);
-            }
+            for (const shape of shapes) this.insertShape(shape);
+        });
+    }
+
+    /** Store one shape as a nested Y.Map keyed by its id. Caller wraps in a transaction. */
+    private insertShape(shape: Shape): void {
+        const ym = new Y.Map<unknown>();
+        for (const [k, v] of Object.entries(shape)) ym.set(k, v);
+        this.yShapes.set(shape.id, ym);
+    }
+
+    /** Replace the entire board with `shapes` in one transaction — syncs to peers as a
+     *  single atomic update and undoes as one step. Ids are preserved (the board is fully
+     *  replaced, so there are no collisions), enabling clean round-tripping. */
+    public replaceAllShapes(shapes: Shape[]): void {
+        this.transact(() => {
+            for (const key of Array.from(this.yShapes.keys())) this.yShapes.delete(key);
+            for (const shape of shapes) this.insertShape(shape);
         });
     }
 
@@ -181,9 +194,7 @@ export class CanvasDocument {
                 createdBy: String(this.awareness.clientID),
                 ...(parentId ? { parentId } : {}),
             };
-            const gm = new Y.Map<unknown>();
-            for (const [k, v] of Object.entries(group)) gm.set(k, v);
-            this.yShapes.set(groupId, gm);
+            this.insertShape(group);
 
             ordered.forEach((m, index) => {
                 const ym = this.yShapes.get(m.id);
