@@ -7,7 +7,7 @@
                     @for (c of strokeColors; track c) {
                         <button
                             class="swatch"
-                            [class.active]="style().stroke === c"
+                            [class.active]="selectedStroke() === c"
                             [class.transparent]="c === 'transparent'"
                             [style.background]="c === 'transparent' ? null : c"
                             (click)="applyStroke(c)"
@@ -24,7 +24,7 @@
                     @for (c of fillColors; track c) {
                         <button
                             class="swatch"
-                            [class.active]="style().fill === c"
+                            [class.active]="selectedFill() === c"
                             [class.transparent]="c === 'transparent'"
                             [style.background]="c === 'transparent' ? null : c"
                             (click)="applyFill(c)"
@@ -39,7 +39,7 @@
                 <div class="prop-label">Fill style</div>
                 <div class="width-row">
                     @for (s of fillStyles; track s.value) {
-                        <button class="width-btn" [class.active]="style().fillStyle === s.value" [title]="s.label" (click)="applyFillStyle(s.value)">
+                        <button class="width-btn" [class.active]="selectedFillStyle() === s.value" [title]="s.label" (click)="applyFillStyle(s.value)">
                             <span class="cap-icon">{{ s.icon }}</span>
                         </button>
                     }
@@ -87,7 +87,7 @@
                 <div class="prop-label">Width</div>
                 <div class="width-row">
                     @for (w of widths; track w) {
-                        <button class="width-btn" [class.active]="style().strokeWidth === w" (click)="applyWidth(w)">
+                        <button class="width-btn" [class.active]="selectedStrokeWidth() === w" (click)="applyWidth(w)">
                             <span [style.height.px]="w"></span>
                         </button>
                     }
@@ -100,7 +100,7 @@
                 <div class="prop-label">Stroke style</div>
                 <div class="width-row">
                     @for (s of strokeStyles; track s.value) {
-                        <button class="width-btn" [class.active]="style().strokeStyle === s.value" [title]="s.label" (click)="applyStrokeStyle(s.value)">
+                        <button class="width-btn" [class.active]="selectedStrokeStyle() === s.value" [title]="s.label" (click)="applyStrokeStyle(s.value)">
                             <span class="cap-icon">{{ s.icon }}</span>
                         </button>
                     }
@@ -113,7 +113,7 @@
                 <div class="prop-label">Edges</div>
                 <div class="width-row">
                     @for (e of edges; track e.value) {
-                        <button class="width-btn" [class.active]="style().edges === e.value" [title]="e.label" (click)="applyEdges(e.value)">
+                        <button class="width-btn" [class.active]="selectedEdges() === e.value" [title]="e.label" (click)="applyEdges(e.value)">
                             <span class="cap-icon">{{ e.icon }}</span>
                         </button>
                     }
@@ -126,7 +126,7 @@
                 <div class="prop-label">Start</div>
                 <div class="width-row">
                     @for (c of caps; track c.cap) {
-                        <button class="width-btn" [class.active]="style().startCap === c.cap" [title]="c.label" (click)="applyStartCap(c.cap)">
+                        <button class="width-btn" [class.active]="selectedStartCap() === c.cap" [title]="c.label" (click)="applyStartCap(c.cap)">
                             <span class="cap-icon">{{ c.icon }}</span>
                         </button>
                     }
@@ -136,7 +136,7 @@
                 <div class="prop-label">End</div>
                 <div class="width-row">
                     @for (c of caps; track c.cap) {
-                        <button class="width-btn" [class.active]="style().endCap === c.cap" [title]="c.label" (click)="applyEndCap(c.cap)">
+                        <button class="width-btn" [class.active]="selectedEndCap() === c.cap" [title]="c.label" (click)="applyEndCap(c.cap)">
                             <span class="cap-icon">{{ c.icon }}</span>
                         </button>
                     }
@@ -149,7 +149,7 @@
                 <div class="prop-label">Note</div>
                 <div class="swatch-row">
                     @for (c of noteColors; track c) {
-                        <button class="swatch" [class.active]="style().noteFill === c" [style.background]="c" (click)="applyNoteFill(c)"></button>
+                        <button class="swatch" [class.active]="selectedNoteFill() === c" [style.background]="c" (click)="applyNoteFill(c)"></button>
                     }
                 </div>
             </div>
@@ -160,7 +160,7 @@
                 <div class="prop-label">Font size</div>
                 <div class="width-row">
                     @for (f of fontSizes; track f.size) {
-                        <button class="width-btn" [class.active]="style().fontSize === f.size" [title]="f.label" (click)="applyFontSize(f.size)">
+                        <button class="width-btn" [class.active]="selectedFontSize() === f.size" [title]="f.label" (click)="applyFontSize(f.size)">
                             <span class="cap-icon">{{ f.label }}</span>
                         </button>
                     }
@@ -170,7 +170,7 @@
                 <div class="prop-label">Text align</div>
                 <div class="width-row">
                     @for (a of textAligns; track a.align) {
-                        <button class="width-btn" [class.active]="style().textAlign === a.align" [title]="a.label" (click)="applyTextAlign(a.align)">
+                        <button class="width-btn" [class.active]="selectedTextAlign() === a.align" [title]="a.label" (click)="applyTextAlign(a.align)">
                             <span class="cap-icon"><app-align-icon [align]="a.align" /></span>
                         </button>
                     }
