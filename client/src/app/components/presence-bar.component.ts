@@ -19,6 +19,8 @@ export class PresenceBarComponent {
     private readonly canvasDocument = inject(CANVAS_DOCUMENT);
 
     protected readonly room = this.canvasDocument.room;
+    /** Online = joined a shared room; offline (local-only) hides presence UI. */
+    protected readonly online = this.canvasDocument.room !== null;
     protected readonly identity = this.canvasDocument.identity;
     protected readonly selfInitials = initials(this.canvasDocument.identity.name);
 

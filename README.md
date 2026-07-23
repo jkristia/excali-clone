@@ -29,7 +29,9 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:5173>. To collaborate, open the same URL in another tab or device. Use `?room=team-standup` to share a specific board — anyone with the same room name sees the same board.
+Open <http://localhost:5173>. By default (no room), the board is **local to your browser** — nothing is shared. Changes persist in the browser (and sync live across your own open tabs), and you can save/open boards as a `.json` file.
+
+To collaborate, add a room: `?room=team-standup`. Anyone who opens the same URL — another tab, device, or person — sees and edits the same board live, with cursors and presence.
 
 ### Individual commands
 

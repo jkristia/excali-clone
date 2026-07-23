@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Shape } from '../model/types';
 import type { IdentityStore } from './identity';
+import { FakeBroadcastChannel } from '../test-support/fakeBroadcastChannel';
 
 vi.mock('y-websocket', () => ({
     WebsocketProvider: vi.fn().mockImplementation(function WebsocketProvider(this: object) {
@@ -17,6 +18,7 @@ vi.mock('y-indexeddb', () => ({
 }));
 
 vi.stubGlobal('window', { location: { search: '', hostname: 'localhost' } });
+vi.stubGlobal('BroadcastChannel', FakeBroadcastChannel);
 
 const { CanvasDocument } = await import('./canvasDocument');
 
@@ -32,10 +34,17 @@ function makeDoc() {
 let doc: ReturnType<typeof makeDoc>;
 
 beforeEach(() => {
+    FakeBroadcastChannel.reset();
     doc = makeDoc();
 });
 
 describe('CanvasDocument', () => {
+    it('is local-only (no room, no provider) when the URL has no ?room', () => {
+        expect(doc.room).toBeNull();
+        expect(doc.provider).toBeNull();
+        expect(doc.localChannel).not.toBeNull();
+    });
+
     it('addShape + getShape round-trips a shape', () => {
         doc.addShape(rect('a', 0));
         expect(doc.getShape('a')).toMatchObject({ id: 'a', type: 'rectangle' });

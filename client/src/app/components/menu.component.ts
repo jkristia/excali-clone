@@ -198,7 +198,7 @@ export class MenuComponent implements OnInit, OnDestroy {
     }
 
     private suggestedName(): string {
-        return `whiteboard-${this.canvasDocument.room}.json`;
+        return `whiteboard-${this.canvasDocument.room ?? 'local'}.json`;
     }
 
     /** Run a file task, ignoring a user-dismissed dialog and surfacing real failures. */
