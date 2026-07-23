@@ -53,6 +53,17 @@ describe('LocalDocChannel', () => {
         expect(shapesOf(b)).toEqual(['r1']);
     });
 
+    it('relays board metadata (e.g. the file name) alongside shapes', () => {
+        const a = new Y.Doc();
+        const b = new Y.Doc();
+        new LocalDocChannel('local', a);
+        new LocalDocChannel('local', b);
+
+        a.getMap<unknown>('meta').set('fileName', 'jk-001.json');
+
+        expect(b.getMap<unknown>('meta').get('fileName')).toBe('jk-001.json');
+    });
+
     it('isolates boards with different names', () => {
         const a = new Y.Doc();
         const b = new Y.Doc();

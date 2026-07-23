@@ -26,6 +26,8 @@ export class CanvasDocument {
     public readonly identity: UserPresence;
     public readonly ydoc: Y.Doc;
     public readonly yShapes: Y.Map<Y.Map<unknown>>;
+    /** Board-level metadata (e.g. the bound file name) that syncs and persists with the doc. */
+    public readonly meta: Y.Map<unknown>;
     public readonly persistence: IndexeddbPersistence;
     /** The websocket sync provider, or `null` when offline (local-only board). */
     public readonly provider: WebsocketProvider | null;
@@ -40,6 +42,7 @@ export class CanvasDocument {
 
         this.ydoc = new Y.Doc();
         this.yShapes = this.ydoc.getMap<Y.Map<unknown>>('shapes');
+        this.meta = this.ydoc.getMap<unknown>('meta');
 
         // Offline-first: persist locally and (when in a room) re-sync on reconnect.
         const boardKey = this.room ?? 'local';
@@ -80,6 +83,21 @@ export class CanvasDocument {
     /** Run a mutation as a single local (undoable) transaction. */
     private transact(fn: () => void): void {
         this.ydoc.transact(fn, LOCAL_ORIGIN);
+    }
+
+    /** The file name the board is bound to, or null when unbound. Stored in the shared
+     *  doc so it syncs to peers/other tabs and persists with the board. */
+    public get fileName(): string | null {
+        const value = this.meta.get('fileName');
+        return typeof value === 'string' ? value : null;
+    }
+
+    public setFileName(name: string | null): void {
+        // meta isn't in the UndoManager's scope (yShapes only), so this won't be undoable.
+        this.transact(() => {
+            if (name === null) this.meta.delete('fileName');
+            else this.meta.set('fileName', name);
+        });
     }
 
     private static readShape(ym: Y.Map<unknown>): Shape {
