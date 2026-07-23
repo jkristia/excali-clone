@@ -15,7 +15,7 @@ export class CollabService {
 
     private readonly shapesSig = signal<Shape[]>(this.canvasDocument.readAllShapes());
     private readonly peersSig = signal<PeerPresence[]>(this.computePeers());
-    private readonly statusSig = signal<ConnStatus>(this.canvasDocument.provider.wsconnected ? 'connected' : 'connecting');
+    private readonly statusSig = signal<ConnStatus>(this.canvasDocument.provider?.wsconnected ? 'connected' : 'connecting');
     private readonly undoRedoSig = signal(this.computeUndoRedo());
 
     public readonly shapes = this.shapesSig.asReadonly();
@@ -27,7 +27,9 @@ export class CollabService {
         const doc = this.canvasDocument;
         doc.yShapes.observeDeep(() => this.shapesSig.set(doc.readAllShapes()));
         doc.awareness.on('change', () => this.peersSig.set(this.computePeers()));
-        doc.provider.on('status', (e: { status: ConnStatus }) => this.statusSig.set(e.status));
+        if (doc.provider) {
+            doc.provider.on('status', (e: { status: ConnStatus }) => this.statusSig.set(e.status));
+        }
         const updateUndoRedo = () => this.undoRedoSig.set(this.computeUndoRedo());
         doc.undoManager.on('stack-item-added', updateUndoRedo);
         doc.undoManager.on('stack-item-popped', updateUndoRedo);

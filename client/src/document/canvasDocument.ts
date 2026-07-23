@@ -2,11 +2,12 @@ import * as Y from 'yjs';
 import { nanoid } from 'nanoid';
 import { WebsocketProvider } from 'y-websocket';
 import { IndexeddbPersistence } from 'y-indexeddb';
-import type { Awareness } from 'y-protocols/awareness';
+import { Awareness } from 'y-protocols/awareness';
 import type { GroupShape, Shape } from '../model/types';
 import type { UserPresence } from '../model/types';
 import { SceneTree } from '../util/sceneTree';
 import { IdentityStore } from './identity';
+import { LocalDocChannel } from './localDocChannel';
 
 /** Transactions tagged with this origin are the ones the UndoManager tracks. */
 export const LOCAL_ORIGIN = 'local';
@@ -20,12 +21,16 @@ export type ReorderOp = 'toFront' | 'toBack' | 'forward' | 'backward';
  * clobbering.
  */
 export class CanvasDocument {
-    public readonly room: string;
+    /** The shared room, or `null` for a local-only board (no `?room` in the URL). */
+    public readonly room: string | null;
     public readonly identity: UserPresence;
     public readonly ydoc: Y.Doc;
     public readonly yShapes: Y.Map<Y.Map<unknown>>;
     public readonly persistence: IndexeddbPersistence;
-    public readonly provider: WebsocketProvider;
+    /** The websocket sync provider, or `null` when offline (local-only board). */
+    public readonly provider: WebsocketProvider | null;
+    /** Cross-tab live sync for a local-only board, or `null` when a provider handles it. */
+    public readonly localChannel: LocalDocChannel | null;
     public readonly awareness: Awareness;
     public readonly undoManager: Y.UndoManager;
 
@@ -36,11 +41,23 @@ export class CanvasDocument {
         this.ydoc = new Y.Doc();
         this.yShapes = this.ydoc.getMap<Y.Map<unknown>>('shapes');
 
-        // Offline-first: persist locally and re-sync on reconnect.
-        this.persistence = new IndexeddbPersistence(`whiteboard-${this.room}`, this.ydoc);
+        // Offline-first: persist locally and (when in a room) re-sync on reconnect.
+        const boardKey = this.room ?? 'local';
+        this.persistence = new IndexeddbPersistence(`whiteboard-${boardKey}`, this.ydoc);
 
-        this.provider = new WebsocketProvider(wsUrl, this.room, this.ydoc, { connect: true });
-        this.awareness = this.provider.awareness;
+        if (this.room) {
+            this.provider = new WebsocketProvider(wsUrl, this.room, this.ydoc, { connect: true });
+            this.awareness = this.provider.awareness;
+            // The provider carries its own cross-tab BroadcastChannel; no local one needed.
+            this.localChannel = null;
+        } else {
+            // Local-only board: no server. Keep a standalone awareness so `clientID`
+            // (used for `createdBy`) stays available, and live-sync across this
+            // browser's tabs over a BroadcastChannel.
+            this.provider = null;
+            this.awareness = new Awareness(this.ydoc);
+            this.localChannel = new LocalDocChannel(boardKey, this.ydoc);
+        }
 
         this.undoManager = new Y.UndoManager(this.yShapes, {
             trackedOrigins: new Set([LOCAL_ORIGIN]),
@@ -48,10 +65,10 @@ export class CanvasDocument {
         });
     }
 
-    private static roomFromLocation(): string {
+    private static roomFromLocation(): string | null {
         const params = new URLSearchParams(window.location.search);
         const room = params.get('room');
-        return (room && room.trim()) || 'default-room';
+        return (room && room.trim()) || null;
     }
 
     // VITE_WS_URL is statically replaced by Vite at build time (empty/undefined if unset),
