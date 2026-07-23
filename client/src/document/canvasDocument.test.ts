@@ -170,6 +170,26 @@ describe('CanvasDocument', () => {
         });
     });
 
+    describe('fileName', () => {
+        it('is null on a fresh board', () => {
+            expect(doc.fileName).toBeNull();
+        });
+
+        it('round-trips through setFileName and clears with null', () => {
+            doc.setFileName('jk-001.json');
+            expect(doc.fileName).toBe('jk-001.json');
+            doc.setFileName(null);
+            expect(doc.fileName).toBeNull();
+        });
+
+        it('notifies meta observers so other tabs can reflect the name', () => {
+            const seen: Array<string | null> = [];
+            doc.meta.observe(() => seen.push(doc.fileName));
+            doc.setFileName('jk-001.json');
+            expect(seen).toEqual(['jk-001.json']);
+        });
+    });
+
     it('clearBoard removes all shapes', () => {
         doc.addShape(rect('a', 0));
         doc.addShape(rect('b', 1));
