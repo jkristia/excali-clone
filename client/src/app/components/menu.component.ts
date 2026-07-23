@@ -55,7 +55,7 @@ export class MenuComponent implements OnInit, OnDestroy {
         const items: MenuItem[] = [
             { label: 'Open', shortcut: 'Ctrl+O', icon: 'open', action: () => this.run(() => this.openFile()) },
         ];
-        if (this.currentFile.name()) {
+        if (this.currentFile.hasHandle()) {
             items.push({ label: 'Save to current file', shortcut: 'Ctrl+S', icon: 'save', action: () => this.run(() => this.save()) });
         }
         items.push({ label: 'Save to…', shortcut: '', icon: 'download', action: () => this.run(() => this.saveAs()) });
