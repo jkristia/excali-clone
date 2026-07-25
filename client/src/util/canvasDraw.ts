@@ -1,4 +1,6 @@
 import type { Bounds, Color, EndpointCap, FillStyle, StrokeStyle, TextAlign, VerticalAlign } from '../model/types';
+import { FontUtil } from './fontUtil';
+import type { ResolvedTextOptions } from './textOptions';
 
 /** Small reusable canvas-2D drawing primitives shared by multiple shape definitions. */
 export class CanvasDraw {
@@ -280,21 +282,21 @@ export class CanvasDraw {
         }
     }
 
-    /** Draw a word-wrapped caption over a shape, aligned within `bounds` per `align`/`valign`.
-     *  Box shapes wrap to `bounds.w`; `pill` shapes (arrow/draw, no real box) split only on
-     *  `\n`, stay centered on the midpoint (alignment is not offered for them) and get a
-     *  translucent rounded background behind the text so it stays legible over the line. */
+    /** Draw a word-wrapped caption over a shape, aligned within `bounds` per `resolved`'s
+     *  `hAlign`/`vAlign`. Box shapes wrap to `bounds.w`; `pill` shapes (arrow/draw, no real
+     *  box) split only on `\n`, stay centered on the midpoint (alignment is not offered for
+     *  them) and get a translucent rounded background behind the text so it stays legible
+     *  over the line. */
     public static drawCenteredLabel(
         ctx: CanvasRenderingContext2D,
         text: string,
         bounds: Bounds,
-        fontSize: number,
+        resolved: ResolvedTextOptions,
         pill = false,
-        align: TextAlign = 'center',
-        valign: VerticalAlign = 'middle',
     ): void {
+        const { fontSize } = resolved;
         ctx.save();
-        ctx.font = `${fontSize}px Inter, system-ui, sans-serif`;
+        ctx.font = FontUtil.cssFont(fontSize, resolved.fontFamily);
         ctx.textBaseline = 'top';
         const lineHeight = fontSize * CanvasDraw.LABEL_LINE_HEIGHT;
         const wrapWidth = pill ? Number.POSITIVE_INFINITY : bounds.w;
@@ -302,10 +304,10 @@ export class CanvasDraw {
         // Pills have no real box to align within — pin them to the midpoint as before.
         const top = pill
             ? bounds.y + (bounds.h - lines.length * lineHeight) / 2
-            : bounds.y + CanvasDraw.labelOffsetY(ctx, text, fontSize, bounds.w, bounds.h, valign);
+            : bounds.y + CanvasDraw.labelOffsetY(ctx, text, fontSize, bounds.w, bounds.h, resolved.vAlign);
         const centerX = bounds.x + bounds.w / 2;
         if (pill) CanvasDraw.drawLabelPill(ctx, lines, centerX, top, lineHeight);
-        const anchor = pill ? { x: centerX, textAlign: 'center' as CanvasTextAlign } : CanvasDraw.labelAnchorX(bounds, align);
+        const anchor = pill ? { x: centerX, textAlign: 'center' as CanvasTextAlign } : CanvasDraw.labelAnchorX(bounds, resolved.hAlign);
         ctx.fillStyle = '#1e1e1e';
         ctx.textAlign = anchor.textAlign;
         let cursorY = top;

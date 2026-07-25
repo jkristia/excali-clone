@@ -1,7 +1,8 @@
-import type { TextAlign, VerticalAlign } from '../model/types';
+import { Font, type TextAlign, type VerticalAlign } from '../model/types';
 import { TEXT_LINE_HEIGHT, TextShapeDef } from '../shapes/textShapeDef';
 import { NoteShapeDef } from '../shapes/noteShapeDef';
 import { CanvasDraw } from './canvasDraw';
+import { FontUtil } from './fontUtil';
 
 /** How the inline editor lays text out, enough to map a click point to a caret index. */
 export interface CaretLayout {
@@ -19,13 +20,13 @@ export interface CaretLayout {
 export class TextMeasure {
     private readonly ctx = document.createElement('canvas').getContext('2d')!;
 
-    private applyFont(fontSize: number): void {
-        this.ctx.font = `${fontSize}px Inter, system-ui, sans-serif`;
+    private applyFont(fontSize: number, font: Font = Font.Font1): void {
+        this.ctx.font = FontUtil.cssFont(fontSize, font);
     }
 
     /** Width/height a text shape needs to fit `text` at `fontSize`. */
-    public measureText(text: string, fontSize: number): { w: number; h: number } {
-        this.applyFont(fontSize);
+    public measureText(text: string, fontSize: number, font: Font = Font.Font1): { w: number; h: number } {
+        this.applyFont(fontSize, font);
         const lines = text.split('\n');
         let w = 0;
         for (const line of lines) w = Math.max(w, this.ctx.measureText(line || ' ').width);
@@ -35,15 +36,17 @@ export class TextMeasure {
 
     /** Width/height a wrapped text shape needs: text word-wraps to `width`, height follows
      *  the wrapped line count. Width is echoed back (the fixed wrap width the user set). */
-    public measureTextWrapped(text: string, fontSize: number, width: number): { w: number; h: number } {
-        this.applyFont(fontSize);
+    public measureTextWrapped(text: string, fontSize: number, width: number, font: Font = Font.Font1): { w: number; h: number } {
+        this.applyFont(fontSize, font);
         return { w: width, h: TextShapeDef.measureWrapHeight(this.ctx, text, fontSize, width) };
     }
 
     /** The caret index (string offset) nearest a click at local point (localX, localY) — local
      *  to the text block's top-left, so callers subtract any padding first. */
-    public caretIndexAt(text: string, fontSize: number, localX: number, localY: number, layout: CaretLayout): number {
-        this.applyFont(fontSize);
+    public caretIndexAt(
+        text: string, fontSize: number, localX: number, localY: number, layout: CaretLayout, font: Font = Font.Font1,
+    ): number {
+        this.applyFont(fontSize, font);
         return TextMeasure.caretIndex(this.ctx, text, fontSize, localX, localY, layout);
     }
 
@@ -111,21 +114,25 @@ export class TextMeasure {
     }
 
     /** Height a note needs to fit its wrapped text — see {@link NoteShapeDef.measureHeight}. */
-    public measureNote(text: string, fontSize: number, width: number): number {
-        this.applyFont(fontSize);
+    public measureNote(text: string, fontSize: number, width: number, font: Font = Font.Font1): number {
+        this.applyFont(fontSize, font);
         return NoteShapeDef.measureHeight(this.ctx, text, fontSize, width);
     }
 
-    /** Top padding that vertically centers a note's text — see {@link NoteShapeDef.textOffsetY}. */
-    public noteTop(text: string, fontSize: number, width: number, height: number): number {
-        this.applyFont(fontSize);
-        return NoteShapeDef.textOffsetY(this.ctx, text, fontSize, width, height);
+    /** Top padding that places a note's text per `valign` — see {@link NoteShapeDef.textOffsetY}. */
+    public noteTop(
+        text: string, fontSize: number, width: number, height: number, valign: VerticalAlign = 'middle', font: Font = Font.Font1,
+    ): number {
+        this.applyFont(fontSize, font);
+        return NoteShapeDef.textOffsetY(this.ctx, text, fontSize, width, height, valign);
     }
 
     /** Top padding that aligns a caption in the editor overlay per `valign`, matching the
      *  canvas — see {@link CanvasDraw.labelOffsetY}. Floored at 0 so it never rides above. */
-    public labelTop(text: string, fontSize: number, width: number, height: number, valign: VerticalAlign = 'middle'): number {
-        this.applyFont(fontSize);
+    public labelTop(
+        text: string, fontSize: number, width: number, height: number, valign: VerticalAlign = 'middle', font: Font = Font.Font1,
+    ): number {
+        this.applyFont(fontSize, font);
         return Math.max(0, CanvasDraw.labelOffsetY(this.ctx, text, fontSize, width, height, valign));
     }
 }

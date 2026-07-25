@@ -1,6 +1,7 @@
-import type { Color, CornerStyle, EndpointCap, FillStyle, StrokeStyle, TextAlign, VerticalAlign } from '../model/types';
+import { Font, type Color, type CornerStyle, type EndpointCap, type FillStyle, type StrokeStyle, type TextAlign, type VerticalAlign } from '../model/types';
 import { ToolRegistry } from '../tools/toolRegistry';
-import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS, FontSize } from '../util/palette';
+import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS } from '../util/palette';
+import { FontUtil } from '../util/fontUtil';
 
 export type Tool = 'select' | 'pan' | 'rectangle' | 'ellipse' | 'diamond' | 'line' | 'arrow' | 'draw' | 'text' | 'note';
 
@@ -18,13 +19,11 @@ export interface Style {
     fillStyle: FillStyle;
     /** 0..1 shape opacity applied to the current selection. */
     opacity: number;
+    /** Text options for the next shape's caption or body — see {@link TextOptionsUtil.fromStyle}. */
     fontSize: number;
-    /** Caption font size (px) for the label control. */
-    labelFontSize: number;
-    /** Caption horizontal/vertical alignment for the label-align controls. */
-    labelHAlign: TextAlign;
-    labelVAlign: VerticalAlign;
-    textAlign: TextAlign;
+    fontFamily: Font;
+    hAlign: TextAlign;
+    vAlign: VerticalAlign;
     noteFill: Color;
     startCap: EndpointCap;
     endCap: EndpointCap;
@@ -95,11 +94,10 @@ export class UIStore {
                 strokeStyle: 'solid',
                 fillStyle: 'solid',
                 opacity: 1,
-                fontSize: FontSize.Medium,
-                labelFontSize: FontSize.Small,
-                labelHAlign: 'center',
-                labelVAlign: 'middle',
-                textAlign: 'left',
+                fontSize: FontUtil.mediumSize(Font.Font1),
+                fontFamily: Font.Font1,
+                hAlign: 'left',
+                vAlign: 'middle',
                 noteFill: NOTE_COLORS[0],
                 startCap: 'none',
                 endCap: 'arrow',

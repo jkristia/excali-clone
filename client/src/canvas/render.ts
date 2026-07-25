@@ -7,6 +7,7 @@ import { GridMath } from '../util/gridMath';
 import { CanvasDraw } from '../util/canvasDraw';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { SceneTree } from '../util/sceneTree';
+import { TextOptionsUtil } from '../util/textOptions';
 
 export interface RenderInput {
     ctx: CanvasRenderingContext2D;
@@ -202,10 +203,9 @@ export class SceneRenderer {
     private drawLabel(ctx: CanvasRenderingContext2D, shape: Shape): void {
         if (!shape.label || shape.type === 'text' || shape.type === 'note') return;
         const pill = shape.type === 'arrow' || shape.type === 'draw';
-        CanvasDraw.drawCenteredLabel(
-            ctx, shape.label, this.shapeRegistry.getBounds(shape), shape.labelFontSize ?? 16,
-            pill, shape.labelHAlign ?? 'center', shape.labelVAlign ?? 'middle',
-        );
+        const def = this.shapeRegistry.getDefinition(shape);
+        const resolved = TextOptionsUtil.resolve(shape.textOptions, def.defaultTextOptions);
+        CanvasDraw.drawCenteredLabel(ctx, shape.label, this.shapeRegistry.getBounds(shape), resolved, pill);
     }
 
     /** Run `fn` with the canvas rotated about the shape's bounds center, so the

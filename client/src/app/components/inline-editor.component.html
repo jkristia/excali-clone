@@ -12,10 +12,10 @@
             [style.top.px]="pos().y"
             style="position:absolute; transform-origin: top left;"
             [style.transform]="transform()"
-            [style.font]="shape.fontSize + 'px Inter, system-ui, sans-serif'"
+            [style.font]="FontUtil.cssFont(resolvedOptions().fontSize, resolvedOptions().fontFamily)"
             [style.line-height]="lineHeight"
             [style.color]="shape.color"
-            [style.text-align]="shape.textAlign"
+            [style.text-align]="resolvedOptions().hAlign"
             [style.width.px]="shape.wrap ? shape.w : Math.max(40, shape.w + 8)"
         ></textarea>
     } @else if (shape.type === 'note') {
@@ -34,8 +34,9 @@
             [style.width.px]="shape.w"
             [style.height.px]="shape.h"
             [style.padding-top.px]="noteTop()"
-            [style.font-size.px]="shape.fontSize"
-            [style.text-align]="shape.textAlign"
+            [style.font-size.px]="resolvedOptions().fontSize"
+            [style.font-family]="FontUtil.stack(resolvedOptions().fontFamily)"
+            [style.text-align]="resolvedOptions().hAlign"
             [style.background]="shape.fill"
         ></textarea>
     } @else if (box(); as box) {
@@ -56,8 +57,8 @@
             [style.padding-top.px]="labelTop()"
             [style.padding-left.px]="labelPadding"
             [style.padding-right.px]="labelPadding"
-            [style.text-align]="labelAlign()"
-            [style.font]="labelFontSize() + 'px Inter, system-ui, sans-serif'"
+            [style.text-align]="resolvedOptions().hAlign"
+            [style.font]="FontUtil.cssFont(resolvedOptions().fontSize, resolvedOptions().fontFamily)"
         ></textarea>
     }
 }
