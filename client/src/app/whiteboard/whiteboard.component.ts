@@ -10,6 +10,7 @@ import type { PointerInfo } from '../../interaction/interaction';
 import { SceneTree } from '../../util/sceneTree';
 import { Geometry } from '../../util/geometry';
 import { Handles } from '../../util/handles';
+import { FontUtil } from '../../util/fontUtil';
 
 /** World-space offset applied to each duplicate, down-right from its source. */
 const DUPLICATE_OFFSET = 20;
@@ -127,6 +128,12 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
         resize();
         this.ro = new ResizeObserver(resize);
         this.ro.observe(container);
+
+        // --- Force the custom @font-face files to load, then redraw so the first paint
+        // isn't stuck on the fallback font (canvas never repaints itself on font load). ---
+        void FontUtil.loadAll()
+            .then(() => this.scheduleRender())
+            .catch((e: unknown) => console.error(e));
 
         // --- Keyboard shortcuts (delete / escape) ---
         const onKeyDown = (e: KeyboardEvent) => {

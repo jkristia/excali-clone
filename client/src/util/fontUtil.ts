@@ -62,4 +62,12 @@ export class FontUtil {
     public static mediumSize(font: Font = Font.Font1): number {
         return FontUtil.sizesFor(font)[1].pxSize;
     }
+
+    /** Forces the `@font-face` files to fetch/decode. Canvas `fillText` silently falls back
+     *  to a system font for whatever hasn't loaded yet and never repaints on its own once the
+     *  real font arrives — unlike DOM text, nothing tells the canvas to redraw. Callers must
+     *  re-render once this resolves. */
+    public static async loadAll(): Promise<void> {
+        await Promise.all(Object.values(FONT_STACKS).map((stack) => document.fonts.load(`16px ${stack}`)));
+    }
 }
