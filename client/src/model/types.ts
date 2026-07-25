@@ -41,6 +41,8 @@ export interface BaseShape {
     label?: string;
     /** Caption font size in px. Absent ⇒ 16 (the 'S' size). */
     labelFontSize?: number;
+    /** Caption font family. Absent ⇒ Font1. */
+    labelFontFamily?: Font;
     /** Horizontal alignment of the caption within the shape box. Absent ⇒ 'center'.
      *  Honored by the box shapes (rectangle/ellipse/diamond); arrow/draw pin their
      *  caption to the line midpoint and ignore it. */
@@ -118,10 +120,19 @@ export type TextAlign = 'left' | 'center' | 'right';
 /** Vertical placement of a caption within its shape box. Absent ⇒ 'middle'. */
 export type VerticalAlign = 'top' | 'middle' | 'bottom';
 
+/** Font family choice for text-bearing shapes. Placeholder names — real font stacks TBD. */
+export const enum Font {
+    Font1 = 'Font1',
+    Font2 = 'Font2',
+    Font3 = 'Font3',
+}
+
 export interface TextShape extends BaseShape {
     type: 'text';
     text: string;
     fontSize: number;
+    /** Absent ⇒ Font1. */
+    fontFamily?: Font;
     color: Color;
     textAlign: TextAlign;
     /** measured width/height, kept for hit-testing. */
@@ -139,6 +150,8 @@ export interface NoteShape extends BaseShape {
     h: number;
     text: string;
     fontSize: number;
+    /** Absent ⇒ Font1. */
+    fontFamily?: Font;
     textAlign: TextAlign;
     /** background color of the sticky note. */
     fill: Color;

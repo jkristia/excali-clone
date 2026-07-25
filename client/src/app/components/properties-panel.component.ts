@@ -3,10 +3,11 @@ import { UiStoreService } from '../state/ui-store.service';
 import { CollabService } from '../collab/collab.service';
 import { CANVAS_DOCUMENT, SHAPE_REGISTRY, TOOL_REGISTRY, TEXT_MEASURE, CLIPBOARD_CONTROLLER } from '../di-tokens';
 import type { ReorderOp } from '../../document/canvasDocument';
-import type { Color, CornerStyle, EndpointCap, FillStyle, Shape, StrokeStyle, TextAlign, VerticalAlign } from '../../model/types';
+import { Font, type Color, type CornerStyle, type EndpointCap, type FillStyle, type Shape, type StrokeStyle, type TextAlign, type VerticalAlign } from '../../model/types';
 import type { Style } from '../../state/uiStore';
 import { panelFlags } from '../../util/panelCapabilities';
-import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS, WIDTHS, CAPS, FONT_SIZES, TEXT_ALIGNS, VERTICAL_ALIGNS, EDGES, STROKE_STYLES, FILL_STYLES } from '../../util/palette';
+import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS, WIDTHS, CAPS, TEXT_ALIGNS, VERTICAL_ALIGNS, EDGES, STROKE_STYLES, FILL_STYLES } from '../../util/palette';
+import { FONT_SIZE_LABELS, FONTS, FontUtil } from '../../util/fontUtil';
 import { SceneTree } from '../../util/sceneTree';
 import { LayerIconComponent } from './layer-icon.component';
 import { AlignIconComponent } from './align-icon.component';
@@ -68,7 +69,8 @@ export class PropertiesPanelComponent {
     protected readonly strokeStyles = STROKE_STYLES;
     protected readonly fillStyles = FILL_STYLES;
     protected readonly caps = CAPS;
-    protected readonly fontSizes = FONT_SIZES;
+    protected readonly fonts = FONTS;
+    protected readonly fontSizeLabels = FONT_SIZE_LABELS;
     protected readonly textAligns = TEXT_ALIGNS;
     protected readonly verticalAligns = VERTICAL_ALIGNS;
     protected readonly edges = EDGES;
@@ -113,6 +115,15 @@ export class PropertiesPanelComponent {
         const first = selected[0].labelFontSize ?? 16;
         return selected.every((s) => (s.labelFontSize ?? 16) === first) ? first : 16;
     });
+    /** The selection's common caption font family, or the Font1 default when empty/mixed. */
+    protected readonly labelFontFamily = computed<Font>(() => {
+        const selected = this.selected();
+        if (!selected.length) return Font.Font1;
+        const first = selected[0].labelFontFamily ?? Font.Font1;
+        return selected.every((s) => (s.labelFontFamily ?? Font.Font1) === first) ? first : Font.Font1;
+    });
+    /** Caption size scale for the currently selected caption font — each font carries its own. */
+    protected readonly labelFontSizes = computed(() => FontUtil.sizesFor(this.labelFontFamily()));
     /** The selection's common caption horizontal alignment, or 'center' when empty/mixed. */
     protected readonly labelAlign = computed<TextAlign>(() => {
         const selected = this.selected();
@@ -159,6 +170,11 @@ export class PropertiesPanelComponent {
     protected readonly selectedFontSize = computed(() =>
         this.selectedCommon('fontSize', (s) => (s.type === 'text' || s.type === 'note' ? s.fontSize : undefined)),
     );
+    protected readonly selectedFontFamily = computed(() =>
+        this.selectedCommon('fontFamily', (s) => (s.type === 'text' || s.type === 'note' ? (s.fontFamily ?? Font.Font1) : undefined)),
+    );
+    /** Font size scale for the currently selected font family — each font carries its own. */
+    protected readonly fontSizes = computed(() => FontUtil.sizesFor(this.selectedFontFamily()));
     protected readonly selectedTextAlign = computed(() =>
         this.selectedCommon('textAlign', (s) => (s.type === 'text' || s.type === 'note' ? s.textAlign : undefined)),
     );
@@ -206,17 +222,32 @@ export class PropertiesPanelComponent {
             if (s.type === 'text') {
                 // Fixed-width text keeps its wrap width and re-wraps; auto text re-fits both dims.
                 const { w, h } = s.wrap
-                    ? this.textMeasure.measureTextWrapped(s.text, size, s.w)
-                    : this.textMeasure.measureText(s.text, size);
+                    ? this.textMeasure.measureTextWrapped(s.text, size, s.w, s.fontFamily)
+                    : this.textMeasure.measureText(s.text, size, s.fontFamily);
                 return { fontSize: size, w, h };
             }
-            return s.type === 'note' ? { fontSize: size, h: this.textMeasure.measureNote(s.text, size, s.w) } : null;
+            return s.type === 'note' ? { fontSize: size, h: this.textMeasure.measureNote(s.text, size, s.w, s.fontFamily) } : null;
+        });
+    }
+    protected applyFontFamily(font: Font): void {
+        // Switching family changes glyph widths, so re-measure exactly like applyFontSize does.
+        this.apply({ fontFamily: font }, (s) => {
+            if (s.type === 'text') {
+                const { w, h } = s.wrap
+                    ? this.textMeasure.measureTextWrapped(s.text, s.fontSize, s.w, font)
+                    : this.textMeasure.measureText(s.text, s.fontSize, font);
+                return { fontFamily: font, w, h };
+            }
+            return s.type === 'note' ? { fontFamily: font, h: this.textMeasure.measureNote(s.text, s.fontSize, s.w, font) } : null;
         });
     }
     protected applyLabelFontSize(size: number): void {
         // Caption font size lives on BaseShape (any captioned shape), so the patch is
         // unconditional — no per-type guard needed, like opacity.
         this.apply({ labelFontSize: size }, () => ({ labelFontSize: size }));
+    }
+    protected applyLabelFontFamily(font: Font): void {
+        this.apply({ labelFontFamily: font }, () => ({ labelFontFamily: font }));
     }
     protected applyLabelAlign(a: TextAlign): void {
         // Only the box shapes gate the control (labelAlign capability), but the field lives

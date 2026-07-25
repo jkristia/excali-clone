@@ -1,4 +1,5 @@
-import type { Bounds, Color, EndpointCap, FillStyle, StrokeStyle, TextAlign, VerticalAlign } from '../model/types';
+import { Font, type Bounds, type Color, type EndpointCap, type FillStyle, type StrokeStyle, type TextAlign, type VerticalAlign } from '../model/types';
+import { FontUtil } from './fontUtil';
 
 /** Small reusable canvas-2D drawing primitives shared by multiple shape definitions. */
 export class CanvasDraw {
@@ -292,9 +293,10 @@ export class CanvasDraw {
         pill = false,
         align: TextAlign = 'center',
         valign: VerticalAlign = 'middle',
+        font: Font = Font.Font1,
     ): void {
         ctx.save();
-        ctx.font = `${fontSize}px Inter, system-ui, sans-serif`;
+        ctx.font = FontUtil.cssFont(fontSize, font);
         ctx.textBaseline = 'top';
         const lineHeight = fontSize * CanvasDraw.LABEL_LINE_HEIGHT;
         const wrapWidth = pill ? Number.POSITIVE_INFINITY : bounds.w;

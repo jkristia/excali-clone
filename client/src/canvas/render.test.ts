@@ -3,7 +3,6 @@ import { SceneRenderer } from './render';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import type { Camera } from '../state/uiStore';
 import type { Shape } from '../model/types';
-import { FontSize } from '../util/palette';
 
 const sceneRenderer = new SceneRenderer(new ShapeRegistry());
 
@@ -152,7 +151,7 @@ describe('renderScene characterization', () => {
         const { ctx, calls } = createRecordingContext();
         const shape: Shape = {
             id: 't1', type: 'text', x: 0, y: 0, z: 1, createdBy: 'u',
-            text: 'a\nb', fontSize: FontSize.Medium, color: '#000', textAlign: 'left', w: 20, h: 50,
+            text: 'a\nb', fontSize: 18, color: '#000', textAlign: 'left', w: 20, h: 50,
         };
         sceneRenderer.render({ ctx, ...baseInput([shape]) });
         expect(calls.filter((c) => c.startsWith('fillText(')).length).toBe(2);
@@ -162,7 +161,7 @@ describe('renderScene characterization', () => {
         const { ctx, calls } = createRecordingContext();
         const shape: Shape = {
             id: 'n1', type: 'note', x: 0, y: 0, z: 1, createdBy: 'u',
-            w: 180, h: 120, text: 'hello', fill: '#ff0', fontSize: FontSize.Small, textAlign: 'left',
+            w: 180, h: 120, text: 'hello', fill: '#ff0', fontSize: 14, textAlign: 'left',
         };
         sceneRenderer.render({ ctx, ...baseInput([shape]) });
         expect(calls).toContain('fill()');

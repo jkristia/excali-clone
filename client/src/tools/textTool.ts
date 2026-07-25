@@ -18,7 +18,7 @@ export class TextTool implements Tool {
         const id = ctx.newId();
         const shape: Shape = {
             id, type: 'text', x: p.x, y: p.y, z: ctx.nextZ(), createdBy: ctx.author(),
-            text: '', fontSize: style.fontSize, color: style.stroke, textAlign: style.textAlign,
+            text: '', fontSize: style.fontSize, fontFamily: style.fontFamily, color: style.stroke, textAlign: style.textAlign,
             w: 20, h: style.fontSize * TEXT_LINE_HEIGHT,
         };
         ctx.addShape(shape);

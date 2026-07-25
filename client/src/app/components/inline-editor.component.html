@@ -12,7 +12,7 @@
             [style.top.px]="pos().y"
             style="position:absolute; transform-origin: top left;"
             [style.transform]="transform()"
-            [style.font]="shape.fontSize + 'px Inter, system-ui, sans-serif'"
+            [style.font]="FontUtil.cssFont(shape.fontSize, shape.fontFamily)"
             [style.line-height]="lineHeight"
             [style.color]="shape.color"
             [style.text-align]="shape.textAlign"
@@ -35,6 +35,7 @@
             [style.height.px]="shape.h"
             [style.padding-top.px]="noteTop()"
             [style.font-size.px]="shape.fontSize"
+            [style.font-family]="FontUtil.stack(shape.fontFamily)"
             [style.text-align]="shape.textAlign"
             [style.background]="shape.fill"
         ></textarea>
@@ -57,7 +58,7 @@
             [style.padding-left.px]="labelPadding"
             [style.padding-right.px]="labelPadding"
             [style.text-align]="labelAlign()"
-            [style.font]="labelFontSize() + 'px Inter, system-ui, sans-serif'"
+            [style.font]="FontUtil.cssFont(labelFontSize(), labelFontFamily())"
         ></textarea>
     }
 }

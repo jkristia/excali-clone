@@ -51,8 +51,18 @@
             <div class="prop-section">
                 <div class="prop-label">Caption size</div>
                 <div class="width-row">
-                    @for (f of fontSizes; track f.size) {
-                        <button class="width-btn" [class.active]="labelFontSize() === f.size" [title]="f.label" (click)="applyLabelFontSize(f.size)">
+                    @for (f of labelFontSizes(); track f.size) {
+                        <button class="width-btn" [class.active]="labelFontSize() === f.pxSize" [title]="fontSizeLabels[f.size]" (click)="applyLabelFontSize(f.pxSize)">
+                            <span class="cap-icon">{{ fontSizeLabels[f.size] }}</span>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="prop-section">
+                <div class="prop-label">Caption font</div>
+                <div class="width-row">
+                    @for (f of fonts; track f.font) {
+                        <button class="width-btn" [class.active]="labelFontFamily() === f.font" [title]="f.label" (click)="applyLabelFontFamily(f.font)">
                             <span class="cap-icon">{{ f.label }}</span>
                         </button>
                     }
@@ -159,8 +169,18 @@
             <div class="prop-section">
                 <div class="prop-label">Font size</div>
                 <div class="width-row">
-                    @for (f of fontSizes; track f.size) {
-                        <button class="width-btn" [class.active]="selectedFontSize() === f.size" [title]="f.label" (click)="applyFontSize(f.size)">
+                    @for (f of fontSizes(); track f.size) {
+                        <button class="width-btn" [class.active]="selectedFontSize() === f.pxSize" [title]="fontSizeLabels[f.size]" (click)="applyFontSize(f.pxSize)">
+                            <span class="cap-icon">{{ fontSizeLabels[f.size] }}</span>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="prop-section">
+                <div class="prop-label">Font</div>
+                <div class="width-row">
+                    @for (f of fonts; track f.font) {
+                        <button class="width-btn" [class.active]="selectedFontFamily() === f.font" [title]="f.label" (click)="applyFontFamily(f.font)">
                             <span class="cap-icon">{{ f.label }}</span>
                         </button>
                     }

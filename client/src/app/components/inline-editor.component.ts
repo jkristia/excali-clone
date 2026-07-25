@@ -6,7 +6,8 @@ import { CameraMath } from '../../canvas/camera';
 import { TEXT_LINE_HEIGHT } from '../../shapes/textShapeDef';
 import { NOTE_LINE_HEIGHT, NOTE_PADDING } from '../../shapes/noteShapeDef';
 import { CanvasDraw } from '../../util/canvasDraw';
-import type { NoteShape, Shape, TextAlign, TextShape } from '../../model/types';
+import { FontUtil } from '../../util/fontUtil';
+import { Font, type NoteShape, type Shape, type TextAlign, type TextShape } from '../../model/types';
 
 @Component({
     selector: 'app-inline-editor',
@@ -23,6 +24,7 @@ export class InlineEditorComponent {
     private readonly taRef = viewChild<ElementRef<HTMLTextAreaElement>>('ta');
 
     protected readonly Math = Math;
+    protected readonly FontUtil = FontUtil;
     protected readonly lineHeight = TEXT_LINE_HEIGHT;
 
     protected readonly editingId = this.ui.select((s) => s.editingId);
@@ -46,6 +48,7 @@ export class InlineEditorComponent {
         return s ? this.shapeRegistry.getBounds(s) : null;
     });
     protected readonly labelFontSize = computed(() => this.shape()?.labelFontSize ?? 16);
+    protected readonly labelFontFamily = computed(() => this.shape()?.labelFontFamily ?? Font.Font1);
     protected readonly pos = computed(() => {
         const b = this.box();
         return b ? CameraMath.worldToScreen(b.x, b.y, this.camera()) : { x: 0, y: 0 };
@@ -63,13 +66,13 @@ export class InlineEditorComponent {
      *  text doesn't jump when editing ends. */
     protected readonly noteTop = computed(() => {
         const s = this.shape();
-        return s && s.type === 'note' ? this.textMeasure.noteTop(s.text, s.fontSize, s.w, s.h) : NOTE_PADDING;
+        return s && s.type === 'note' ? this.textMeasure.noteTop(s.text, s.fontSize, s.w, s.h, s.fontFamily) : NOTE_PADDING;
     });
     /** Top padding that aligns a caption in its box per its vertical align, mirroring the canvas. */
     protected readonly labelTop = computed(() => {
         const s = this.shape();
         const b = this.box();
-        return s && b ? this.textMeasure.labelTop(s.label ?? '', s.labelFontSize ?? 16, b.w, b.h, s.labelVAlign ?? 'middle') : 0;
+        return s && b ? this.textMeasure.labelTop(s.label ?? '', s.labelFontSize ?? 16, b.w, b.h, s.labelVAlign ?? 'middle', s.labelFontFamily) : 0;
     });
     /** Caption horizontal alignment for the overlay's `text-align`, mirroring the canvas. */
     protected readonly labelAlign = computed<TextAlign>(() => this.shape()?.labelHAlign ?? 'center');
@@ -113,12 +116,11 @@ export class InlineEditorComponent {
             return;
         }
         if (shape.type === 'text') {
-            const i = this.textMeasure.caretIndexAt(shape.text, shape.fontSize, caret.x - shape.x, caret.y - shape.y, {
-                lineHeight: TEXT_LINE_HEIGHT,
-                textAlign: shape.textAlign ?? 'left',
-                boxWidth: shape.w,
-                wrap: shape.wrap ?? false,
-            });
+            const i = this.textMeasure.caretIndexAt(
+                shape.text, shape.fontSize, caret.x - shape.x, caret.y - shape.y,
+                { lineHeight: TEXT_LINE_HEIGHT, textAlign: shape.textAlign ?? 'left', boxWidth: shape.w, wrap: shape.wrap ?? false },
+                shape.fontFamily,
+            );
             el.setSelectionRange(i, i);
             return;
         }
@@ -127,6 +129,7 @@ export class InlineEditorComponent {
                 shape.text, shape.fontSize,
                 caret.x - shape.x - NOTE_PADDING, caret.y - shape.y - this.noteTop(),
                 { lineHeight: NOTE_LINE_HEIGHT, textAlign: shape.textAlign ?? 'left', boxWidth: shape.w - NOTE_PADDING * 2, wrap: true },
+                shape.fontFamily,
             );
             el.setSelectionRange(i, i);
             return;
@@ -140,8 +143,8 @@ export class InlineEditorComponent {
         // Fixed-width (wrapped) text keeps its width and re-wraps to fit; auto-width text
         // grows both dimensions to the longest line.
         const patch = shape.wrap
-            ? { text, h: this.textMeasure.measureTextWrapped(text, shape.fontSize, shape.w).h }
-            : { text, ...this.textMeasure.measureText(text, shape.fontSize) };
+            ? { text, h: this.textMeasure.measureTextWrapped(text, shape.fontSize, shape.w, shape.fontFamily).h }
+            : { text, ...this.textMeasure.measureText(text, shape.fontSize, shape.fontFamily) };
         this.canvasDocument.updateShape(shape.id, patch as Partial<TextShape>);
         // Height is set imperatively (no style binding), so grow the textarea as
         // lines are added — otherwise a new last line stays hidden until reopen.
@@ -153,7 +156,7 @@ export class InlineEditorComponent {
         const text = (e.target as HTMLTextAreaElement).value;
         // Grow/shrink the note to fit its text so nothing overflows the box; the `h`
         // binding resizes the textarea in step. Notes keep their fixed width.
-        const h = this.textMeasure.measureNote(text, shape.fontSize, shape.w);
+        const h = this.textMeasure.measureNote(text, shape.fontSize, shape.w, shape.fontFamily);
         this.canvasDocument.updateShape(shape.id, { text, h } as Partial<NoteShape>);
     }
 

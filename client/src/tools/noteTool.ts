@@ -19,7 +19,7 @@ export class NoteTool implements Tool {
         const shape: Shape = {
             id, type: 'note', x: p.x, y: p.y, z: ctx.nextZ(), createdBy: ctx.author(),
             w: 180, h: NOTE_MIN_HEIGHT, text: '', fill: style.noteFill,
-            fontSize: style.fontSize, textAlign: style.textAlign,
+            fontSize: style.fontSize, fontFamily: style.fontFamily, textAlign: style.textAlign,
         };
         ctx.addShape(shape);
         ctx.setSelection([id]);

@@ -3,13 +3,12 @@ import { panelFlags } from './panelCapabilities';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { ToolRegistry } from '../tools/toolRegistry';
 import type { Shape } from '../model/types';
-import { FontSize } from './palette';
 
 function rect(id: string): Shape {
     return { id, type: 'rectangle', x: 0, y: 0, z: 0, w: 10, h: 10, fill: '#fff', stroke: '#000', strokeWidth: 1, createdBy: 'x' };
 }
 function note(id: string): Shape {
-    return { id, type: 'note', x: 0, y: 0, z: 0, w: 10, h: 10, fill: '#fff', text: '', fontSize: FontSize.Small, textAlign: 'left', createdBy: 'x' };
+    return { id, type: 'note', x: 0, y: 0, z: 0, w: 10, h: 10, fill: '#fff', text: '', fontSize: 14, textAlign: 'left', createdBy: 'x' };
 }
 
 const shapeRegistry = new ShapeRegistry();

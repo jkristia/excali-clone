@@ -2,6 +2,7 @@ import type { Bounds, TextShape } from '../model/types';
 import type { ShapeDefinition } from './shapeDefinition';
 import { Geometry } from '../util/geometry';
 import { CanvasDraw } from '../util/canvasDraw';
+import { FontUtil } from '../util/fontUtil';
 
 /** Line-height for text shapes. Shared with the inline <textarea> editor and
  *  measureText so the canvas and the DOM editor lay text out identically. */
@@ -34,7 +35,7 @@ export class TextShapeDef implements ShapeDefinition<TextShape> {
 
     public draw(ctx: CanvasRenderingContext2D, shape: TextShape): void {
         ctx.fillStyle = shape.color;
-        ctx.font = `${shape.fontSize}px Inter, system-ui, sans-serif`;
+        ctx.font = FontUtil.cssFont(shape.fontSize, shape.fontFamily);
         ctx.textBaseline = 'alphabetic';
         // Anchor each line horizontally within the measured box (shape.w) so shorter
         // lines align the same way the inline <textarea>'s text-align does.

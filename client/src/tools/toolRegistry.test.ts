@@ -3,7 +3,7 @@ import { ToolRegistry } from './toolRegistry';
 import { SelectTool } from './selectTool';
 import { DrawTool } from './drawTool';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
-import { FontSize } from '../util/palette';
+import { Font } from '../model/types';
 
 describe('ToolRegistry', () => {
     it('get returns the tool instance for a given name', () => {
@@ -14,14 +14,14 @@ describe('ToolRegistry', () => {
 
     it('line tool defaultStyle forces both caps to none', () => {
         const registry = new ToolRegistry(new ShapeRegistry());
-        const style = { stroke: '#000', fill: '#fff', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', opacity: 1, fontSize: FontSize.Medium, labelFontSize: FontSize.Small, labelHAlign: 'center', labelVAlign: 'middle', textAlign: 'left', noteFill: '#fff', startCap: 'arrow', endCap: 'arrow', edges: 'sharp' } as const;
+        const style = { stroke: '#000', fill: '#fff', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', opacity: 1, fontSize: 18, fontFamily: Font.Font1, labelFontSize: 14, labelFontFamily: Font.Font1, labelHAlign: 'center', labelVAlign: 'middle', textAlign: 'left', noteFill: '#fff', startCap: 'arrow', endCap: 'arrow', edges: 'sharp' } as const;
         const patch = registry.get('line').defaultStyle?.(style);
         expect(patch).toMatchObject({ startCap: 'none', endCap: 'none' });
     });
 
     it('arrow tool defaultStyle forces start none / end arrow', () => {
         const registry = new ToolRegistry(new ShapeRegistry());
-        const style = { stroke: '#000', fill: '#fff', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', opacity: 1, fontSize: FontSize.Medium, labelFontSize: FontSize.Small, labelHAlign: 'center', labelVAlign: 'middle', textAlign: 'left', noteFill: '#fff', startCap: 'arrow', endCap: 'none', edges: 'sharp' } as const;
+        const style = { stroke: '#000', fill: '#fff', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', opacity: 1, fontSize: 18, fontFamily: Font.Font1, labelFontSize: 14, labelFontFamily: Font.Font1, labelHAlign: 'center', labelVAlign: 'middle', textAlign: 'left', noteFill: '#fff', startCap: 'arrow', endCap: 'none', edges: 'sharp' } as const;
         const patch = registry.get('arrow').defaultStyle?.(style);
         expect(patch).toMatchObject({ startCap: 'none', endCap: 'arrow' });
     });

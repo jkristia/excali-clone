@@ -204,7 +204,7 @@ export class SceneRenderer {
         const pill = shape.type === 'arrow' || shape.type === 'draw';
         CanvasDraw.drawCenteredLabel(
             ctx, shape.label, this.shapeRegistry.getBounds(shape), shape.labelFontSize ?? 16,
-            pill, shape.labelHAlign ?? 'center', shape.labelVAlign ?? 'middle',
+            pill, shape.labelHAlign ?? 'center', shape.labelVAlign ?? 'middle', shape.labelFontFamily,
         );
     }
 
