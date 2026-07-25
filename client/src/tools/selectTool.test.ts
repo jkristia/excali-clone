@@ -20,7 +20,7 @@ function makeCtx(shapes: Shape[], selection: string[] = [], zoom = 1): { ctx: To
         selection: () => state.selection,
         camera: () => ({ x: 0, y: 0, zoom }),
         style: () => ({
-            stroke: '#000', fill: 'transparent', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', opacity: 1, fontSize: 18, fontFamily: Font.Font1, labelFontSize: 14, labelFontFamily: Font.Font1, labelHAlign: 'center', labelVAlign: 'middle', textAlign: 'left',
+            stroke: '#000', fill: 'transparent', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', opacity: 1, fontSize: 18, fontFamily: Font.Font1, hAlign: 'left', vAlign: 'middle',
             noteFill: '#fff', startCap: 'none', endCap: 'arrow', edges: 'sharp',
         }),
         author: () => 'u',
@@ -60,7 +60,7 @@ function arrow(over: Partial<ArrowShape> = {}): ArrowShape {
 function text(over: Partial<TextShape> = {}): TextShape {
     return {
         id: 't1', type: 'text', x: 0, y: 0, z: 0, createdBy: 'u',
-        text: 'hello', fontSize: 16, color: '#000', textAlign: 'left', w: 100, h: 20, ...over,
+        text: 'hello', color: '#000', textOptions: { fontSize: 16, hAlign: 'left' }, w: 100, h: 20, ...over,
     };
 }
 

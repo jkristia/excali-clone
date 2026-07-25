@@ -4,6 +4,7 @@ import type { Tool, ToolContext } from './tool';
 import type { ShapeCapabilities } from '../shapes/shapeDefinition';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { NOTE_MIN_HEIGHT } from '../shapes/noteShapeDef';
+import { TextOptionsUtil } from '../util/textOptions';
 
 /** Note has no drag-to-create — click places a fixed-size sticky note and enters inline editing. */
 export class NoteTool implements Tool {
@@ -19,7 +20,7 @@ export class NoteTool implements Tool {
         const shape: Shape = {
             id, type: 'note', x: p.x, y: p.y, z: ctx.nextZ(), createdBy: ctx.author(),
             w: 180, h: NOTE_MIN_HEIGHT, text: '', fill: style.noteFill,
-            fontSize: style.fontSize, fontFamily: style.fontFamily, textAlign: style.textAlign,
+            textOptions: TextOptionsUtil.fromStyle(style),
         };
         ctx.addShape(shape);
         ctx.setSelection([id]);

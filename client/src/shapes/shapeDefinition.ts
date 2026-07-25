@@ -1,4 +1,4 @@
-import type { Bounds, Shape } from '../model/types';
+import type { Bounds, Shape, TextOptions } from '../model/types';
 
 /** Which style sections in the properties panel apply to a shape type. */
 export interface ShapeCapabilities {
@@ -7,7 +7,8 @@ export interface ShapeCapabilities {
     width: boolean;
     ends: boolean;
     note?: boolean;
-    /** Font-size + text-align controls (text shapes and sticky notes). */
+    /** Has body text (text shapes and sticky notes) — gates the shared text-options section
+     *  the same as `label` does for a caption. */
     text?: boolean;
     /** Sharp/rounded corner toggle (rectangle and diamond). */
     edges?: boolean;
@@ -17,9 +18,12 @@ export interface ShapeCapabilities {
     fillStyle?: boolean;
     /** Optional centered caption, editable via double-click (every shape except text/note). */
     label?: boolean;
-    /** Horizontal + vertical caption-alignment controls (the box shapes: rectangle/ellipse/diamond).
+    /** Horizontal-alignment row within the shared text-options section (box shapes, text, note).
      *  Off for arrow/draw, whose caption is pinned to the line midpoint. */
-    labelAlign?: boolean;
+    textAlign?: boolean;
+    /** Vertical-alignment row within the shared text-options section (box shapes and note).
+     *  Off for text (auto-heights to content) and arrow/draw. */
+    textVAlign?: boolean;
 }
 
 /**
@@ -30,6 +34,10 @@ export interface ShapeCapabilities {
 export interface ShapeDefinition<S extends Shape = Shape> {
     /** Which properties-panel sections apply when this type is selected. */
     readonly capabilities: ShapeCapabilities;
+    /** Fallback text options for this type, applied under whatever the shape itself carries
+     *  (see {@link TextOptionsUtil.resolve}). Box shapes center their caption; text/note read
+     *  left-aligned. */
+    readonly defaultTextOptions?: TextOptions;
     /** Whether the select tool shows drag-to-resize box handles. Arrow has its own
      *  endpoint handles and is not "resizable" in this box-handle sense. */
     readonly resizable: boolean;

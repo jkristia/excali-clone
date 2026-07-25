@@ -68,7 +68,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
         },
         author: this.author,
         topZ: this.canvasDocument.topZ.bind(this.canvasDocument),
-        measureTextWrap: (text, fontSize, width) => this.textMeasure.measureTextWrapped(text, fontSize, width).h,
+        measureTextWrap: (text, fontSize, width, fontFamily) => this.textMeasure.measureTextWrapped(text, fontSize, width, fontFamily).h,
     }, this.toolRegistry, this.shapeRegistry);
 
     private spaceDown = false;

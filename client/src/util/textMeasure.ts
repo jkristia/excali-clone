@@ -119,10 +119,12 @@ export class TextMeasure {
         return NoteShapeDef.measureHeight(this.ctx, text, fontSize, width);
     }
 
-    /** Top padding that vertically centers a note's text — see {@link NoteShapeDef.textOffsetY}. */
-    public noteTop(text: string, fontSize: number, width: number, height: number, font: Font = Font.Font1): number {
+    /** Top padding that places a note's text per `valign` — see {@link NoteShapeDef.textOffsetY}. */
+    public noteTop(
+        text: string, fontSize: number, width: number, height: number, valign: VerticalAlign = 'middle', font: Font = Font.Font1,
+    ): number {
         this.applyFont(fontSize, font);
-        return NoteShapeDef.textOffsetY(this.ctx, text, fontSize, width, height);
+        return NoteShapeDef.textOffsetY(this.ctx, text, fontSize, width, height, valign);
     }
 
     /** Top padding that aligns a caption in the editor overlay per `valign`, matching the

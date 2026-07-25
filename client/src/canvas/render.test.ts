@@ -151,7 +151,7 @@ describe('renderScene characterization', () => {
         const { ctx, calls } = createRecordingContext();
         const shape: Shape = {
             id: 't1', type: 'text', x: 0, y: 0, z: 1, createdBy: 'u',
-            text: 'a\nb', fontSize: 18, color: '#000', textAlign: 'left', w: 20, h: 50,
+            text: 'a\nb', color: '#000', textOptions: { fontSize: 18, hAlign: 'left' }, w: 20, h: 50,
         };
         sceneRenderer.render({ ctx, ...baseInput([shape]) });
         expect(calls.filter((c) => c.startsWith('fillText(')).length).toBe(2);
@@ -161,7 +161,7 @@ describe('renderScene characterization', () => {
         const { ctx, calls } = createRecordingContext();
         const shape: Shape = {
             id: 'n1', type: 'note', x: 0, y: 0, z: 1, createdBy: 'u',
-            w: 180, h: 120, text: 'hello', fill: '#ff0', fontSize: 14, textAlign: 'left',
+            w: 180, h: 120, text: 'hello', fill: '#ff0', textOptions: { fontSize: 14, hAlign: 'left' },
         };
         sceneRenderer.render({ ctx, ...baseInput([shape]) });
         expect(calls).toContain('fill()');

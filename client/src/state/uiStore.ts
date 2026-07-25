@@ -19,15 +19,11 @@ export interface Style {
     fillStyle: FillStyle;
     /** 0..1 shape opacity applied to the current selection. */
     opacity: number;
+    /** Text options for the next shape's caption or body — see {@link TextOptionsUtil.fromStyle}. */
     fontSize: number;
     fontFamily: Font;
-    /** Caption font size (px) for the label control. */
-    labelFontSize: number;
-    labelFontFamily: Font;
-    /** Caption horizontal/vertical alignment for the label-align controls. */
-    labelHAlign: TextAlign;
-    labelVAlign: VerticalAlign;
-    textAlign: TextAlign;
+    hAlign: TextAlign;
+    vAlign: VerticalAlign;
     noteFill: Color;
     startCap: EndpointCap;
     endCap: EndpointCap;
@@ -100,11 +96,8 @@ export class UIStore {
                 opacity: 1,
                 fontSize: FontUtil.mediumSize(Font.Font1),
                 fontFamily: Font.Font1,
-                labelFontSize: FontUtil.smallSize(Font.Font1),
-                labelFontFamily: Font.Font1,
-                labelHAlign: 'center',
-                labelVAlign: 'middle',
-                textAlign: 'left',
+                hAlign: 'left',
+                vAlign: 'middle',
                 noteFill: NOTE_COLORS[0],
                 startCap: 'none',
                 endCap: 'arrow',

@@ -47,51 +47,6 @@
             </div>
         }
 
-        @if (flags().label && hasLabel()) {
-            <div class="prop-section">
-                <div class="prop-label">Caption size</div>
-                <div class="width-row">
-                    @for (f of labelFontSizes(); track f.size) {
-                        <button class="width-btn" [class.active]="labelFontSize() === f.pxSize" [title]="fontSizeLabels[f.size]" (click)="applyLabelFontSize(f.pxSize)">
-                            <span class="cap-icon">{{ fontSizeLabels[f.size] }}</span>
-                        </button>
-                    }
-                </div>
-            </div>
-            <div class="prop-section">
-                <div class="prop-label">Caption font</div>
-                <div class="width-row">
-                    @for (f of fonts; track f.font) {
-                        <button class="width-btn" [class.active]="labelFontFamily() === f.font" [title]="f.label" (click)="applyLabelFontFamily(f.font)">
-                            <span class="cap-icon">{{ f.label }}</span>
-                        </button>
-                    }
-                </div>
-            </div>
-        }
-
-        @if (flags().labelAlign && hasLabel()) {
-            <div class="prop-section">
-                <div class="prop-label">Label align</div>
-                <div class="width-row">
-                    @for (a of textAligns; track a.align) {
-                        <button class="width-btn" [class.active]="labelAlign() === a.align" [title]="a.label" (click)="applyLabelAlign(a.align)">
-                            <span class="cap-icon"><app-align-icon [align]="a.align" /></span>
-                        </button>
-                    }
-                </div>
-            </div>
-            <div class="prop-section">
-                <div class="width-row">
-                    @for (a of verticalAligns; track a.align) {
-                        <button class="width-btn" [class.active]="labelVAlign() === a.align" [title]="a.label" (click)="applyLabelVAlign(a.align)">
-                            <span class="cap-icon"><app-valign-icon [align]="a.align" /></span>
-                        </button>
-                    }
-                </div>
-            </div>
-        }
-
         @if (flags().width) {
             <div class="prop-section">
                 <div class="prop-label">Width</div>
@@ -165,7 +120,7 @@
             </div>
         }
 
-        @if (flags().text) {
+        @if (showTextOptions()) {
             <div class="prop-section">
                 <div class="prop-label">Font size</div>
                 <div class="width-row">
@@ -186,16 +141,29 @@
                     }
                 </div>
             </div>
-            <div class="prop-section">
-                <div class="prop-label">Text align</div>
-                <div class="width-row">
-                    @for (a of textAligns; track a.align) {
-                        <button class="width-btn" [class.active]="selectedTextAlign() === a.align" [title]="a.label" (click)="applyTextAlign(a.align)">
-                            <span class="cap-icon"><app-align-icon [align]="a.align" /></span>
-                        </button>
-                    }
+            @if (flags().textAlign) {
+                <div class="prop-section">
+                    <div class="prop-label">Align</div>
+                    <div class="width-row">
+                        @for (a of textAligns; track a.align) {
+                            <button class="width-btn" [class.active]="selectedHAlign() === a.align" [title]="a.label" (click)="applyHAlign(a.align)">
+                                <span class="cap-icon"><app-align-icon [align]="a.align" /></span>
+                            </button>
+                        }
+                    </div>
                 </div>
-            </div>
+            }
+            @if (flags().textVAlign) {
+                <div class="prop-section">
+                    <div class="width-row">
+                        @for (a of verticalAligns; track a.align) {
+                            <button class="width-btn" [class.active]="selectedVAlign() === a.align" [title]="a.label" (click)="applyVAlign(a.align)">
+                                <span class="cap-icon"><app-valign-icon [align]="a.align" /></span>
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
         }
 
         @if (hasMultiSelection()) {

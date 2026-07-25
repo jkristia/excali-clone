@@ -9,7 +9,7 @@ function makeStore(overrides: Partial<InteractionStore> = {}): InteractionStore 
     return {
         tool: 'select',
         style: {
-            stroke: '#000', fill: 'transparent', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', opacity: 1, fontSize: 18, fontFamily: Font.Font1, labelFontSize: 14, labelFontFamily: Font.Font1, labelHAlign: 'center', labelVAlign: 'middle', textAlign: 'left',
+            stroke: '#000', fill: 'transparent', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', opacity: 1, fontSize: 18, fontFamily: Font.Font1, hAlign: 'left', vAlign: 'middle',
             noteFill: '#fff', startCap: 'none', endCap: 'arrow', edges: 'sharp',
         },
         camera: { x: 0, y: 0, zoom: 1 },
@@ -39,7 +39,7 @@ const rect: Shape = {
 // 100x20 text at the origin: body center (50,10); E/W resize handles at (100,10)/(0,10).
 const textShape: Shape = {
     id: 't1', type: 'text', x: 0, y: 0, z: 0, createdBy: 'u',
-    text: 'hello', fontSize: 16, color: '#000', textAlign: 'left', w: 100, h: 20,
+    text: 'hello', color: '#000', textOptions: { fontSize: 16, hAlign: 'left' }, w: 100, h: 20,
 };
 
 describe('InteractionController', () => {

@@ -1,5 +1,5 @@
 import { nanoid } from 'nanoid';
-import type { ArrowShape, Bounds, Shape } from '../model/types';
+import type { ArrowShape, Bounds, Font, Shape } from '../model/types';
 import type { Camera, Style, Tool as ToolName } from '../state/uiStore';
 import type { Interaction, MarqueeMode, PointerInfo, RotateOrigin } from './interaction';
 import type { ToolContext } from '../tools/tool';
@@ -13,6 +13,7 @@ import { VectorMath } from '../util/vectorMath';
 import { GridMath } from '../util/gridMath';
 import { ArrowEndpoints } from '../util/arrowEndpoints';
 import { SceneTree } from '../util/sceneTree';
+import { TextOptionsUtil } from '../util/textOptions';
 
 /** Store surface the controller needs — a subset of uiStore's state + actions. */
 export interface InteractionStore {
@@ -45,7 +46,7 @@ export interface InteractionDeps {
     topZ: () => number;
     /** Height a text shape's word-wrapped text needs at the given fixed width. Injected so the
      *  controller can reflow text on horizontal resize without depending on the DOM measurer. */
-    measureTextWrap: (text: string, fontSize: number, width: number) => number;
+    measureTextWrap: (text: string, fontSize: number, width: number, fontFamily: Font) => number;
 }
 
 /**
@@ -245,7 +246,8 @@ export class InteractionController {
             const shape = this.deps.shapes().find((s) => s.id === inter.id);
             if (shape && shape.type === 'text') {
                 const width = Math.max(InteractionController.MIN_TEXT_WIDTH, Math.abs(geom.w));
-                const h = this.deps.measureTextWrap(shape.text, shape.fontSize, width);
+                const resolved = TextOptionsUtil.resolve(shape.textOptions, this.shapeRegistry.getDefinition(shape).defaultTextOptions);
+                const h = this.deps.measureTextWrap(shape.text, resolved.fontSize, width, resolved.fontFamily);
                 const x = geom.w < 0 ? geom.x + geom.w : geom.x;
                 return { x, w: width, wrap: true, h } as Partial<Shape>;
             }

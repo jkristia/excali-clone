@@ -39,17 +39,9 @@ export interface BaseShape {
     /** Optional centered caption drawn over the shape. Absent/'' ⇒ none.
      *  Excluded from text/note, which are text already. */
     label?: string;
-    /** Caption font size in px. Absent ⇒ 16 (the 'S' size). */
-    labelFontSize?: number;
-    /** Caption font family. Absent ⇒ Font1. */
-    labelFontFamily?: Font;
-    /** Horizontal alignment of the caption within the shape box. Absent ⇒ 'center'.
-     *  Honored by the box shapes (rectangle/ellipse/diamond); arrow/draw pin their
-     *  caption to the line midpoint and ignore it. */
-    labelHAlign?: TextAlign;
-    /** Vertical alignment of the caption within the shape box. Absent ⇒ 'middle'.
-     *  Honored by the box shapes; arrow/draw ignore it (see {@link labelHAlign}). */
-    labelVAlign?: VerticalAlign;
+    /** Styling for whatever text the shape shows — the caption above, or, for
+     *  text/note, its body. Absent ⇒ each field's own default (see {@link TextOptionsUtil}). */
+    textOptions?: TextOptions;
 }
 
 export interface RectShape extends BaseShape {
@@ -127,14 +119,23 @@ export const enum Font {
     Font3 = 'Font3',
 }
 
+/** Text styling for whatever text a shape shows — its caption, or, for text/note, its body. */
+export interface TextOptions {
+    /** px. Absent ⇒ the family's smallest size (see FontUtil.smallSize). */
+    fontSize?: number;
+    /** Absent ⇒ Font1. */
+    fontFamily?: Font;
+    /** Horizontal alignment within the shape box. Arrow/draw pin their caption to the
+     *  line midpoint and ignore it. */
+    hAlign?: TextAlign;
+    /** Vertical alignment within the shape box. Ignored by text (auto-heights to content). */
+    vAlign?: VerticalAlign;
+}
+
 export interface TextShape extends BaseShape {
     type: 'text';
     text: string;
-    fontSize: number;
-    /** Absent ⇒ Font1. */
-    fontFamily?: Font;
     color: Color;
-    textAlign: TextAlign;
     /** measured width/height, kept for hit-testing. */
     w: number;
     h: number;
@@ -149,10 +150,6 @@ export interface NoteShape extends BaseShape {
     w: number;
     h: number;
     text: string;
-    fontSize: number;
-    /** Absent ⇒ Font1. */
-    fontFamily?: Font;
-    textAlign: TextAlign;
     /** background color of the sticky note. */
     fill: Color;
 }

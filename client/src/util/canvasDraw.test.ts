@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CanvasDraw } from './canvasDraw';
-import type { FillStyle } from '../model/types';
+import { Font, type FillStyle } from '../model/types';
 
 /** Fake offscreen tile so `fillFor`'s `document.createElement('canvas')` works under the
  *  node test env (no DOM). getContext returns a no-op 2D context; the tile is opaque to
@@ -156,25 +156,25 @@ describe('CanvasDraw.drawCenteredLabel', () => {
 
     it('anchors left-aligned text at the padded left edge', () => {
         const { ctx, fills } = labelRecordingContext();
-        CanvasDraw.drawCenteredLabel(ctx, 'A', bounds, 20, false, 'left', 'middle');
+        CanvasDraw.drawCenteredLabel(ctx, 'A', bounds, { fontSize: 20, fontFamily: Font.Font1, hAlign: 'left', vAlign: 'middle' });
         expect(fills).toEqual([{ x: 100 + CanvasDraw.LABEL_PADDING, align: 'left' }]);
     });
 
     it('anchors right-aligned text at the padded right edge', () => {
         const { ctx, fills } = labelRecordingContext();
-        CanvasDraw.drawCenteredLabel(ctx, 'A', bounds, 20, false, 'right', 'middle');
+        CanvasDraw.drawCenteredLabel(ctx, 'A', bounds, { fontSize: 20, fontFamily: Font.Font1, hAlign: 'right', vAlign: 'middle' });
         expect(fills).toEqual([{ x: 100 + 200 - CanvasDraw.LABEL_PADDING, align: 'right' }]);
     });
 
     it('centers by default, on the box midpoint', () => {
         const { ctx, fills } = labelRecordingContext();
-        CanvasDraw.drawCenteredLabel(ctx, 'A', bounds, 20);
+        CanvasDraw.drawCenteredLabel(ctx, 'A', bounds, { fontSize: 20, fontFamily: Font.Font1, hAlign: 'center', vAlign: 'middle' });
         expect(fills).toEqual([{ x: 200, align: 'center' }]);
     });
 
     it('keeps a pill caption centered, ignoring alignment', () => {
         const { ctx, fills } = labelRecordingContext();
-        CanvasDraw.drawCenteredLabel(ctx, 'A', bounds, 20, true, 'left', 'top');
+        CanvasDraw.drawCenteredLabel(ctx, 'A', bounds, { fontSize: 20, fontFamily: Font.Font1, hAlign: 'left', vAlign: 'top' }, true);
         expect(fills).toEqual([{ x: 200, align: 'center' }]);
     });
 });

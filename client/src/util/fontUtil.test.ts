@@ -4,7 +4,7 @@ import { FontSize, FontUtil } from './fontUtil';
 
 describe('FontUtil.stack', () => {
     it('defaults to the Font1 stack', () => {
-        expect(FontUtil.stack()).toBe('Inter, system-ui, sans-serif');
+        expect(FontUtil.stack()).toBe('Inter');
     });
 
     it('returns a distinct stack per font', () => {
@@ -15,12 +15,12 @@ describe('FontUtil.stack', () => {
 
 describe('FontUtil.cssFont', () => {
     it('builds a canvas/CSS font shorthand with the default font', () => {
-        expect(FontUtil.cssFont(16)).toBe('16px Inter, system-ui, sans-serif');
+        expect(FontUtil.cssFont(16)).toBe('16px Inter');
     });
 
     it('builds the shorthand with an explicit font', () => {
-        expect(FontUtil.cssFont(24, Font.Font2)).toBe('24px Georgia, "Times New Roman", serif');
-        expect(FontUtil.cssFont(24, Font.Font3)).toBe('24px "SFMono-Regular", Menlo, monospace');
+        expect(FontUtil.cssFont(24, Font.Font2)).toBe('24px Architects-Daughter');
+        expect(FontUtil.cssFont(24, Font.Font3)).toBe('24px SuseMono');
     });
 });
 

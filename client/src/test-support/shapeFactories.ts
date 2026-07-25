@@ -39,7 +39,7 @@ export function diamond(over: Partial<DiamondShape> = {}): DiamondShape {
 export function note(over: Partial<NoteShape> = {}): NoteShape {
     return {
         id: 'n1', type: 'note', x: 5, y: 5, z: 1, createdBy: 'u',
-        w: 100, h: 80, text: '', fill: '#ff0', fontSize: 14, textAlign: 'left',
+        w: 100, h: 80, text: '', fill: '#ff0', textOptions: { fontSize: 14, hAlign: 'left' },
         ...over,
     };
 }
@@ -47,7 +47,7 @@ export function note(over: Partial<NoteShape> = {}): NoteShape {
 export function text(over: Partial<TextShape> = {}): TextShape {
     return {
         id: 't1', type: 'text', x: 0, y: 0, z: 1, createdBy: 'u',
-        text: 'hi', fontSize: 18, color: '#000', textAlign: 'left', w: 20, h: 25,
+        text: 'hi', color: '#000', textOptions: { fontSize: 18, hAlign: 'left' }, w: 20, h: 25,
         ...over,
     };
 }

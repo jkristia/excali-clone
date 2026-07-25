@@ -151,7 +151,7 @@ describe('PropertiesPanelComponent', () => {
 
     describe('mixed-vs-common value computeds', () => {
         const opacityPercent = () => (ctx.component as unknown as { opacityPercent: Signal<number> })['opacityPercent']();
-        const labelFontSize = () => (ctx.component as unknown as { labelFontSize: Signal<number> })['labelFontSize']();
+        const selectedFontSize = () => (ctx.component as unknown as { selectedFontSize: Signal<number> })['selectedFontSize']();
 
         it('opacityPercent shows the common opacity, or 100 when empty or mixed', () => {
             expect(opacityPercent()).toBe(100); // empty selection
@@ -168,25 +168,25 @@ describe('PropertiesPanelComponent', () => {
             expect(opacityPercent()).toBe(100);
         });
 
-        it('labelFontSize shows the common size, or the 16 default when empty or mixed', () => {
-            expect(labelFontSize()).toBe(16);
+        it('selectedFontSize shows the common size (resolved per shape against its own shape-type default), or the tool-default style value when empty or mixed', () => {
+            expect(selectedFontSize()).toBe(18); // empty selection -> current tool-default style.fontSize
 
-            ctx.setSelection([rect({ id: 'a', labelFontSize: 24 }), rect({ id: 'b', labelFontSize: 24 })]);
-            expect(labelFontSize()).toBe(24);
+            ctx.setSelection([rect({ id: 'a', textOptions: { fontSize: 24 } }), rect({ id: 'b', textOptions: { fontSize: 24 } })]);
+            expect(selectedFontSize()).toBe(24);
 
-            ctx.setSelection([rect({ id: 'a', labelFontSize: 24 }), rect({ id: 'b', labelFontSize: 32 })]);
-            expect(labelFontSize()).toBe(16);
+            ctx.setSelection([rect({ id: 'a', textOptions: { fontSize: 24 } }), rect({ id: 'b', textOptions: { fontSize: 32 } })]);
+            expect(selectedFontSize()).toBe(18); // mixed collapses to the tool-default style value
         });
 
-        it('labelAlign / labelVAlign fall back to center / middle when mixed', () => {
-            const c = ctx.component as unknown as { labelAlign: Signal<string>; labelVAlign: Signal<string> };
-            ctx.setSelection([rect({ id: 'a', labelHAlign: 'left', labelVAlign: 'top' }), rect({ id: 'b', labelHAlign: 'left', labelVAlign: 'top' })]);
-            expect(c['labelAlign']()).toBe('left');
-            expect(c['labelVAlign']()).toBe('top');
+        it('selectedHAlign / selectedVAlign fall back to the tool-default style when mixed', () => {
+            const c = ctx.component as unknown as { selectedHAlign: Signal<string>; selectedVAlign: Signal<string> };
+            ctx.setSelection([rect({ id: 'a', textOptions: { hAlign: 'left', vAlign: 'top' } }), rect({ id: 'b', textOptions: { hAlign: 'left', vAlign: 'top' } })]);
+            expect(c['selectedHAlign']()).toBe('left');
+            expect(c['selectedVAlign']()).toBe('top');
 
-            ctx.setSelection([rect({ id: 'a', labelHAlign: 'left' }), rect({ id: 'b', labelHAlign: 'right' })]);
-            expect(c['labelAlign']()).toBe('center');
-            expect(c['labelVAlign']()).toBe('middle');
+            ctx.setSelection([rect({ id: 'a', textOptions: { hAlign: 'left' } }), rect({ id: 'b', textOptions: { hAlign: 'right' } })]);
+            expect(c['selectedHAlign']()).toBe('left'); // mixed collapses to style.hAlign
+            expect(c['selectedVAlign']()).toBe('middle'); // both unset -> rectangle's own default, which agrees
         });
     });
 
@@ -269,35 +269,27 @@ describe('PropertiesPanelComponent', () => {
             expect(patches.has('e')).toBe(false);
         });
 
-        it('applyTextAlign only touches text and note shapes', () => {
-            ctx.setSelection([text({ id: 't' }), note({ id: 'n' }), rect({ id: 'r' })]);
-            call('applyTextAlign', 'right');
+        it('applyHAlign patches textOptions on every selected shape unconditionally — the same option now serves captions and body text alike', () => {
+            ctx.setSelection([text({ id: 't' }), note({ id: 'n' }), rect({ id: 'r' }), arrow({ id: 'a' })]);
+            call('applyHAlign', 'right');
 
             const patches = lastPatches(ctx.doc);
-            expect(patches.get('t')).toEqual({ textAlign: 'right' });
-            expect(patches.get('n')).toEqual({ textAlign: 'right' });
-            expect(patches.has('r')).toBe(false);
+            expect(patches.get('t')).toEqual({ textOptions: { fontSize: 18, hAlign: 'right' } });
+            expect(patches.get('n')).toEqual({ textOptions: { fontSize: 14, hAlign: 'right' } });
+            expect(patches.get('r')).toEqual({ textOptions: { hAlign: 'right' } });
+            expect(patches.get('a')).toEqual({ textOptions: { hAlign: 'right' } });
+            expect(style(ctx.uiStore).hAlign).toBe('right');
         });
 
-        it('applyFontSize re-measures text (w/h) and note (h) and skips other shapes', () => {
+        it('applyFontSize re-measures text (w/h) and note (h), and patches textOptions unconditionally on every shape', () => {
             ctx.setSelection([text({ id: 't', text: 'abc' }), note({ id: 'n', text: 'note', w: 100 }), rect({ id: 'r' })]);
             call('applyFontSize', 10);
 
             const patches = lastPatches(ctx.doc);
             // FakeTextMeasure: text -> { w: len*size, h: size }; note height -> size + width.
-            expect(patches.get('t')).toEqual({ fontSize: 10, w: 30, h: 10 });
-            expect(patches.get('n')).toEqual({ fontSize: 10, h: 110 });
-            expect(patches.has('r')).toBe(false);
-        });
-
-        it('applyLabelFontSize patches every selected shape unconditionally', () => {
-            ctx.setSelection([rect({ id: 'r' }), arrow({ id: 'a' })]);
-            call('applyLabelFontSize', 24);
-
-            const patches = lastPatches(ctx.doc);
-            expect(patches.get('r')).toEqual({ labelFontSize: 24 });
-            expect(patches.get('a')).toEqual({ labelFontSize: 24 });
-            expect(style(ctx.uiStore).labelFontSize).toBe(24);
+            expect(patches.get('t')).toEqual({ textOptions: { fontSize: 10, hAlign: 'left' }, w: 30, h: 10 });
+            expect(patches.get('n')).toEqual({ textOptions: { fontSize: 10, hAlign: 'left' }, h: 110 });
+            expect(patches.get('r')).toEqual({ textOptions: { fontSize: 10 } });
         });
 
         it('onOpacityInput parses the slider value into a 0..1 opacity on every shape', () => {
