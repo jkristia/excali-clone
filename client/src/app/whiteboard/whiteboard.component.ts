@@ -13,6 +13,9 @@ import { Handles } from '../../util/handles';
 
 /** World-space offset applied to each duplicate, down-right from its source. */
 const DUPLICATE_OFFSET = 20;
+/** Arrow-key nudge step, in world px; Shift+arrow uses the larger step. */
+const NUDGE_STEP = 1;
+const NUDGE_STEP_SHIFT = 10;
 
 @Component({
     selector: 'app-whiteboard',
@@ -158,6 +161,17 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
                 if (sel.length) {
                     this.canvasDocument.deleteShapes(sel);
                     this.ui.snapshot.clearSelection();
+                }
+            } else if (e.key.startsWith('Arrow')) {
+                const sel = this.ui.snapshot.selection;
+                if (sel.length) {
+                    e.preventDefault();
+                    const step = e.shiftKey ? NUDGE_STEP_SHIFT : NUDGE_STEP;
+                    const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+                    const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+                    const moved = sel.flatMap((id) => SceneTree.boundableDescendants(this.shapesLatest, id));
+                    const patches = moved.map((s) => ({ id: s.id, patch: { x: s.x + dx, y: s.y + dy } }));
+                    if (patches.length) this.canvasDocument.updateShapes(patches);
                 }
             } else if (e.key === 'Escape') {
                 this.ui.snapshot.clearSelection();
