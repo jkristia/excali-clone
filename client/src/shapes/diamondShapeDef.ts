@@ -4,7 +4,8 @@ import { Geometry } from '../util/geometry';
 import { CanvasDraw } from '../util/canvasDraw';
 
 export class DiamondShapeDef implements ShapeDefinition<DiamondShape> {
-    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false, edges: true, strokeStyle: true, fillStyle: true, label: true, labelAlign: true };
+    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false, edges: true, strokeStyle: true, fillStyle: true, label: true, textAlign: true, textVAlign: true };
+    public readonly defaultTextOptions = { hAlign: 'center' as const, vAlign: 'middle' as const };
     public readonly resizable = true;
     public readonly rotatable = true;
 

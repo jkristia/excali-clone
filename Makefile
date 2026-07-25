@@ -18,15 +18,18 @@ install:
 	npm install
 
 dev:
+	mkdir -p client/public/fonts && cp -r client/src/assets/fonts/* client/public/fonts/
 	npm run dev
 
 client:
+	mkdir -p client/public/fonts && cp -r client/src/assets/fonts/* client/public/fonts/
 	npm run dev:client
 
 server:
 	npm run dev:server
 
 build:
+	mkdir -p client/public/fonts && cp -r client/src/assets/fonts/* client/public/fonts/
 	npm run build
 
 start:

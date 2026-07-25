@@ -3,10 +3,12 @@ import { UiStoreService } from '../state/ui-store.service';
 import { CollabService } from '../collab/collab.service';
 import { CANVAS_DOCUMENT, SHAPE_REGISTRY, TOOL_REGISTRY, TEXT_MEASURE, CLIPBOARD_CONTROLLER } from '../di-tokens';
 import type { ReorderOp } from '../../document/canvasDocument';
-import type { Color, CornerStyle, EndpointCap, FillStyle, Shape, StrokeStyle, TextAlign, VerticalAlign } from '../../model/types';
+import { Font, type Color, type CornerStyle, type EndpointCap, type FillStyle, type Shape, type StrokeStyle, type TextAlign, type VerticalAlign } from '../../model/types';
 import type { Style } from '../../state/uiStore';
 import { panelFlags } from '../../util/panelCapabilities';
-import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS, WIDTHS, CAPS, FONT_SIZES, TEXT_ALIGNS, VERTICAL_ALIGNS, EDGES, STROKE_STYLES, FILL_STYLES } from '../../util/palette';
+import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS, WIDTHS, CAPS, TEXT_ALIGNS, VERTICAL_ALIGNS, EDGES, STROKE_STYLES, FILL_STYLES } from '../../util/palette';
+import { FONT_SIZE_LABELS, FONTS, FontUtil } from '../../util/fontUtil';
+import { TextOptionsUtil, type ResolvedTextOptions } from '../../util/textOptions';
 import { SceneTree } from '../../util/sceneTree';
 import { LayerIconComponent } from './layer-icon.component';
 import { AlignIconComponent } from './align-icon.component';
@@ -68,7 +70,8 @@ export class PropertiesPanelComponent {
     protected readonly strokeStyles = STROKE_STYLES;
     protected readonly fillStyles = FILL_STYLES;
     protected readonly caps = CAPS;
-    protected readonly fontSizes = FONT_SIZES;
+    protected readonly fonts = FONTS;
+    protected readonly fontSizeLabels = FONT_SIZE_LABELS;
     protected readonly textAligns = TEXT_ALIGNS;
     protected readonly verticalAligns = VERTICAL_ALIGNS;
     protected readonly edges = EDGES;
@@ -84,7 +87,26 @@ export class PropertiesPanelComponent {
         const ids = new Set(this.selection());
         return this.shapes().filter((s) => ids.has(s.id));
     });
-    protected readonly flags = computed(() => panelFlags(this.toolRegistry, this.shapeRegistry, this.tool(), this.selected()));
+    /** Every geometry-bearing shape the current selection actually touches: a directly
+     *  selected leaf shape as itself, or a selected group's leaf descendants (recursing
+     *  through nested groups). A group container carries none of the style fields below
+     *  and renders nothing on its own (see {@link GroupShapeDef}), so style controls read
+     *  from and patch this set rather than the raw selection. */
+    protected readonly selectedLeaves = computed(() => {
+        const allShapes = this.shapes();
+        const seen = new Set<string>();
+        const out: Shape[] = [];
+        for (const id of this.selection()) {
+            for (const s of SceneTree.boundableDescendants(allShapes, id)) {
+                if (!seen.has(s.id)) {
+                    seen.add(s.id);
+                    out.push(s);
+                }
+            }
+        }
+        return out;
+    });
+    protected readonly flags = computed(() => panelFlags(this.toolRegistry, this.shapeRegistry, this.tool(), this.selectedLeaves()));
     protected readonly hasSelection = computed(() => this.selected().length > 0);
     protected readonly hasMultiSelection = computed(() => this.selected().length > 1);
     /** Mirrors {@link CanvasDocument.groupShapes}'s own requirement (≥2 shapes, shared parent)
@@ -96,40 +118,28 @@ export class PropertiesPanelComponent {
         return selected.every((s) => (s.parentId ?? undefined) === (parentId ?? undefined));
     });
     protected readonly canUngroup = computed(() => this.selected().some((s) => s.type === 'group'));
-    /** True when at least one selected shape carries a non-empty caption. The caption styling
-     *  controls (size/alignment) only apply once a label exists — a captionless shape hides them. */
-    protected readonly hasLabel = computed(() => this.selected().some((s) => (s.label ?? '') !== ''));
-    /** Slider position (0–100): the selection's common opacity, or 100 when it is mixed. */
+    /** True when at least one selected shape (or, for a selected group, one of its members)
+     *  carries a non-empty caption. The caption styling controls (size/alignment) only apply
+     *  once a label exists — a captionless shape hides them. */
+    protected readonly hasLabel = computed(() => this.selectedLeaves().some((s) => (s.label ?? '') !== ''));
+    /** Slider position (0–100): the selection's common opacity, or 100 when it is mixed.
+     *  Reads {@link selectedLeaves} rather than the raw selection so a selected group's
+     *  members decide this, not the group container's own unused `opacity` field. */
     protected readonly opacityPercent = computed(() => {
-        const selected = this.selected();
-        if (!selected.length) return 100;
-        const first = Math.round((selected[0].opacity ?? 1) * 100);
-        return selected.every((s) => Math.round((s.opacity ?? 1) * 100) === first) ? first : 100;
-    });
-    /** The selection's common caption font size, or the 'S' default (16) when empty/mixed. */
-    protected readonly labelFontSize = computed(() => {
-        const selected = this.selected();
-        if (!selected.length) return 16;
-        const first = selected[0].labelFontSize ?? 16;
-        return selected.every((s) => (s.labelFontSize ?? 16) === first) ? first : 16;
-    });
-    /** The selection's common caption horizontal alignment, or 'center' when empty/mixed. */
-    protected readonly labelAlign = computed<TextAlign>(() => {
-        const selected = this.selected();
-        if (!selected.length) return 'center';
-        const first = selected[0].labelHAlign ?? 'center';
-        return selected.every((s) => (s.labelHAlign ?? 'center') === first) ? first : 'center';
-    });
-    /** The selection's common caption vertical alignment, or 'middle' when empty/mixed. */
-    protected readonly labelVAlign = computed<VerticalAlign>(() => {
-        const selected = this.selected();
-        if (!selected.length) return 'middle';
-        const first = selected[0].labelVAlign ?? 'middle';
-        return selected.every((s) => (s.labelVAlign ?? 'middle') === first) ? first : 'middle';
+        const leaves = this.selectedLeaves();
+        if (!leaves.length) return 100;
+        const first = Math.round((leaves[0].opacity ?? 1) * 100);
+        return leaves.every((s) => Math.round((s.opacity ?? 1) * 100) === first) ? first : 100;
     });
     protected readonly visible = computed(() => {
         const f = this.flags();
         return this.hasSelection() || f.stroke || f.fill || f.width || f.ends || f.note || f.text || !!f.edges || !!f.strokeStyle || !!f.fillStyle || !!f.label;
+    });
+    /** Whether the shared text-options section applies: a shape with body text (text/note),
+     *  or any selected shape that carries a caption capability and one is already typed. */
+    protected readonly showTextOptions = computed(() => {
+        const f = this.flags();
+        return !!f.text || (!!f.label && this.hasLabel());
     });
 
     /** The selection's common value for a style property, read off each selected shape
@@ -137,7 +147,7 @@ export class PropertiesPanelComponent {
      *  style when nothing is selected, no selected shape carries it, or the values differ. */
     private selectedCommon<K extends keyof Style>(key: K, getter: (s: Shape) => Style[K] | undefined): Style[K] {
         const values: Style[K][] = [];
-        for (const s of this.selected()) {
+        for (const s of this.selectedLeaves()) {
             const v = getter(s);
             if (v !== undefined) values.push(v);
         }
@@ -156,18 +166,26 @@ export class PropertiesPanelComponent {
     protected readonly selectedStartCap = computed(() => this.selectedCommon('startCap', (s) => (s.type === 'arrow' ? s.startCap : undefined)));
     protected readonly selectedEndCap = computed(() => this.selectedCommon('endCap', (s) => (s.type === 'arrow' ? s.endCap : undefined)));
     protected readonly selectedNoteFill = computed(() => this.selectedCommon('noteFill', (s) => (s.type === 'note' ? s.fill : undefined)));
-    protected readonly selectedFontSize = computed(() =>
-        this.selectedCommon('fontSize', (s) => (s.type === 'text' || s.type === 'note' ? s.fontSize : undefined)),
-    );
-    protected readonly selectedTextAlign = computed(() =>
-        this.selectedCommon('textAlign', (s) => (s.type === 'text' || s.type === 'note' ? s.textAlign : undefined)),
-    );
+    /** The selection's common font size/family/alignment for the shared text-options
+     *  section — resolved per shape against its own shape-type default (see
+     *  {@link TextOptionsUtil.resolve}), so an untouched shape still reads as its
+     *  effective value rather than as "unset". */
+    protected readonly selectedFontSize = computed(() => this.selectedCommon('fontSize', (s) => this.resolvedFor(s).fontSize));
+    protected readonly selectedFontFamily = computed(() => this.selectedCommon('fontFamily', (s) => this.resolvedFor(s).fontFamily));
+    protected readonly selectedHAlign = computed(() => this.selectedCommon('hAlign', (s) => this.resolvedFor(s).hAlign));
+    protected readonly selectedVAlign = computed(() => this.selectedCommon('vAlign', (s) => this.resolvedFor(s).vAlign));
+    /** Font size scale for the currently selected font family — each font carries its own. */
+    protected readonly fontSizes = computed(() => FontUtil.sizesFor(this.selectedFontFamily()));
+
+    private resolvedFor(s: Shape): ResolvedTextOptions {
+        return TextOptionsUtil.resolve(s.textOptions, this.shapeRegistry.getDefinition(s).defaultTextOptions);
+    }
 
     private apply(patch: Partial<Style>, shapePatch: (s: Shape) => Partial<Shape> | null): void {
         this.ui.snapshot.setStyle(patch);
-        const selected = this.selected();
-        if (selected.length) {
-            const patches = selected
+        const leaves = this.selectedLeaves();
+        if (leaves.length) {
+            const patches = leaves
                 .map((s) => ({ id: s.id, patch: shapePatch(s) }))
                 .filter((p): p is { id: string; patch: Partial<Shape> } => p.patch !== null);
             if (patches.length) this.canvasDocument.updateShapes(patches);
@@ -201,33 +219,48 @@ export class PropertiesPanelComponent {
     protected applyFontSize(size: number): void {
         // Both text and notes auto-size to their content, so their box must be re-measured —
         // the same helpers the inline editor runs on every keystroke. Text grows w/h freely;
-        // a note keeps its fixed width but grows/shrinks its height to fit.
+        // a note keeps its fixed width but grows/shrinks its height to fit. The field lives
+        // on every shape's textOptions (caption or body alike), so the patch itself is
+        // unconditional; only the re-measure is type-specific.
         this.apply({ fontSize: size }, (s) => {
+            const textOptions = { ...s.textOptions, fontSize: size };
             if (s.type === 'text') {
-                // Fixed-width text keeps its wrap width and re-wraps; auto text re-fits both dims.
+                const font = this.resolvedFor(s).fontFamily;
                 const { w, h } = s.wrap
-                    ? this.textMeasure.measureTextWrapped(s.text, size, s.w)
-                    : this.textMeasure.measureText(s.text, size);
-                return { fontSize: size, w, h };
+                    ? this.textMeasure.measureTextWrapped(s.text, size, s.w, font)
+                    : this.textMeasure.measureText(s.text, size, font);
+                return { textOptions, w, h };
             }
-            return s.type === 'note' ? { fontSize: size, h: this.textMeasure.measureNote(s.text, size, s.w) } : null;
+            if (s.type === 'note') {
+                const font = this.resolvedFor(s).fontFamily;
+                return { textOptions, h: this.textMeasure.measureNote(s.text, size, s.w, font) };
+            }
+            return { textOptions };
         });
     }
-    protected applyLabelFontSize(size: number): void {
-        // Caption font size lives on BaseShape (any captioned shape), so the patch is
-        // unconditional — no per-type guard needed, like opacity.
-        this.apply({ labelFontSize: size }, () => ({ labelFontSize: size }));
+    protected applyFontFamily(font: Font): void {
+        // Switching family changes glyph widths, so re-measure exactly like applyFontSize does.
+        this.apply({ fontFamily: font }, (s) => {
+            const textOptions = { ...s.textOptions, fontFamily: font };
+            if (s.type === 'text') {
+                const size = this.resolvedFor(s).fontSize;
+                const { w, h } = s.wrap
+                    ? this.textMeasure.measureTextWrapped(s.text, size, s.w, font)
+                    : this.textMeasure.measureText(s.text, size, font);
+                return { textOptions, w, h };
+            }
+            if (s.type === 'note') {
+                const size = this.resolvedFor(s).fontSize;
+                return { textOptions, h: this.textMeasure.measureNote(s.text, size, s.w, font) };
+            }
+            return { textOptions };
+        });
     }
-    protected applyLabelAlign(a: TextAlign): void {
-        // Only the box shapes gate the control (labelAlign capability), but the field lives
-        // on BaseShape, so the patch is unconditional — arrow/draw simply ignore it on render.
-        this.apply({ labelHAlign: a }, () => ({ labelHAlign: a }));
+    protected applyHAlign(a: TextAlign): void {
+        this.apply({ hAlign: a }, (s) => ({ textOptions: { ...s.textOptions, hAlign: a } }));
     }
-    protected applyLabelVAlign(a: VerticalAlign): void {
-        this.apply({ labelVAlign: a }, () => ({ labelVAlign: a }));
-    }
-    protected applyTextAlign(a: TextAlign): void {
-        this.apply({ textAlign: a }, (s) => (s.type === 'text' || s.type === 'note' ? { textAlign: a } : null));
+    protected applyVAlign(a: VerticalAlign): void {
+        this.apply({ vAlign: a }, (s) => ({ textOptions: { ...s.textOptions, vAlign: a } }));
     }
     protected applyEdges(e: CornerStyle): void {
         this.apply({ edges: e }, (s) => (s.type === 'rectangle' || s.type === 'diamond' ? { edges: e } : null));

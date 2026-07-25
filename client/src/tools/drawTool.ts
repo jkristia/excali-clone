@@ -3,6 +3,7 @@ import type { Interaction, PointerInfo } from '../interaction/interaction';
 import type { Tool, ToolContext } from './tool';
 import type { ShapeCapabilities } from '../shapes/shapeDefinition';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
+import { TextOptionsUtil } from '../util/textOptions';
 
 export class DrawTool implements Tool {
     public readonly panelCapabilities: ShapeCapabilities;
@@ -16,6 +17,7 @@ export class DrawTool implements Tool {
         const draft: Extract<Shape, { type: 'draw' }> = {
             id: ctx.newId(), type: 'draw', x: p.x, y: p.y, z: ctx.nextZ(), createdBy: ctx.author(),
             points: [0, 0], stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle,
+            textOptions: TextOptionsUtil.fromStyle(style),
         };
         return { kind: 'draw', draft, startX: p.x, startY: p.y };
     }

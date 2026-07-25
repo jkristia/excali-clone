@@ -8,6 +8,7 @@ import { DrawTool } from './drawTool';
 import { TextTool } from './textTool';
 import { NoteTool } from './noteTool';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
+import { TextOptionsUtil } from '../util/textOptions';
 
 type ArrowDraftArgs = Parameters<CreateShapeTool['onPointerDown']>;
 
@@ -21,6 +22,7 @@ export class ToolRegistry {
             return {
                 id, type: 'rectangle', x: p.x, y: p.y, z, createdBy: ctx.author(),
                 w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle, fillStyle: style.fillStyle, edges: style.edges,
+                textOptions: TextOptionsUtil.fromStyle(style),
             };
         }, shapeRegistry.getCapabilities('rectangle'));
 
@@ -29,6 +31,7 @@ export class ToolRegistry {
             return {
                 id, type: 'ellipse', x: p.x, y: p.y, z, createdBy: ctx.author(),
                 w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle, fillStyle: style.fillStyle,
+                textOptions: TextOptionsUtil.fromStyle(style),
             };
         }, shapeRegistry.getCapabilities('ellipse'));
 
@@ -37,6 +40,7 @@ export class ToolRegistry {
             return {
                 id, type: 'diamond', x: p.x, y: p.y, z, createdBy: ctx.author(),
                 w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle, fillStyle: style.fillStyle, edges: style.edges,
+                textOptions: TextOptionsUtil.fromStyle(style),
             };
         }, shapeRegistry.getCapabilities('diamond'));
 
@@ -69,6 +73,7 @@ export class ToolRegistry {
             id, type: 'arrow', x: p.x, y: p.y, z, createdBy: ctx.author(),
             dx: 0, dy: 0, stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle,
             startCap: style.startCap, endCap: style.endCap,
+            textOptions: TextOptionsUtil.fromStyle(style),
         };
     }
 
