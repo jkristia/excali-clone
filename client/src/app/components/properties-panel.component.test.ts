@@ -147,6 +147,13 @@ describe('PropertiesPanelComponent', () => {
             ctx.setSelection([rect({ id: 'a', label: 'hi' }), rect({ id: 'b' })]);
             expect(hasLabel()).toBe(true);
         });
+
+        it('hasLabel is true when a selected group\'s member carries a label, even though the group itself never does', () => {
+            const hasLabel = () => (ctx.component as unknown as { hasLabel: Signal<boolean> })['hasLabel']();
+            ctx.collab.setShapes([group({ id: 'g' }), rect({ id: 'r', parentId: 'g', label: 'hi' })]);
+            ctx.uiStore.getState().setSelection(['g']);
+            expect(hasLabel()).toBe(true);
+        });
     });
 
     describe('mixed-vs-common value computeds', () => {
@@ -168,6 +175,16 @@ describe('PropertiesPanelComponent', () => {
             expect(opacityPercent()).toBe(100);
         });
 
+        it('opacityPercent reflects a selected group\'s members\' common opacity, not the container\'s own (unused) field', () => {
+            ctx.collab.setShapes([
+                group({ id: 'g' }),
+                rect({ id: 'a', parentId: 'g', opacity: 0.5 }),
+                rect({ id: 'b', parentId: 'g', opacity: 0.5 }),
+            ]);
+            ctx.uiStore.getState().setSelection(['g']);
+            expect(opacityPercent()).toBe(50);
+        });
+
         it('selectedFontSize shows the common size (resolved per shape against its own shape-type default), or the tool-default style value when empty or mixed', () => {
             expect(selectedFontSize()).toBe(18); // empty selection -> current tool-default style.fontSize
 
@@ -176,6 +193,16 @@ describe('PropertiesPanelComponent', () => {
 
             ctx.setSelection([rect({ id: 'a', textOptions: { fontSize: 24 } }), rect({ id: 'b', textOptions: { fontSize: 32 } })]);
             expect(selectedFontSize()).toBe(18); // mixed collapses to the tool-default style value
+        });
+
+        it('selectedFontSize shows a selected group\'s members\' common size', () => {
+            ctx.collab.setShapes([
+                group({ id: 'g' }),
+                rect({ id: 'a', parentId: 'g', textOptions: { fontSize: 24 } }),
+                rect({ id: 'b', parentId: 'g', textOptions: { fontSize: 24 } }),
+            ]);
+            ctx.uiStore.getState().setSelection(['g']);
+            expect(selectedFontSize()).toBe(24);
         });
 
         it('selectedHAlign / selectedVAlign fall back to the tool-default style when mixed', () => {
@@ -203,6 +230,13 @@ describe('PropertiesPanelComponent', () => {
             expect(flags().ends).toBe(false); // ...but has no endpoint caps
 
             ctx.setSelection([arrow({ id: 'x' })]);
+            expect(flags().ends).toBe(true);
+        });
+
+        it('flags reflect a selected group\'s members\' capabilities, not the (capability-less) group container\'s', () => {
+            const flags = () => (ctx.component as unknown as { flags: Signal<{ ends: boolean }> })['flags']();
+            ctx.collab.setShapes([group({ id: 'g' }), arrow({ id: 'x', parentId: 'g' })]);
+            ctx.uiStore.getState().setSelection(['g']);
             expect(flags().ends).toBe(true);
         });
 
@@ -267,6 +301,24 @@ describe('PropertiesPanelComponent', () => {
             expect(patches.get('r')).toEqual({ edges: 'round' });
             expect(patches.get('dm')).toEqual({ edges: 'round' });
             expect(patches.has('e')).toBe(false);
+        });
+
+        it('applyEdges cascades into a selected group\'s members, including nested groups, but never patches the group containers themselves', () => {
+            // g1 (selected) contains rect r and nested group g2, which contains rect n.
+            ctx.collab.setShapes([
+                group({ id: 'g1' }),
+                rect({ id: 'r', parentId: 'g1' }),
+                group({ id: 'g2', parentId: 'g1' }),
+                rect({ id: 'n', parentId: 'g2' }),
+            ]);
+            ctx.uiStore.getState().setSelection(['g1']);
+            call('applyEdges', 'round');
+
+            const patches = lastPatches(ctx.doc);
+            expect(patches.get('r')).toEqual({ edges: 'round' });
+            expect(patches.get('n')).toEqual({ edges: 'round' });
+            expect(patches.has('g1')).toBe(false);
+            expect(patches.has('g2')).toBe(false);
         });
 
         it('applyHAlign patches textOptions on every selected shape unconditionally — the same option now serves captions and body text alike', () => {

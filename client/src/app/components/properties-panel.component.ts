@@ -87,7 +87,26 @@ export class PropertiesPanelComponent {
         const ids = new Set(this.selection());
         return this.shapes().filter((s) => ids.has(s.id));
     });
-    protected readonly flags = computed(() => panelFlags(this.toolRegistry, this.shapeRegistry, this.tool(), this.selected()));
+    /** Every geometry-bearing shape the current selection actually touches: a directly
+     *  selected leaf shape as itself, or a selected group's leaf descendants (recursing
+     *  through nested groups). A group container carries none of the style fields below
+     *  and renders nothing on its own (see {@link GroupShapeDef}), so style controls read
+     *  from and patch this set rather than the raw selection. */
+    protected readonly selectedLeaves = computed(() => {
+        const allShapes = this.shapes();
+        const seen = new Set<string>();
+        const out: Shape[] = [];
+        for (const id of this.selection()) {
+            for (const s of SceneTree.boundableDescendants(allShapes, id)) {
+                if (!seen.has(s.id)) {
+                    seen.add(s.id);
+                    out.push(s);
+                }
+            }
+        }
+        return out;
+    });
+    protected readonly flags = computed(() => panelFlags(this.toolRegistry, this.shapeRegistry, this.tool(), this.selectedLeaves()));
     protected readonly hasSelection = computed(() => this.selected().length > 0);
     protected readonly hasMultiSelection = computed(() => this.selected().length > 1);
     /** Mirrors {@link CanvasDocument.groupShapes}'s own requirement (≥2 shapes, shared parent)
@@ -99,15 +118,18 @@ export class PropertiesPanelComponent {
         return selected.every((s) => (s.parentId ?? undefined) === (parentId ?? undefined));
     });
     protected readonly canUngroup = computed(() => this.selected().some((s) => s.type === 'group'));
-    /** True when at least one selected shape carries a non-empty caption. The caption styling
-     *  controls (size/alignment) only apply once a label exists — a captionless shape hides them. */
-    protected readonly hasLabel = computed(() => this.selected().some((s) => (s.label ?? '') !== ''));
-    /** Slider position (0–100): the selection's common opacity, or 100 when it is mixed. */
+    /** True when at least one selected shape (or, for a selected group, one of its members)
+     *  carries a non-empty caption. The caption styling controls (size/alignment) only apply
+     *  once a label exists — a captionless shape hides them. */
+    protected readonly hasLabel = computed(() => this.selectedLeaves().some((s) => (s.label ?? '') !== ''));
+    /** Slider position (0–100): the selection's common opacity, or 100 when it is mixed.
+     *  Reads {@link selectedLeaves} rather than the raw selection so a selected group's
+     *  members decide this, not the group container's own unused `opacity` field. */
     protected readonly opacityPercent = computed(() => {
-        const selected = this.selected();
-        if (!selected.length) return 100;
-        const first = Math.round((selected[0].opacity ?? 1) * 100);
-        return selected.every((s) => Math.round((s.opacity ?? 1) * 100) === first) ? first : 100;
+        const leaves = this.selectedLeaves();
+        if (!leaves.length) return 100;
+        const first = Math.round((leaves[0].opacity ?? 1) * 100);
+        return leaves.every((s) => Math.round((s.opacity ?? 1) * 100) === first) ? first : 100;
     });
     protected readonly visible = computed(() => {
         const f = this.flags();
@@ -125,7 +147,7 @@ export class PropertiesPanelComponent {
      *  style when nothing is selected, no selected shape carries it, or the values differ. */
     private selectedCommon<K extends keyof Style>(key: K, getter: (s: Shape) => Style[K] | undefined): Style[K] {
         const values: Style[K][] = [];
-        for (const s of this.selected()) {
+        for (const s of this.selectedLeaves()) {
             const v = getter(s);
             if (v !== undefined) values.push(v);
         }
@@ -161,9 +183,9 @@ export class PropertiesPanelComponent {
 
     private apply(patch: Partial<Style>, shapePatch: (s: Shape) => Partial<Shape> | null): void {
         this.ui.snapshot.setStyle(patch);
-        const selected = this.selected();
-        if (selected.length) {
-            const patches = selected
+        const leaves = this.selectedLeaves();
+        if (leaves.length) {
+            const patches = leaves
                 .map((s) => ({ id: s.id, patch: shapePatch(s) }))
                 .filter((p): p is { id: string; patch: Partial<Shape> } => p.patch !== null);
             if (patches.length) this.canvasDocument.updateShapes(patches);
