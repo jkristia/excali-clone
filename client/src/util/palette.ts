@@ -65,8 +65,8 @@ export const FILL_STYLES: { value: FillStyle; label: string; icon: string }[] = 
  *  values to adjust how "hand-drawn" each level looks. */
 export const SLOPPINESS: { value: Sloppiness; label: string; icon: string; roughness: number; bowing: number }[] = [
     { value: 'plain', label: 'Plain', icon: '▁', roughness: 0, bowing: 0 },
-    { value: 'light', label: 'Light', icon: '∼', roughness: 0.8, bowing: 1 },
-    { value: 'medium', label: 'Medium', icon: '≈', roughness: 1.8, bowing: 2 },
+    { value: 'light', label: 'Light', icon: '∼', roughness: 0.8, bowing: 1.1 },
+    { value: 'medium', label: 'Medium', icon: '≈', roughness: 1.6, bowing: 1.3 },
 ];
 
 /** Hachure/cross-hatch line spacing and angle, shared by every RoughJS fill style
