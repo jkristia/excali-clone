@@ -12,6 +12,18 @@
                 <button class="swatch" [class.active]="req.current === c" [style.background]="c" (click)="pick(c)"></button>
             }
         </div>
+        <div class="swatch-grid">
+            @for (c of neutrals; track c) {
+                <button class="swatch" [class.active]="req.current === c" [style.background]="c" (click)="pick(c)"></button>
+            }
+        </div>
+        @if (customs().length) {
+            <div class="swatch-grid custom-swatches">
+                @for (c of customs(); track c) {
+                    <button class="swatch" [class.active]="req.current === c" [style.background]="c" (click)="pick(c)"></button>
+                }
+            </div>
+        }
         <label class="custom-row">
             <input class="custom-input" type="color" [value]="customValue()" (change)="pickCustom($event)" />
             <span>Custom…</span>

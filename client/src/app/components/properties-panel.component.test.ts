@@ -452,9 +452,9 @@ describe('PropertiesPanelComponent', () => {
 
         it('strokeSlots/fillSlots start as transparent, black, then the default recents', () => {
             expect(strokeSlots().slice(0, 2)).toEqual(['transparent', '#1e1e1e']);
-            expect(strokeSlots()).toHaveLength(8);
+            expect(strokeSlots()).toHaveLength(9);
             expect(fillSlots().slice(0, 2)).toEqual(['transparent', '#1e1e1e']);
-            expect(fillSlots()).toHaveLength(8);
+            expect(fillSlots()).toHaveLength(9);
         });
 
         it('toggleColorFlyout opens the flyout with the role and the current selection color', () => {

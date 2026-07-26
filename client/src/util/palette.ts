@@ -13,13 +13,19 @@ export const PINNED_COLORS: readonly Color[] = [TRANSPARENT, INK];
 /** How many MRU slots follow the pinned pair. */
 export const RECENT_SLOT_COUNT = 7;
 
-/** Seed values for the 6 MRU slots on a fresh browser / short stored list. */
-export const DEFAULT_RECENT_STROKE: readonly Color[] = ['#e03131', '#f08c00', '#2f9e44', '#1971c2', '#6741d9', '#c2255c'];
-export const DEFAULT_RECENT_FILL: readonly Color[] = ['#ffc9c9', '#ffec99', '#b2f2bb', '#a5d8ff', '#d0bfff', '#fcc2d7'];
+/** Seed values for the 7 MRU slots on a fresh browser / short stored list.
+ *  Index-aligned: `DEFAULT_RECENT_FILL[i]` is the tint of `DEFAULT_RECENT_STROKE[i]`. */
+export const DEFAULT_RECENT_STROKE: readonly Color[] = ['#e03131', '#f08c00', '#2f9e44', '#1971c2', '#6741d9', '#c2255c', '#495057'];
+export const DEFAULT_RECENT_FILL: readonly Color[] = ['#ffc9c9', '#ffec99', '#b2f2bb', '#a5d8ff', '#d0bfff', '#fcc2d7', '#ced4da'];
+
+/** Cap on the flyout's shared custom-color row. Unlike the MRU quick slots this list
+ *  has no seeds — the row stays hidden until the user picks a color from the OS picker. */
+export const CUSTOM_SLOT_COUNT = 8;
 
 /** Flyout palette, row-major over an 8-column grid: 2 rows saturated, then 2 rows pastel.
  *  Hue-ordered red → pink, then brown/neutrals. `PALETTE_PASTEL[i]` is the tint of
- *  `PALETTE_SOLID[i]` — keep them index-aligned when hand-swapping values. */
+ *  `PALETTE_SOLID[i]` — keep them index-aligned when hand-swapping values.
+ *  Values are drawn from the Open Color palette (https://yeun.github.io/open-color/). */
 export const PALETTE_SOLID: readonly Color[] = [
     '#e03131', '#f76707', '#f08c00', '#fab005', '#74b816', '#2f9e44', '#099268', '#0c8599',
     '#1971c2', '#3b5bdb', '#6741d9', '#9c36b5', '#c2255c', '#846358', '#495057', '#868e96',
@@ -27,6 +33,15 @@ export const PALETTE_SOLID: readonly Color[] = [
 export const PALETTE_PASTEL: readonly Color[] = [
     '#ffc9c9', '#ffd8a8', '#ffe8cc', '#ffec99', '#d8f5a2', '#b2f2bb', '#96f2d7', '#99e9f2',
     '#a5d8ff', '#bac8ff', '#d0bfff', '#eebefa', '#fcc2d7', '#e6d8ce', '#ced4da', '#f1f3f5',
+];
+/** The flyout's greyscale row: one 8-column ramp, almost black → almost white. Not
+ *  tint-paired with the two rows above — it stands alone as its own row. Also from
+ *  Open Color's `gray` scale, which leans slightly blue (B > G > R) by design rather
+ *  than true r=g=b neutral, so it doesn't look flat next to the saturated rows.
+ *  https://yeun.github.io/open-color/
+ * */
+export const PALETTE_NEUTRAL: readonly Color[] = [
+    '#212529', '#495057', '#6c757d', '#868e96', '#adb5bd', '#ced4da', '#e9ecef', '#f8f9fa',
 ];
 export const WIDTHS = [1, 2, 4, 8];
 export const TEXT_ALIGNS: { align: TextAlign; label: string }[] = [

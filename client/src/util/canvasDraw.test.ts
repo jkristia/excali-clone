@@ -44,9 +44,10 @@ describe('CanvasDraw.applyStroke', () => {
         CanvasDraw.applyStroke(dashed.ctx, '#000', 2, 'dashed');
         expect(dashed.dashCalls).toEqual([[8, 4]]);
 
+        // Dotted gaps are 1.5x the width (not 2x): dots sit tighter than dashes.
         const dotted = recordingContext();
         CanvasDraw.applyStroke(dotted.ctx, '#000', 3, 'dotted');
-        expect(dotted.dashCalls).toEqual([[3, 6]]);
+        expect(dotted.dashCalls).toEqual([[3, 4.5]]);
     });
 });
 

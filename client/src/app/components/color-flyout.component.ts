@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, ElementRef, OnDestroy, OnInit, effect, signal, viewChild, inject } from '@angular/core';
 import type { Color } from '../../model/shapeTypes';
-import { PALETTE_SOLID, PALETTE_PASTEL } from '../../util/palette';
+import { PALETTE_SOLID, PALETTE_PASTEL, PALETTE_NEUTRAL } from '../../util/palette';
 import { ColorFlyoutService } from './color-flyout.service';
+import { RecentColorsService } from '../state/recent-colors.service';
 
 /** Gap between the trigger button and the flyout, and the flyout's clamp margin
  *  from the viewport edge. */
@@ -20,8 +21,9 @@ interface FlyoutPosition {
 }
 
 /**
- * App-level color palette flyout — 16 solid + 16 pastel swatches plus a custom
- * color input. Mounted once at the shell root (sibling of the properties panel,
+ * App-level color palette flyout — 16 solid + 16 pastel + 8 neutral swatches, the
+ * shared custom-color row (hidden until the user has picked one), and the OS color
+ * input that feeds that row. Mounted once at the shell root (sibling of the properties panel,
  * not a descendant of it): `.properties-panel` scrolls (`overflow-y: auto`) and is
  * translated (`transform: translateY(-50%)`), which together would clip *any*
  * absolutely/fixed-positioned descendant that sticks out past its edge. Living
@@ -37,11 +39,14 @@ interface FlyoutPosition {
 })
 export class ColorFlyoutComponent implements OnInit, OnDestroy {
     private readonly service = inject(ColorFlyoutService);
+    private readonly recentColors = inject(RecentColorsService);
     private readonly flyoutRef = viewChild<ElementRef<HTMLElement>>('flyout');
 
     protected readonly request = this.service.request;
     protected readonly solids = PALETTE_SOLID;
     protected readonly pastels = PALETTE_PASTEL;
+    protected readonly neutrals = PALETTE_NEUTRAL;
+    protected readonly customs = this.recentColors.customColors();
     protected readonly position = signal<FlyoutPosition>({ left: 0, top: 0, caretTop: CARET_INSET, flipped: false });
 
     private readonly onWindowKeyDown = (e: KeyboardEvent) => this.handleKeyDown(e);
@@ -84,9 +89,13 @@ export class ColorFlyoutComponent implements OnInit, OnDestroy {
 
     /** Bound to `(change)`, not `(input)`: `input` fires continuously while dragging
      *  inside the OS color picker, which would spam a shape patch (and a Yjs
-     *  transaction, and an undo entry) on every mouse move. */
+     *  transaction, and an undo entry) on every mouse move — and flood the custom
+     *  row with every color the cursor passed over. Only picks made here feed that
+     *  row; clicking a palette swatch never does. */
     protected pickCustom(event: Event): void {
-        this.pick((event.target as HTMLInputElement).value);
+        const value = (event.target as HTMLInputElement).value;
+        this.recentColors.promoteCustom(value);
+        this.pick(value);
     }
 
     private handleKeyDown(e: KeyboardEvent): void {

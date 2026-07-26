@@ -21,7 +21,16 @@ export class RecentColorsService {
         return computed(() => this.slotsSignal()[role]);
     }
 
+    /** The palette flyout's shared custom-color row — one list for every role. */
+    public customColors(): Signal<readonly Color[]> {
+        return computed(() => this.slotsSignal().custom);
+    }
+
     public promote(role: ColorRole, color: Color): void {
         this.store.promote(role, color);
+    }
+
+    public promoteCustom(color: Color): void {
+        this.store.promoteCustom(color);
     }
 }
