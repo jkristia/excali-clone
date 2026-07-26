@@ -18,8 +18,7 @@ npm **workspaces** monorepo. Node **≥ 22**.
    └─ src/
       │  ═══ FRAMEWORK-AGNOSTIC CORE (no Angular import) ═══
       ├─ model/
-      │  ├─ types.ts           Shape union + Bounds + AwarenessState + PeerPresence
-      │  └─ geometry.ts        getBounds, hitTest, topShapeAt, shapesInRect, unionBounds
+      │  └─ shapeTypes.ts      Shape union + Bounds + AwarenessState + PeerPresence
       ├─ document/
       │  ├─ canvasDocument.ts  ⭐ CanvasDocument class: Yjs doc/provider/awareness/undo + all shape mutations
       │  └─ identity.ts        per-browser name+color (localStorage)
@@ -41,6 +40,7 @@ npm **workspaces** monorepo. Node **≥ 22**.
       │  └─ camera.ts           CameraMath class: screen<->world transforms, zoomAt
       └─ util/                  static-method util classes + shared cross-shell logic
          ├─ geometry.ts / vectorMath.ts / resizeMath.ts / handles.ts / canvasDraw.ts / arrowEndpoints.ts
+         ├─ roughDraw.ts           RoughJS hand-drawn rendering + per-shape geometry cache (see "Rendering")
          └─ panelCapabilities.ts   which properties-panel sections apply (shared by any shell)
       │
       │  ═══ ANGULAR SHELL (the only Angular in the tree) ═══
@@ -66,7 +66,7 @@ The two ⭐ core files are where most logic lives — `InteractionController` (f
 
 ## Data model (important)
 
-Shapes live in `ydoc.getMap('shapes')` — a `Y.Map<string, Y.Map>`. **Each shape is its own nested `Y.Map`**, so concurrent edits to *different properties* of the same shape both survive (per-property CRDT merge). All shapes are anchored at `(x, y)` in world coords so "move" is always "add delta to x/y". Type-specific geometry is relative to that anchor (see `model/types.ts`).
+Shapes live in `ydoc.getMap('shapes')` — a `Y.Map<string, Y.Map>`. **Each shape is its own nested `Y.Map`**, so concurrent edits to *different properties* of the same shape both survive (per-property CRDT merge). All shapes are anchored at `(x, y)` in world coords so "move" is always "add delta to x/y". Type-specific geometry is relative to that anchor (see `model/shapeTypes.ts`).
 
 You **cannot store class instances in Yjs** — the CRDT needs POJOs. Shape *data* is always a plain interface; shape *behavior* lives in the `shapes/*ShapeDef.ts` strategy classes, looked up by type through `shapeRegistry.ts`. Don't turn a shape interface into a class with methods.
 
@@ -81,6 +81,8 @@ You **cannot store class instances in Yjs** — the CRDT needs POJOs. Shape *dat
 `app/whiteboard/whiteboard.component.ts` renders **only when something changes**: `scheduleRender()` coalesces changes into a single `requestAnimationFrame` → `drawNow()` → `SceneRenderer.render()`. Redraws are triggered by an Angular `effect()` that reads shapes, peers, and every `uiStore` field the renderer depends on (camera/selection/editingId/tool/spacePan) — touching any of them re-runs the effect. Resize and pointer handlers (for local-only drafts/marquee, which don't touch the store or doc) call `scheduleRender()` directly. If you add a new source of visual state, make sure something calls `scheduleRender()` or is read inside that `effect()`.
 
 `SceneRenderer` is a **pure** class (no Angular, no globals) driven only by its inputs — easy to unit-test by calling it against a throwaway canvas; see `canvas/render.test.ts`.
+
+Rectangle/ellipse/diamond/arrow draw via `util/roughDraw.ts` (`RoughDraw`), a thin wrapper around RoughJS's `RoughGenerator` for the hand-drawn "Sloppiness" look (plain/light/medium — see `util/palette.ts`'s `SLOPPINESS`). Because every pointer-move triggers a full scene redraw but RoughJS re-rolls its sketchy geometry on every call, `RoughDraw` caches one `Drawable` per shape id, invalidated only when something that actually changes the geometry changes (size, sloppiness, fill style/presence, stroke width) — colors and dash pattern are applied at paint time and don't bust the cache. The sketch is seeded deterministically from the shape's `id` (`RoughDraw.seedFor`), not a stored field, so it never jitters across reloads, peers, or frames, and needs no migration for shapes that predate the feature. Freehand `draw`, `text`, and `note` are unaffected — freehand is already hand-drawn, and roughening text would desync the inline-editor overlay's shared baseline/box model.
 
 ## Interaction model
 
@@ -177,10 +179,24 @@ Yjs **awareness** carries `{ user:{name,color}, cursor:{x,y}|null, selection:str
 ## How to extend
 
 ### Add a new shape type
-1. `model/types.ts` — add the interface, add it to the `Shape` union and `ShapeType`.
+1. `model/shapeTypes.ts` — add the interface, add it to the `Shape` union and `ShapeType`.
 2. `shapes/` — add `FooShapeDef.ts` implementing `ShapeDefinition` (`capabilities`, `getBounds`, `hitTest`, `draw`), and register it in `shapeRegistry.ts`.
 
 That's it — `getBounds`/`hitTest`/`drawShape`, resize handles, and the properties panel's visible sections (`ShapeDefinition.capabilities`) all read from the registry. If it needs its own tool, see below.
+
+### Add a style option (e.g. a new stroke/fill toggle)
+
+Follow the trace the "Sloppiness" row added (`shapeTypes.ts`'s `Sloppiness`, `util/roughDraw.ts`'s `SLOPPINESS`-driven options):
+
+1. `model/shapeTypes.ts` — add the type and an optional field on whichever `*Shape` interfaces carry it. Optional, so old persisted shapes (and old Yjs docs) load unchanged — default it at the read site (`shape.foo ?? 'default'`), never require a migration.
+2. `shapes/shapeDefinition.ts` — add an optional flag to `ShapeCapabilities`; set it `true` on each shape def that supports it.
+3. `util/panelCapabilities.ts` — OR the new flag into **both** `panelFlags`'s reduce and its zero-value seed literal (easy to miss one).
+4. `state/uiStore.ts` — add the field to `Style` and its initial value (the "next new shape" default).
+5. `tools/toolRegistry.ts` — copy `style.foo` onto each applicable `CreateShapeTool`/draft-factory literal.
+6. `util/palette.ts` — add the option-list constant (`{ value, label, icon }[]`) the panel iterates.
+7. `app/components/properties-panel.component.ts` + `.html` — add the list, a `selectedFoo` computed via `selectedCommon`, an `applyFoo` method via `apply`, and a `@if (flags().foo)` row in the template (copy an existing `width-row` block). **Guard the shape-patch predicate by `shape.type`, not `'foo' in shape`** — an `in` check reads a not-yet-set optional field as "doesn't apply" rather than "unset", which silently breaks the control for every shape that predates the field (see `applySloppiness`/`applyEdges`).
+8. Draw the new option in each affected `*ShapeDef.draw()`.
+9. Update tests: `util/panelCapabilities.test.ts` (exact-object assertions), `canvas/render.test.ts` if the draw call trace changes, and `app/components/properties-panel.component.test.ts`.
 
 ### Add a new tool / shortcut
 1. `state/uiStore.ts` — add the tool name to the `Tool` union.

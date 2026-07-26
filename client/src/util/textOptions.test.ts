@@ -39,7 +39,7 @@ describe('TextOptionsUtil.cssFont', () => {
 describe('TextOptionsUtil.fromStyle', () => {
     it('picks the four text-option fields off the current tool-default style', () => {
         const style = {
-            stroke: '#000', fill: '#fff', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', opacity: 1,
+            stroke: '#000', fill: '#fff', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', sloppiness: 'plain', opacity: 1,
             fontSize: 18, fontFamily: Font.Font2, hAlign: 'right', vAlign: 'top',
             noteFill: '#fff', startCap: 'none', endCap: 'arrow', edges: 'sharp',
         } as const;

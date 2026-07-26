@@ -1,4 +1,4 @@
-import type { Color, CornerStyle, EndpointCap, FillStyle, StrokeStyle, TextAlign, VerticalAlign } from '../model/shapeTypes';
+import type { Color, CornerStyle, EndpointCap, FillStyle, Sloppiness, StrokeStyle, TextAlign, VerticalAlign } from '../model/shapeTypes';
 
 /** Shape drawing defaults — persisted into shape data, not CSS (canvas rendering can't consume CSS custom properties). */
 export const NOTE_COLORS: Color[] = ['#fff9b1', '#d3f8e2', '#ffd6e0', '#cddafd', '#ffe8cc'];
@@ -58,3 +58,18 @@ export const FILL_STYLES: { value: FillStyle; label: string; icon: string }[] = 
     { value: 'hatch', label: 'Hatch', icon: '▨' },
     { value: 'crossHatch', label: 'Cross-hatch', icon: '▩' },
 ];
+
+/** RoughJS tuning per sloppiness level. `roughness: 0` renders an exact (non-sketchy)
+ *  line — {@link RoughDraw} also disables multi-stroke passes at that level so a
+ *  translucent shape isn't double-darkened by two coincident strokes. Tune these
+ *  values to adjust how "hand-drawn" each level looks. */
+export const SLOPPINESS: { value: Sloppiness; label: string; icon: string; roughness: number; bowing: number }[] = [
+    { value: 'plain', label: 'Plain', icon: '▁', roughness: 0, bowing: 0 },
+    { value: 'light', label: 'Light', icon: '∼', roughness: 0.8, bowing: 1 },
+    { value: 'medium', label: 'Medium', icon: '≈', roughness: 1.8, bowing: 2 },
+];
+
+/** Hachure/cross-hatch line spacing and angle, shared by every RoughJS fill style
+ *  so switching sloppiness doesn't also shift the fill pattern's look. */
+export const HACHURE_GAP = 8;
+export const HACHURE_ANGLE = -41;

@@ -366,6 +366,21 @@ describe('PropertiesPanelComponent', () => {
             expect(patches.has('g2')).toBe(false);
         });
 
+        it('applySloppiness touches rect/ellipse/diamond/arrow but skips draw, text and note', () => {
+            ctx.setSelection([rect({ id: 'r' }), ellipse({ id: 'e' }), diamond({ id: 'dm' }), arrow({ id: 'a' }), draw({ id: 'd' }), text({ id: 't' }), note({ id: 'n' })]);
+            call('applySloppiness', 'medium');
+
+            expect(style(ctx.uiStore).sloppiness).toBe('medium');
+            const patches = lastPatches(ctx.doc);
+            expect(patches.get('r')).toEqual({ sloppiness: 'medium' });
+            expect(patches.get('e')).toEqual({ sloppiness: 'medium' });
+            expect(patches.get('dm')).toEqual({ sloppiness: 'medium' });
+            expect(patches.get('a')).toEqual({ sloppiness: 'medium' });
+            expect(patches.has('d')).toBe(false);
+            expect(patches.has('t')).toBe(false);
+            expect(patches.has('n')).toBe(false);
+        });
+
         it('applyHAlign patches textOptions on every selected shape unconditionally — the same option now serves captions and body text alike', () => {
             ctx.setSelection([text({ id: 't' }), note({ id: 'n' }), rect({ id: 'r' }), arrow({ id: 'a' })]);
             call('applyHAlign', 'right');

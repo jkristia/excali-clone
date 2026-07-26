@@ -4,11 +4,11 @@ import { RecentColorsService } from '../state/recent-colors.service';
 import { CollabService } from '../collab/collab.service';
 import { CANVAS_DOCUMENT, SHAPE_REGISTRY, TOOL_REGISTRY, TEXT_MEASURE, CLIPBOARD_CONTROLLER } from '../di-tokens';
 import type { ReorderOp } from '../../document/canvasDocument';
-import { Font, type Color, type CornerStyle, type EndpointCap, type FillStyle, type Shape, type StrokeStyle, type TextAlign, type VerticalAlign } from '../../model/shapeTypes';
+import { Font, type ArrowShape, type Color, type CornerStyle, type DiamondShape, type EllipseShape, type EndpointCap, type FillStyle, type RectShape, type Shape, type Sloppiness, type StrokeStyle, type TextAlign, type VerticalAlign } from '../../model/shapeTypes';
 import type { Style } from '../../state/uiStore';
 import type { ColorRole } from '../../state/recentColors';
 import { panelFlags } from '../../util/panelCapabilities';
-import { NOTE_COLORS, WIDTHS, CAPS, TEXT_ALIGNS, VERTICAL_ALIGNS, EDGES, STROKE_STYLES, FILL_STYLES } from '../../util/palette';
+import { NOTE_COLORS, WIDTHS, CAPS, TEXT_ALIGNS, VERTICAL_ALIGNS, EDGES, STROKE_STYLES, FILL_STYLES, SLOPPINESS } from '../../util/palette';
 import { ColorFlyoutService } from './color-flyout.service';
 import { FONT_SIZE_LABELS, FONTS, FontUtil } from '../../util/fontUtil';
 import { TextOptionsUtil, type ResolvedTextOptions } from '../../util/textOptions';
@@ -74,6 +74,7 @@ export class PropertiesPanelComponent {
     protected readonly widths = WIDTHS;
     protected readonly strokeStyles = STROKE_STYLES;
     protected readonly fillStyles = FILL_STYLES;
+    protected readonly sloppinessLevels = SLOPPINESS;
     protected readonly caps = CAPS;
     protected readonly fonts = FONTS;
     protected readonly fontSizeLabels = FONT_SIZE_LABELS;
@@ -138,7 +139,7 @@ export class PropertiesPanelComponent {
     });
     protected readonly visible = computed(() => {
         const f = this.flags();
-        return this.hasSelection() || f.stroke || f.fill || f.width || f.ends || f.note || f.text || !!f.edges || !!f.strokeStyle || !!f.fillStyle || !!f.label;
+        return this.hasSelection() || f.stroke || f.fill || f.width || f.ends || f.note || f.text || !!f.edges || !!f.strokeStyle || !!f.fillStyle || !!f.sloppiness || !!f.label;
     });
     /** Whether the shared text-options section applies: a shape with body text (text/note),
      *  or any selected shape that carries a caption capability and one is already typed. */
@@ -167,6 +168,12 @@ export class PropertiesPanelComponent {
     protected readonly selectedFillStyle = computed(() => this.selectedCommon('fillStyle', (s) => ('fillStyle' in s ? s.fillStyle : undefined)));
     protected readonly selectedStrokeWidth = computed(() => this.selectedCommon('strokeWidth', (s) => ('strokeWidth' in s ? s.strokeWidth : undefined)));
     protected readonly selectedStrokeStyle = computed(() => this.selectedCommon('strokeStyle', (s) => ('strokeStyle' in s ? s.strokeStyle : undefined)));
+    /** Checked by shape type, not `'sloppiness' in s` — every shape persisted before this
+     *  feature (and every test fixture) predates the field, so an `in` check would read
+     *  as "doesn't apply" instead of "unset", same trap {@link applySloppiness} avoids. */
+    protected readonly selectedSloppiness = computed(() =>
+        this.selectedCommon('sloppiness', (s) => (this.isSloppinessCapable(s) ? s.sloppiness : undefined)),
+    );
     protected readonly selectedEdges = computed(() => this.selectedCommon('edges', (s) => ('edges' in s ? s.edges : undefined)));
     protected readonly selectedStartCap = computed(() => this.selectedCommon('startCap', (s) => (s.type === 'arrow' ? s.startCap : undefined)));
     protected readonly selectedEndCap = computed(() => this.selectedCommon('endCap', (s) => (s.type === 'arrow' ? s.endCap : undefined)));
@@ -184,6 +191,13 @@ export class PropertiesPanelComponent {
 
     private resolvedFor(s: Shape): ResolvedTextOptions {
         return TextOptionsUtil.resolve(s.textOptions, this.shapeRegistry.getDefinition(s).defaultTextOptions);
+    }
+
+    /** The shape types RoughJS sketches (see each type's `sloppiness` capability). Checked
+     *  by type rather than `'sloppiness' in s`: the field is new, so every shape persisted
+     *  before this feature predates it and would otherwise read as "doesn't apply". */
+    private isSloppinessCapable(s: Shape): s is RectShape | EllipseShape | DiamondShape | ArrowShape {
+        return s.type === 'rectangle' || s.type === 'ellipse' || s.type === 'diamond' || s.type === 'arrow';
     }
 
     private apply(patch: Partial<Style>, shapePatch: (s: Shape) => Partial<Shape> | null): void {
@@ -230,6 +244,9 @@ export class PropertiesPanelComponent {
     }
     protected applyFillStyle(style: FillStyle): void {
         this.apply({ fillStyle: style }, (s) => ('fill' in s && s.type !== 'note' ? { fillStyle: style } : null));
+    }
+    protected applySloppiness(v: Sloppiness): void {
+        this.apply({ sloppiness: v }, (s) => (this.isSloppinessCapable(s) ? { sloppiness: v } : null));
     }
     protected applyStartCap(c: EndpointCap): void {
         this.apply({ startCap: c }, (s) => (s.type === 'arrow' ? { startCap: c } : null));

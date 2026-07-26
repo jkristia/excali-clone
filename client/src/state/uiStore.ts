@@ -1,4 +1,4 @@
-import { Font, type Color, type CornerStyle, type EndpointCap, type FillStyle, type StrokeStyle, type TextAlign, type VerticalAlign } from '../model/shapeTypes';
+import { Font, type Color, type CornerStyle, type EndpointCap, type FillStyle, type Sloppiness, type StrokeStyle, type TextAlign, type VerticalAlign } from '../model/shapeTypes';
 import { ToolRegistry } from '../tools/toolRegistry';
 import { NOTE_COLORS, INK, TRANSPARENT } from '../util/palette';
 import { FontUtil } from '../util/fontUtil';
@@ -17,6 +17,7 @@ export interface Style {
     strokeWidth: number;
     strokeStyle: StrokeStyle;
     fillStyle: FillStyle;
+    sloppiness: Sloppiness;
     /** 0..1 shape opacity applied to the current selection. */
     opacity: number;
     /** Text options for the next shape's caption or body — see {@link TextOptionsUtil.fromStyle}. */
@@ -93,6 +94,7 @@ export class UIStore {
                 strokeWidth: 2,
                 strokeStyle: 'solid',
                 fillStyle: 'solid',
+                sloppiness: 'plain',
                 opacity: 1,
                 fontSize: FontUtil.mediumSize(Font.Font1),
                 fontFamily: Font.Font1,

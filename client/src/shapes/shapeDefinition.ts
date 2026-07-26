@@ -16,6 +16,8 @@ export interface ShapeCapabilities {
     strokeStyle?: boolean;
     /** Solid/hatch/cross-hatch fill-style toggle (the fillable box shapes). */
     fillStyle?: boolean;
+    /** Plain/light/medium hand-drawn (RoughJS) toggle (every stroked shape). */
+    sloppiness?: boolean;
     /** Optional centered caption, editable via double-click (every shape except text/note). */
     label?: boolean;
     /** Horizontal-alignment row within the shared text-options section (box shapes, text, note).

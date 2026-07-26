@@ -135,6 +135,38 @@ test('nudge: arrow keys move the selection 1px, Shift+arrow moves it 10px', asyn
     expect(afterShift.equals(before)).toBe(false);
 });
 
+test('sloppiness: switching to Medium marks the button active and re-sketches the shape', async ({ page }) => {
+    await page.getByTitle('Rectangle (R)').click();
+    const canvas = page.locator('canvas');
+    const box = await canvas.boundingBox();
+    if (!box) throw new Error('canvas not laid out');
+
+    // Drawn clear of the properties panel, same as the nudge test, so the clip
+    // below captures only the shape.
+    await page.mouse.move(box.x + 400, box.y + 100);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 460, box.y + 160);
+    await page.mouse.up();
+    await page.mouse.click(box.x + 430, box.y + 130);
+
+    const panel = page.locator('.properties-panel');
+    await expect(panel).toBeVisible();
+    const plainBtn = panel.getByTitle('Plain');
+    const mediumBtn = panel.getByTitle('Medium');
+    await expect(plainBtn).toHaveClass(/active/); // 'plain' is the default sloppiness
+
+    const clip = { x: box.x + 380, y: box.y + 80, width: 120, height: 100 };
+    await nextFrame(page);
+    const before = await page.screenshot({ clip });
+
+    await mediumBtn.click();
+    await expect(mediumBtn).toHaveClass(/active/);
+    await expect(plainBtn).not.toHaveClass(/active/);
+    await nextFrame(page);
+    const after = await page.screenshot({ clip });
+    expect(after.equals(before)).toBe(false);
+});
+
 test('stroke color flyout: opens unclipped beside the panel, picking a color updates the shape and the quick row', async ({ page }) => {
     await page.getByTitle('Rectangle (R)').click();
     const canvas = page.locator('canvas');

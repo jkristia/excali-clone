@@ -2,9 +2,10 @@ import type { Bounds, RectShape } from '../model/shapeTypes';
 import type { ShapeDefinition } from './shapeDefinition';
 import { Geometry } from '../util/geometry';
 import { CanvasDraw } from '../util/canvasDraw';
+import { RoughDraw } from '../util/roughDraw';
 
 export class RectangleShapeDef implements ShapeDefinition<RectShape> {
-    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false, edges: true, strokeStyle: true, fillStyle: true, label: true, textAlign: true, textVAlign: true };
+    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false, edges: true, strokeStyle: true, fillStyle: true, sloppiness: true, label: true, textAlign: true, textVAlign: true };
     public readonly defaultTextOptions = { hAlign: 'center' as const, vAlign: 'middle' as const };
     public readonly resizable = true;
     public readonly rotatable = true;
@@ -18,21 +19,14 @@ export class RectangleShapeDef implements ShapeDefinition<RectShape> {
     }
 
     public draw(ctx: CanvasRenderingContext2D, shape: RectShape): void {
-        CanvasDraw.applyStroke(ctx, shape.stroke, shape.strokeWidth, shape.strokeStyle);
-        if (shape.edges === 'rounded') {
-            const b = this.getBounds(shape);
-            CanvasDraw.roundRect(ctx, b.x, b.y, b.w, b.h, Math.min(b.w, b.h) * 0.18);
-            if (shape.fill && shape.fill !== 'transparent') {
-                ctx.fillStyle = CanvasDraw.fillFor(ctx, shape.fillStyle ?? 'solid', shape.fill);
-                ctx.fill();
-            }
-            if (shape.strokeWidth > 0) ctx.stroke();
-            return;
-        }
-        if (shape.fill && shape.fill !== 'transparent') {
-            ctx.fillStyle = CanvasDraw.fillFor(ctx, shape.fillStyle ?? 'solid', shape.fill);
-            ctx.fillRect(shape.x, shape.y, shape.w, shape.h);
-        }
-        if (shape.strokeWidth > 0) ctx.strokeRect(shape.x, shape.y, shape.w, shape.h);
+        const b = this.getBounds(shape);
+        const hasFill = !!shape.fill && shape.fill !== 'transparent';
+        const radius = shape.edges === 'rounded' ? Math.min(b.w, b.h) * 0.18 : 0;
+        const pathData = CanvasDraw.roundRectPathData(b.w, b.h, radius);
+        const drawable = RoughDraw.box(shape.id, pathData, b.w, b.h, shape.sloppiness, shape.strokeWidth, hasFill, shape.fillStyle);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        RoughDraw.paint(ctx, drawable, shape.stroke, shape.strokeWidth, shape.strokeStyle, hasFill ? shape.fill : undefined);
+        ctx.restore();
     }
 }

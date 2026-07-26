@@ -75,6 +75,19 @@
             </div>
         }
 
+        @if (flags().sloppiness) {
+            <div class="prop-section">
+                <div class="prop-label">Sloppiness</div>
+                <div class="width-row">
+                    @for (s of sloppinessLevels; track s.value) {
+                        <button class="width-btn" [class.active]="selectedSloppiness() === s.value" [title]="s.label" (click)="applySloppiness(s.value)">
+                            <span class="cap-icon">{{ s.icon }}</span>
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+
         @if (flags().edges) {
             <div class="prop-section">
                 <div class="prop-label">Edges</div>

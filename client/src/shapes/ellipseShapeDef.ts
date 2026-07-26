@@ -1,10 +1,10 @@
 import type { Bounds, EllipseShape } from '../model/shapeTypes';
 import type { ShapeDefinition } from './shapeDefinition';
 import { Geometry } from '../util/geometry';
-import { CanvasDraw } from '../util/canvasDraw';
+import { RoughDraw } from '../util/roughDraw';
 
 export class EllipseShapeDef implements ShapeDefinition<EllipseShape> {
-    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false, strokeStyle: true, fillStyle: true, label: true, textAlign: true, textVAlign: true };
+    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false, strokeStyle: true, fillStyle: true, sloppiness: true, label: true, textAlign: true, textVAlign: true };
     public readonly defaultTextOptions = { hAlign: 'center' as const, vAlign: 'middle' as const };
     public readonly resizable = true;
     public readonly rotatable = true;
@@ -25,14 +25,12 @@ export class EllipseShapeDef implements ShapeDefinition<EllipseShape> {
     }
 
     public draw(ctx: CanvasRenderingContext2D, shape: EllipseShape): void {
-        CanvasDraw.applyStroke(ctx, shape.stroke, shape.strokeWidth, shape.strokeStyle);
         const b = this.getBounds(shape);
-        ctx.beginPath();
-        ctx.ellipse(b.x + b.w / 2, b.y + b.h / 2, b.w / 2, b.h / 2, 0, 0, Math.PI * 2);
-        if (shape.fill && shape.fill !== 'transparent') {
-            ctx.fillStyle = CanvasDraw.fillFor(ctx, shape.fillStyle ?? 'solid', shape.fill);
-            ctx.fill();
-        }
-        if (shape.strokeWidth > 0) ctx.stroke();
+        const hasFill = !!shape.fill && shape.fill !== 'transparent';
+        const drawable = RoughDraw.ellipse(shape.id, b.w, b.h, shape.sloppiness, shape.strokeWidth, hasFill, shape.fillStyle);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        RoughDraw.paint(ctx, drawable, shape.stroke, shape.strokeWidth, shape.strokeStyle, hasFill ? shape.fill : undefined);
+        ctx.restore();
     }
 }
