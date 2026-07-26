@@ -115,4 +115,24 @@ describe('RoughDraw.paint', () => {
         expect(calls).not.toContain('fill("evenodd")');
         expect(calls).toContain('stroke()');
     });
+
+    it('fills an ellipse with the nonzero rule, matching RoughJS\'s own renderer for "ellipse"-shaped drawables', () => {
+        // At roughness > 0, RoughJS's solid fillPath for an ellipse is two overlapping
+        // closed curves (the sketchy double-stroke). Filling with 'evenodd' would cancel
+        // out their shared interior, leaving only a thin sliver visibly filled — regression
+        // test for that bug.
+        const drawable = RoughDraw.ellipse('p6', 40, 20, 'medium', 2, true, 'solid');
+        const { ctx, calls } = recordingContext();
+        RoughDraw.paint(ctx, drawable, '#000', 2, 'solid', '#fff');
+        expect(calls).toContain('fill("nonzero")');
+        expect(calls).not.toContain('fill("evenodd")');
+    });
+
+    it('fills a box with the evenodd rule, matching RoughJS\'s own renderer for "path"-shaped drawables', () => {
+        const drawable = RoughDraw.box('p7', SQUARE, 10, 10, 'medium', 2, true, 'solid');
+        const { ctx, calls } = recordingContext();
+        RoughDraw.paint(ctx, drawable, '#000', 2, 'solid', '#fff');
+        expect(calls).toContain('fill("evenodd")');
+        expect(calls).not.toContain('fill("nonzero")');
+    });
 });

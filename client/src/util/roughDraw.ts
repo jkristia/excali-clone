@@ -115,7 +115,10 @@ export class RoughDraw {
                     if (!fillColor) break;
                     ctx.fillStyle = fillColor;
                     RoughDraw.traceOps(ctx, set.ops);
-                    ctx.fill('evenodd');
+                    // Matches RoughJS's own canvas renderer: an ellipse's solid fill is two
+                    // overlapping closed curves (the sketchy double-stroke); 'evenodd' would
+                    // cancel out their shared interior and leave only a thin sliver filled.
+                    ctx.fill(drawable.shape === 'curve' || drawable.shape === 'polygon' || drawable.shape === 'path' ? 'evenodd' : 'nonzero');
                     break;
                 case 'fillSketch':
                     if (!fillColor) break;

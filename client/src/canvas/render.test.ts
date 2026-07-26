@@ -125,7 +125,10 @@ describe('renderScene characterization', () => {
         };
         sceneRenderer.render({ ctx, ...baseInput([shape]) });
         expect(calls.some((c) => c.startsWith('bezierCurveTo('))).toBe(true);
-        expect(calls).toContain('fill("evenodd")');
+        // 'nonzero', not 'evenodd' — RoughJS's own renderer fills an ellipse's sketchy
+        // double-stroke fillPath with 'nonzero'; 'evenodd' would cancel the two curves'
+        // shared interior and leave only a sliver filled (see roughDraw.test.ts).
+        expect(calls).toContain('fill("nonzero")');
         expect(calls).toContain('stroke()');
     });
 
