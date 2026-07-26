@@ -77,7 +77,7 @@ export class CanvasDraw {
             case 'dashed':
                 return [width * 4, width * 2];
             case 'dotted':
-                return [width, width * 2];
+                return [width, width * 1.5];
             default:
                 return [];
         }
