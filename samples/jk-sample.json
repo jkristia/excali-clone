@@ -299,6 +299,25 @@
         "vAlign": "middle"
       },
       "opacity": 1
+    },
+    {
+      "id": "qd7GI9v2LFPsIjJ76V_mt",
+      "type": "text",
+      "x": 767.45703125,
+      "y": 160.01953125,
+      "z": 13,
+      "createdBy": "2808366484",
+      "text": "- Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\n- Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore.\n\n- Voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint.",
+      "color": "#1e1e1e",
+      "textOptions": {
+        "fontSize": 14,
+        "fontFamily": "Font2",
+        "hAlign": "left",
+        "vAlign": "middle"
+      },
+      "w": 273.125,
+      "h": 157.5,
+      "wrap": true
     }
   ],
   "view": {
