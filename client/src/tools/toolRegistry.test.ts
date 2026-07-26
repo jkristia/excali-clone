@@ -3,7 +3,7 @@ import { ToolRegistry } from './toolRegistry';
 import { SelectTool } from './selectTool';
 import { DrawTool } from './drawTool';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
-import { Font } from '../model/types';
+import { Font } from '../model/shapeTypes';
 
 describe('ToolRegistry', () => {
     it('get returns the tool instance for a given name', () => {

@@ -1,5 +1,5 @@
 import type { Interaction, MarqueeMode, PointerInfo, RotateOrigin } from '../interaction/interaction';
-import type { Shape } from '../model/types';
+import type { Shape } from '../model/shapeTypes';
 import type { Tool, ToolContext } from './tool';
 import { NO_PANEL_CAPABILITIES } from './tool';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
@@ -15,7 +15,7 @@ import { SceneTree } from '../util/sceneTree';
 export class SelectTool implements Tool {
     public readonly panelCapabilities = NO_PANEL_CAPABILITIES;
 
-    constructor(private readonly shapeRegistry: ShapeRegistry) {}
+    constructor(private readonly shapeRegistry: ShapeRegistry) { }
 
     public onPointerDown(ctx: ToolContext, p: PointerInfo): Interaction | null {
         const selection = ctx.selection();

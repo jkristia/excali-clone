@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
-import type { Bounds, Shape } from './types';
+import type { Bounds, Shape } from './shapeTypes';
 import { arrow, draw, ellipse, note, rect, text } from '../test-support/shapeFactories';
 
 // Shape geometry now lives on ShapeRegistry; these wrappers keep the cases below unchanged.

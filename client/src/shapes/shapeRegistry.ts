@@ -1,4 +1,4 @@
-import type { Bounds, Shape, ShapeType } from '../model/types';
+import type { Bounds, Shape, ShapeType } from '../model/shapeTypes';
 import type { ShapeDefinition } from './shapeDefinition';
 import { Geometry } from '../util/geometry';
 import { RotationMath } from '../util/rotationMath';

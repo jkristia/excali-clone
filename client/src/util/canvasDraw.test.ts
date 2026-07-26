@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CanvasDraw } from './canvasDraw';
-import { Font, type FillStyle } from '../model/types';
+import { Font, type FillStyle } from '../model/shapeTypes';
 
 /** Fake offscreen tile so `fillFor`'s `document.createElement('canvas')` works under the
  *  node test env (no DOM). getContext returns a no-op 2D context; the tile is opaque to
@@ -12,10 +12,10 @@ function stubDocument(): void {
         getContext: () => ({
             strokeStyle: '',
             lineWidth: 0,
-            beginPath: () => {},
-            moveTo: () => {},
-            lineTo: () => {},
-            stroke: () => {},
+            beginPath: () => { },
+            moveTo: () => { },
+            lineTo: () => { },
+            stroke: () => { },
         }),
     };
     vi.stubGlobal('document', { createElement: () => fakeCanvas });
@@ -28,12 +28,12 @@ function recordingContext(): { ctx: CanvasRenderingContext2D; dashCalls: number[
     const state: Record<string, unknown> = {};
     const target: Record<string, unknown> = {
         setLineDash: (pattern: number[]) => { dashCalls.push(pattern); },
-        beginPath: () => {},
-        moveTo: () => {},
-        lineTo: () => {},
-        arc: () => {},
-        stroke: () => {},
-        fill: () => {},
+        beginPath: () => { },
+        moveTo: () => { },
+        lineTo: () => { },
+        arc: () => { },
+        stroke: () => { },
+        fill: () => { },
         createPattern: () => ({ __pattern: true }),
     };
     const ctx = new Proxy(target, {
@@ -133,16 +133,16 @@ function labelRecordingContext(): { ctx: CanvasRenderingContext2D; fills: { x: n
     const fills: { x: number; align: string }[] = [];
     const state: Record<string, unknown> = {};
     const target: Record<string, unknown> = {
-        save: () => {},
-        restore: () => {},
+        save: () => { },
+        restore: () => { },
         measureText: (t: string) => ({ width: t.length * 10 }),
         fillText: (_t: string, x: number) => { fills.push({ x, align: String(state.textAlign) }); },
         // Path ops the pill background (roundRect + fill) exercises — no-ops for these specs.
-        beginPath: () => {},
-        moveTo: () => {},
-        arcTo: () => {},
-        closePath: () => {},
-        fill: () => {},
+        beginPath: () => { },
+        moveTo: () => { },
+        arcTo: () => { },
+        closePath: () => { },
+        fill: () => { },
     };
     const ctx = new Proxy(target, {
         get: (obj, prop: string) => (prop in obj ? obj[prop] : state[prop]),

@@ -1,5 +1,5 @@
 import { Injectable, signal, type Signal } from '@angular/core';
-import type { Color } from '../../model/types';
+import type { Color } from '../../model/shapeTypes';
 import type { ColorRole } from '../../state/recentColors';
 
 export interface ColorFlyoutRequest {

@@ -1,4 +1,4 @@
-import type { Bounds, Shape, TextOptions } from '../model/types';
+import type { Bounds, Shape, TextOptions } from '../model/shapeTypes';
 
 /** Which style sections in the properties panel apply to a shape type. */
 export interface ShapeCapabilities {

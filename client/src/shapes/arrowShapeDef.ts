@@ -1,4 +1,4 @@
-import type { ArrowShape, Bounds } from '../model/types';
+import type { ArrowShape, Bounds } from '../model/shapeTypes';
 import type { ShapeDefinition } from './shapeDefinition';
 import { Geometry } from '../util/geometry';
 import { CanvasDraw } from '../util/canvasDraw';

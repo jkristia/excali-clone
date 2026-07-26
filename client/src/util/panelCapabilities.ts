@@ -1,4 +1,4 @@
-import type { Shape } from '../model/types';
+import type { Shape } from '../model/shapeTypes';
 import type { Tool as ToolName } from '../state/uiStore';
 import type { ShapeCapabilities } from '../shapes/shapeDefinition';
 import type { ShapeRegistry } from '../shapes/shapeRegistry';

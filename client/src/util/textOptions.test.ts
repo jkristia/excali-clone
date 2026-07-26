@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Font } from '../model/types';
+import { Font } from '../model/shapeTypes';
 import { TextOptionsUtil } from './textOptions';
 import { FontUtil } from './fontUtil';
 

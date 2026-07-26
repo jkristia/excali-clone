@@ -1,4 +1,4 @@
-import type { Color } from '../model/types';
+import type { Color } from '../model/shapeTypes';
 import { PINNED_COLORS, RECENT_SLOT_COUNT, DEFAULT_RECENT_STROKE, DEFAULT_RECENT_FILL } from '../util/palette';
 
 export type ColorRole = 'stroke' | 'fill';

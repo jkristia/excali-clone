@@ -1,4 +1,4 @@
-import type { Color, CornerStyle, EndpointCap, FillStyle, StrokeStyle, TextAlign, VerticalAlign } from '../model/types';
+import type { Color, CornerStyle, EndpointCap, FillStyle, StrokeStyle, TextAlign, VerticalAlign } from '../model/shapeTypes';
 
 /** Shape drawing defaults — persisted into shape data, not CSS (canvas rendering can't consume CSS custom properties). */
 export const NOTE_COLORS: Color[] = ['#fff9b1', '#d3f8e2', '#ffd6e0', '#cddafd', '#ffe8cc'];

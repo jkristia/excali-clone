@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, ElementRef, OnDestroy, OnInit, effect, signal, viewChild, inject } from '@angular/core';
-import type { Color } from '../../model/types';
+import type { Color } from '../../model/shapeTypes';
 import { PALETTE_SOLID, PALETTE_PASTEL } from '../../util/palette';
 import { ColorFlyoutService } from './color-flyout.service';
 

@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal, type Signal } from '@angular/core';
-import type { Color } from '../../model/types';
+import type { Color } from '../../model/shapeTypes';
 import type { ColorRole, RecentColorSlots } from '../../state/recentColors';
 import { RECENT_COLORS } from '../di-tokens';
 

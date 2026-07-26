@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { panelFlags } from './panelCapabilities';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { ToolRegistry } from '../tools/toolRegistry';
-import type { Shape } from '../model/types';
+import type { Shape } from '../model/shapeTypes';
 
 function rect(id: string): Shape {
     return { id, type: 'rectangle', x: 0, y: 0, z: 0, w: 10, h: 10, fill: '#fff', stroke: '#000', strokeWidth: 1, createdBy: 'x' };

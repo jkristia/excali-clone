@@ -1,4 +1,4 @@
-import type { Bounds, DrawShape } from '../model/types';
+import type { Bounds, DrawShape } from '../model/shapeTypes';
 import type { ShapeDefinition } from './shapeDefinition';
 import { Geometry } from '../util/geometry';
 import { CanvasDraw } from '../util/canvasDraw';

@@ -7,7 +7,7 @@ import type {
     NoteShape,
     RectShape,
     TextShape,
-} from '../model/types';
+} from '../model/shapeTypes';
 
 /** Shared shape factories for specs. Each returns a valid shape with sensible defaults,
  *  overridable per test. File-level functions are allowed here (test-support). */

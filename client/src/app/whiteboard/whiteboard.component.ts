@@ -2,7 +2,7 @@ import { Component, ElementRef, OnDestroy, AfterViewInit, computed, effect, inje
 import { UiStoreService } from '../state/ui-store.service';
 import { CollabService } from '../collab/collab.service';
 import { InlineEditorComponent } from '../components/inline-editor.component';
-import type { Bounds, PeerPresence, Shape } from '../../model/types';
+import type { Bounds, PeerPresence, Shape } from '../../model/shapeTypes';
 import { CameraMath } from '../../canvas/camera';
 import { SCENE_RENDERER, CANVAS_DOCUMENT, TOOL_REGISTRY, SHAPE_REGISTRY, CLIPBOARD_CONTROLLER, TEXT_MEASURE } from '../di-tokens';
 import { InteractionController } from '../../interaction/interactionController';

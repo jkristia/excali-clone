@@ -4,7 +4,7 @@ import { RecentColorsService } from '../state/recent-colors.service';
 import { CollabService } from '../collab/collab.service';
 import { CANVAS_DOCUMENT, SHAPE_REGISTRY, TOOL_REGISTRY, TEXT_MEASURE, CLIPBOARD_CONTROLLER } from '../di-tokens';
 import type { ReorderOp } from '../../document/canvasDocument';
-import { Font, type Color, type CornerStyle, type EndpointCap, type FillStyle, type Shape, type StrokeStyle, type TextAlign, type VerticalAlign } from '../../model/types';
+import { Font, type Color, type CornerStyle, type EndpointCap, type FillStyle, type Shape, type StrokeStyle, type TextAlign, type VerticalAlign } from '../../model/shapeTypes';
 import type { Style } from '../../state/uiStore';
 import type { ColorRole } from '../../state/recentColors';
 import { panelFlags } from '../../util/panelCapabilities';

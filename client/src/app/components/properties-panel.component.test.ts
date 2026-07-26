@@ -11,7 +11,7 @@ import { ToolRegistry } from '../../tools/toolRegistry';
 import { UIStore } from '../../state/uiStore';
 import { RecentColorsStore } from '../../state/recentColors';
 import type { ReorderOp } from '../../document/canvasDocument';
-import type { Shape, Color } from '../../model/types';
+import type { Shape, Color } from '../../model/shapeTypes';
 import type { ColorRole } from '../../state/recentColors';
 import { arrow, diamond, draw, ellipse, group, note, rect, text } from '../../test-support/shapeFactories';
 import { MemoryStorage } from '../../test-support/memoryStorage';

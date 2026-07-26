@@ -1,5 +1,5 @@
 import type { Camera } from '../state/uiStore';
-import type { Bounds } from '../model/types';
+import type { Bounds } from '../model/shapeTypes';
 
 export interface Point {
     x: number;

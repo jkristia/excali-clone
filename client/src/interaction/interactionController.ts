@@ -1,5 +1,5 @@
 import { nanoid } from 'nanoid';
-import type { ArrowShape, Bounds, Font, Shape } from '../model/types';
+import type { ArrowShape, Bounds, Font, Shape } from '../model/shapeTypes';
 import type { Camera, Style, Tool as ToolName } from '../state/uiStore';
 import type { Interaction, MarqueeMode, PointerInfo, RotateOrigin } from './interaction';
 import type { ToolContext } from '../tools/tool';
@@ -67,7 +67,7 @@ export class InteractionController {
         private readonly deps: InteractionDeps,
         private readonly toolRegistry: ToolRegistry,
         private readonly shapeRegistry: ShapeRegistry,
-    ) {}
+    ) { }
 
     public getInteraction(): Interaction {
         return this.interaction;

@@ -1,4 +1,4 @@
-import type { ArrowShape } from '../model/types';
+import type { ArrowShape } from '../model/shapeTypes';
 
 const HANDLE_HIT_RADIUS = 6; // screen pixels
 

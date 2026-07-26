@@ -3,7 +3,7 @@ import { SelectTool } from './selectTool';
 import type { ToolContext } from './tool';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { Handle } from '../util/handles';
-import { Font, type ArrowShape, type RectShape, type Shape, type TextShape } from '../model/types';
+import { Font, type ArrowShape, type RectShape, type Shape, type TextShape } from '../model/shapeTypes';
 import type { PointerInfo } from '../interaction/interaction';
 
 /** Records the mutations the tool asks its context to perform. */
@@ -27,10 +27,10 @@ function makeCtx(shapes: Shape[], selection: string[] = [], zoom = 1): { ctx: To
         newId: () => 'new',
         nextZ: () => 0,
         editingGroupId: () => null,
-        addShape: () => {},
+        addShape: () => { },
         setSelection: (ids) => { state.setSelectionCalls.push(ids); state.selection = ids; },
         toggleSelection: (id, additive) => { state.toggleCalls.push({ id, additive }); state.selection = [...state.selection, id]; },
-        activateEditing: () => {},
+        activateEditing: () => { },
     };
     return { ctx, state };
 }

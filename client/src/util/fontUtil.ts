@@ -1,4 +1,4 @@
-import { Font } from '../model/types';
+import { Font } from '../model/shapeTypes';
 
 const FONT_STACKS: Record<Font, string> = {
     [Font.Font1]: 'Inter',

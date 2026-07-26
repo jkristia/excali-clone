@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { SceneRenderer } from './render';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import type { Camera } from '../state/uiStore';
-import type { Shape } from '../model/types';
+import type { Shape } from '../model/shapeTypes';
 
 const sceneRenderer = new SceneRenderer(new ShapeRegistry());
 

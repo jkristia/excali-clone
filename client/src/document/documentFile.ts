@@ -1,4 +1,4 @@
-import type { BaseShape, Shape } from '../model/types';
+import type { BaseShape, Shape } from '../model/shapeTypes';
 import type { Camera } from '../state/uiStore';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 
@@ -28,7 +28,7 @@ export interface WhiteboardFile {
  * Framework-agnostic — the Angular shell handles the actual file download/open.
  */
 export class DocumentFile {
-    constructor(private readonly shapeRegistry: ShapeRegistry) {}
+    constructor(private readonly shapeRegistry: ShapeRegistry) { }
 
     /** Serialize a board to the versioned envelope, pretty-printed for a readable file. */
     public serialize(shapes: Shape[], view: WhiteboardView): string {

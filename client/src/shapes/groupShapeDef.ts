@@ -1,4 +1,4 @@
-import type { Bounds, GroupShape } from '../model/types';
+import type { Bounds, GroupShape } from '../model/shapeTypes';
 import type { ShapeDefinition } from './shapeDefinition';
 
 /**

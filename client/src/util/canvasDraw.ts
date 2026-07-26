@@ -1,4 +1,4 @@
-import type { Bounds, Color, EndpointCap, FillStyle, StrokeStyle, TextAlign, VerticalAlign } from '../model/types';
+import type { Bounds, Color, EndpointCap, FillStyle, StrokeStyle, TextAlign, VerticalAlign } from '../model/shapeTypes';
 import { FontUtil } from './fontUtil';
 import type { ResolvedTextOptions } from './textOptions';
 

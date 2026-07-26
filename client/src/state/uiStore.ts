@@ -1,4 +1,4 @@
-import { Font, type Color, type CornerStyle, type EndpointCap, type FillStyle, type StrokeStyle, type TextAlign, type VerticalAlign } from '../model/types';
+import { Font, type Color, type CornerStyle, type EndpointCap, type FillStyle, type StrokeStyle, type TextAlign, type VerticalAlign } from '../model/shapeTypes';
 import { ToolRegistry } from '../tools/toolRegistry';
 import { NOTE_COLORS, INK, TRANSPARENT } from '../util/palette';
 import { FontUtil } from '../util/fontUtil';

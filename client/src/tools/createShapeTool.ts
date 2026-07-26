@@ -1,4 +1,4 @@
-import type { Shape } from '../model/types';
+import type { Shape } from '../model/shapeTypes';
 import type { Style } from '../state/uiStore';
 import type { Interaction, PointerInfo } from '../interaction/interaction';
 import type { Tool, ToolContext } from './tool';
@@ -15,7 +15,7 @@ export class CreateShapeTool implements Tool {
         private readonly makeDraft: (ctx: ToolContext, p: PointerInfo, id: string, z: number) => Shape,
         readonly panelCapabilities: ShapeCapabilities,
         readonly defaultStyle?: (style: Style) => Partial<Style>,
-    ) {}
+    ) { }
 
     public onPointerDown(ctx: ToolContext, p: PointerInfo): Interaction {
         const draft = this.makeDraft(ctx, p, ctx.newId(), ctx.nextZ());

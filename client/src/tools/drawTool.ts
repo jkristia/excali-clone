@@ -1,4 +1,4 @@
-import type { Shape } from '../model/types';
+import type { Shape } from '../model/shapeTypes';
 import type { Interaction, PointerInfo } from '../interaction/interaction';
 import type { Tool, ToolContext } from './tool';
 import type { ShapeCapabilities } from '../shapes/shapeDefinition';
