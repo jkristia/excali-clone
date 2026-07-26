@@ -73,30 +73,29 @@ class FakeCollabService {
     }
 }
 
-/** Records `open()` calls and lets a spec settle the returned promise on demand,
- *  standing in for the real flyout without mounting a component or DOM. */
+/** Records `open()` calls and lets a spec fire picks via the stored onPick callback
+ *  on demand, standing in for the real flyout without mounting a component or DOM. */
 class FakeColorFlyoutService {
     public readonly openCalls: Array<{ role: ColorRole; anchor: HTMLElement; current: Color }> = [];
     private openRole: ColorRole | null = null;
-    private pendingResolve: ((color: Color | null) => void) | null = null;
+    private onPick: ((color: Color) => void) | null = null;
 
-    public open(role: ColorRole, anchorEl: HTMLElement, current: Color): Promise<Color | null> {
+    public open(role: ColorRole, anchorEl: HTMLElement, current: Color, onPick: (color: Color) => void): void {
         this.openCalls.push({ role, anchor: anchorEl, current });
         this.openRole = role;
-        return new Promise((resolve) => {
-            this.pendingResolve = resolve;
-        });
+        this.onPick = onPick;
     }
     public isOpenFor(role: ColorRole): boolean {
         return this.openRole === role;
     }
     public dismiss(): void {
-        this.resolveWith(null);
-    }
-    public resolveWith(color: Color | null): void {
-        this.pendingResolve?.(color);
         this.openRole = null;
-        this.pendingResolve = null;
+        this.onPick = null;
+    }
+    /** Simulates a swatch click: invokes the stored onPick without closing,
+     *  mirroring the real service's stay-open pick(). */
+    public pick(color: Color): void {
+        this.onPick?.(color);
     }
 }
 
@@ -466,11 +465,10 @@ describe('PropertiesPanelComponent', () => {
             expect(ctx.flyout.openCalls[0]).toEqual({ role: 'stroke', anchor, current: '#e03131' });
         });
 
-        it('resolving the flyout promotes the color into the recents and applies it like applyStroke', async () => {
+        it('picking a color promotes it into the recents and applies it like applyStroke', () => {
             ctx.setSelection([rect({ id: 'r' }), text({ id: 't' })]);
             toggle('stroke');
-            ctx.flyout.resolveWith('#c2255c');
-            await Promise.resolve();
+            ctx.flyout.pick('#c2255c');
 
             expect(strokeSlots()[2]).toBe('#c2255c');
             const patches = lastPatches(ctx.doc);
@@ -478,21 +476,33 @@ describe('PropertiesPanelComponent', () => {
             expect(patches.get('t')).toEqual({ color: '#c2255c' });
         });
 
-        it('dismissing the flyout (null) touches neither the recents nor the document', async () => {
+        it('picking multiple colors in one open session applies and promotes each one, without closing', () => {
+            ctx.setSelection([rect({ id: 'r' })]);
+            toggle('stroke');
+
+            ctx.flyout.pick('#c2255c');
+            expect(lastPatches(ctx.doc).get('r')).toEqual({ stroke: '#c2255c' });
+            expect(ctx.flyout.isOpenFor('stroke')).toBe(true);
+
+            ctx.flyout.pick('#2f9e44');
+            expect(lastPatches(ctx.doc).get('r')).toEqual({ stroke: '#2f9e44' });
+            expect(strokeSlots()[2]).toBe('#2f9e44');
+            expect(ctx.flyout.isOpenFor('stroke')).toBe(true);
+        });
+
+        it('dismissing the flyout without a pick touches neither the recents nor the document', () => {
             const before = strokeSlots();
             toggle('stroke');
             ctx.flyout.dismiss();
-            await Promise.resolve();
 
             expect(strokeSlots()).toEqual(before);
             expect(ctx.doc.updateCalls).toHaveLength(0);
         });
 
-        it('a fill pick promotes into fillSlots only, leaving strokeSlots unchanged', async () => {
+        it('a fill pick promotes into fillSlots only, leaving strokeSlots unchanged', () => {
             const strokeBefore = strokeSlots();
             toggle('fill');
-            ctx.flyout.resolveWith('#0c8599');
-            await Promise.resolve();
+            ctx.flyout.pick('#0c8599');
 
             expect(fillSlots()[2]).toBe('#0c8599');
             expect(strokeSlots()).toEqual(strokeBefore);

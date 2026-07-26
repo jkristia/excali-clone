@@ -209,8 +209,36 @@ test('stroke color flyout: opens unclipped beside the panel, picking a color upd
     expect(flyoutBox.y + flyoutBox.height).toBeLessThanOrEqual(viewport.height);
 
     await flyout.locator('.swatch').first().click();
-    await expect(flyout).toBeHidden();
+    // Picking a swatch applies it but keeps the flyout open, so trying more colors
+    // doesn't cost a re-open click each time — only an outside click/Escape closes it.
+    await expect(flyout).toBeVisible();
     await expect(panel.locator('.swatch-row').first().locator('.swatch').nth(2)).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(flyout).toBeHidden();
+});
+
+test('color flyout stays open across repeated picks, only closing on outside click', async ({ page }) => {
+    await page.getByTitle('Rectangle (R)').click();
+    const center = await dragShape(page);
+    await page.mouse.click(center.x, center.y);
+
+    const panel = page.locator('.properties-panel');
+    await panel.getByTitle('More colors').first().click();
+    const flyout = page.locator('.color-flyout');
+    await expect(flyout).toBeVisible();
+
+    const swatches = flyout.locator('.swatch-grid').first().locator('.swatch');
+    await swatches.nth(0).click();
+    await expect(flyout).toBeVisible();
+    await swatches.nth(1).click();
+    await expect(flyout).toBeVisible();
+    await swatches.nth(2).click();
+    await expect(flyout).toBeVisible();
+
+    // Only a click outside the flyout (and its trigger) closes it.
+    await page.mouse.click(center.x, center.y);
+    await expect(flyout).toBeHidden();
 });
 
 test('palette flyout: neutral row is fixed, and a custom pick joins one shared MRU row', async ({ page }) => {
@@ -236,13 +264,13 @@ test('palette flyout: neutral row is fixed, and a custom pick joins one shared M
         el.value = '#abcdef';
         el.dispatchEvent(new Event('change', { bubbles: true }));
     });
-    await expect(flyout).toBeHidden();
-
-    await openStroke();
+    // A pick applies immediately but keeps the flyout open — no need to reopen it.
+    await expect(flyout).toBeVisible();
     const customs = flyout.locator('.custom-swatches .swatch');
     await expect(customs).toHaveCount(1);
     await expect(customs.first()).toHaveCSS('background-color', 'rgb(171, 205, 239)');
     await page.keyboard.press('Escape');
+    await expect(flyout).toBeHidden();
 
     // One shared list: the color mixed for the stroke is offered again for the fill.
     await panel.locator('.prop-section', { hasText: 'Fill' }).first().getByTitle('More colors').click();

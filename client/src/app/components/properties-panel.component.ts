@@ -218,23 +218,23 @@ export class PropertiesPanelComponent {
         this.apply({ fill: c }, (s) => ('fill' in s && s.type !== 'note' ? { fill: c } : null));
     }
     /** Opens the palette flyout for the given role, acting as a toggle when it's
-     *  already open for that role (a second click on the trigger closes it). */
+     *  already open for that role (a second click on the trigger closes it). Each
+     *  pick applies immediately and promotes into recents; the flyout stays open
+     *  for further picks until the user dismisses it (outside click / Escape). */
     protected toggleColorFlyout(role: ColorRole, event: MouseEvent): void {
         if (this.colorFlyout.isOpenFor(role)) {
             this.colorFlyout.dismiss();
             return;
         }
         const current = role === 'stroke' ? this.selectedStroke() : this.selectedFill();
-        void this.pickFromFlyout(role, event.currentTarget as HTMLElement, current);
-    }
-    private async pickFromFlyout(role: ColorRole, anchor: HTMLElement, current: Color): Promise<void> {
-        const color = await this.colorFlyout.open(role, anchor, current);
-        if (!color) return;
-        // Only flyout picks are MRU-promoted — promoting on a quick-slot click too would
-        // reshuffle the row under the cursor between two clicks of the same swatch.
-        this.recentColors.promote(role, color);
-        if (role === 'stroke') this.applyStroke(color);
-        else this.applyFill(color);
+        const anchor = event.currentTarget as HTMLElement;
+        this.colorFlyout.open(role, anchor, current, (color) => {
+            // Only flyout picks are MRU-promoted — promoting on a quick-slot click too would
+            // reshuffle the row under the cursor between two clicks of the same swatch.
+            this.recentColors.promote(role, color);
+            if (role === 'stroke') this.applyStroke(color);
+            else this.applyFill(color);
+        });
     }
     protected applyWidth(w: number): void {
         this.apply({ strokeWidth: w }, (s) => ('strokeWidth' in s ? { strokeWidth: w } : null));
