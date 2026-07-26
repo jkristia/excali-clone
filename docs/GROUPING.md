@@ -1,8 +1,17 @@
 # GROUPING.md
 
 Design for **groups** and **frames** — containers that hold shapes (and other
-containers) and control stacking as a unit. Not yet implemented; this is the
-plan. See [DESIGN.md](DESIGN.md) for the architecture this builds on and
+containers) and control stacking as a unit.
+
+**Status: groups are implemented** as designed below (`parentId`, sibling-scoped
+`z`, DFS paint order, group/ungroup, `Ctrl+G`/`Ctrl+Shift+G`, double-click to enter
+a group, group rotation) — see [DESIGN.md → Grouping](DESIGN.md) for the current
+"what exists" summary and file pointers. **Frames are not built** — no `frame`
+shape type, no chrome. This doc is kept as the original design rationale for both
+(why `parentId` on the child, the scene-tree model, concurrent-edit handling) and
+as the still-current plan for frames.
+
+See [DESIGN.md](DESIGN.md) for the architecture this builds on and
 [canvasDocument.ts](../client/src/document/canvasDocument.ts) for the shape
 read/write API being extended.
 
