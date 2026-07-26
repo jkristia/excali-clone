@@ -1,17 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { IdentityStore } from './identity';
+import { MemoryStorage } from '../test-support/memoryStorage';
 
 const STORAGE_KEY = 'whiteboard.identity.v1';
-
-class MemoryStorage implements Storage {
-    private data = new Map<string, string>();
-    public get length(): number { return this.data.size; }
-    public clear(): void { this.data.clear(); }
-    public getItem(key: string): string | null { return this.data.get(key) ?? null; }
-    public setItem(key: string, value: string): void { this.data.set(key, value); }
-    public removeItem(key: string): void { this.data.delete(key); }
-    public key(index: number): string | null { return Array.from(this.data.keys())[index] ?? null; }
-}
 
 globalThis.localStorage = new MemoryStorage();
 

@@ -1,12 +1,15 @@
 import { Component, computed, inject } from '@angular/core';
 import { UiStoreService } from '../state/ui-store.service';
+import { RecentColorsService } from '../state/recent-colors.service';
 import { CollabService } from '../collab/collab.service';
 import { CANVAS_DOCUMENT, SHAPE_REGISTRY, TOOL_REGISTRY, TEXT_MEASURE, CLIPBOARD_CONTROLLER } from '../di-tokens';
 import type { ReorderOp } from '../../document/canvasDocument';
 import { Font, type Color, type CornerStyle, type EndpointCap, type FillStyle, type Shape, type StrokeStyle, type TextAlign, type VerticalAlign } from '../../model/types';
 import type { Style } from '../../state/uiStore';
+import type { ColorRole } from '../../state/recentColors';
 import { panelFlags } from '../../util/panelCapabilities';
-import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS, WIDTHS, CAPS, TEXT_ALIGNS, VERTICAL_ALIGNS, EDGES, STROKE_STYLES, FILL_STYLES } from '../../util/palette';
+import { NOTE_COLORS, WIDTHS, CAPS, TEXT_ALIGNS, VERTICAL_ALIGNS, EDGES, STROKE_STYLES, FILL_STYLES } from '../../util/palette';
+import { ColorFlyoutService } from './color-flyout.service';
 import { FONT_SIZE_LABELS, FONTS, FontUtil } from '../../util/fontUtil';
 import { TextOptionsUtil, type ResolvedTextOptions } from '../../util/textOptions';
 import { SceneTree } from '../../util/sceneTree';
@@ -61,10 +64,12 @@ export class PropertiesPanelComponent {
     private readonly shapeRegistry = inject(SHAPE_REGISTRY);
     private readonly textMeasure = inject(TEXT_MEASURE);
     private readonly clipboard = inject(CLIPBOARD_CONTROLLER);
+    private readonly recentColors = inject(RecentColorsService);
+    private readonly colorFlyout = inject(ColorFlyoutService);
     private readonly aligner = new ShapeAligner(this.shapeRegistry);
 
-    protected readonly strokeColors = STROKE_COLORS;
-    protected readonly fillColors = FILL_COLORS;
+    protected readonly strokeSlots = this.recentColors.slots('stroke');
+    protected readonly fillSlots = this.recentColors.slots('fill');
     protected readonly noteColors = NOTE_COLORS;
     protected readonly widths = WIDTHS;
     protected readonly strokeStyles = STROKE_STYLES;
@@ -197,6 +202,25 @@ export class PropertiesPanelComponent {
     }
     protected applyFill(c: Color): void {
         this.apply({ fill: c }, (s) => ('fill' in s && s.type !== 'note' ? { fill: c } : null));
+    }
+    /** Opens the palette flyout for the given role, acting as a toggle when it's
+     *  already open for that role (a second click on the trigger closes it). */
+    protected toggleColorFlyout(role: ColorRole, event: MouseEvent): void {
+        if (this.colorFlyout.isOpenFor(role)) {
+            this.colorFlyout.dismiss();
+            return;
+        }
+        const current = role === 'stroke' ? this.selectedStroke() : this.selectedFill();
+        void this.pickFromFlyout(role, event.currentTarget as HTMLElement, current);
+    }
+    private async pickFromFlyout(role: ColorRole, anchor: HTMLElement, current: Color): Promise<void> {
+        const color = await this.colorFlyout.open(role, anchor, current);
+        if (!color) return;
+        // Only flyout picks are MRU-promoted — promoting on a quick-slot click too would
+        // reshuffle the row under the cursor between two clicks of the same swatch.
+        this.recentColors.promote(role, color);
+        if (role === 'stroke') this.applyStroke(color);
+        else this.applyFill(color);
     }
     protected applyWidth(w: number): void {
         this.apply({ strokeWidth: w }, (s) => ('strokeWidth' in s ? { strokeWidth: w } : null));

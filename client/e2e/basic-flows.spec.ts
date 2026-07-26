@@ -134,3 +134,34 @@ test('nudge: arrow keys move the selection 1px, Shift+arrow moves it 10px', asyn
     expect(afterShift.equals(after10)).toBe(true);
     expect(afterShift.equals(before)).toBe(false);
 });
+
+test('stroke color flyout: opens unclipped beside the panel, picking a color updates the shape and the quick row', async ({ page }) => {
+    await page.getByTitle('Rectangle (R)').click();
+    const canvas = page.locator('canvas');
+    const box = await canvas.boundingBox();
+    if (!box) throw new Error('canvas not laid out');
+
+    await page.mouse.move(box.x + 100, box.y + 100);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 220, box.y + 200);
+    await page.mouse.up();
+    await page.mouse.click(box.x + 160, box.y + 150);
+
+    const panel = page.locator('.properties-panel');
+    await expect(panel).toBeVisible();
+    const panelBox = await panel.boundingBox();
+    if (!panelBox) throw new Error('panel not laid out');
+
+    await panel.getByTitle('More colors').first().click();
+    const flyout = page.locator('.color-flyout');
+    await expect(flyout).toBeVisible();
+    const flyoutBox = await flyout.boundingBox();
+    if (!flyoutBox) throw new Error('flyout not laid out');
+    // Regression test for the clipping trap: `.properties-panel` scrolls and is
+    // transformed, which would clip a flyout mounted inside it.
+    expect(flyoutBox.x).toBeGreaterThan(panelBox.x + panelBox.width);
+
+    await flyout.locator('.swatch').first().click();
+    await expect(flyout).toBeHidden();
+    await expect(panel.locator('.swatch-row').first().locator('.swatch').nth(2)).toBeVisible();
+});

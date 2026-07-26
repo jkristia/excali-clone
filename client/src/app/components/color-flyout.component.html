@@ -1,0 +1,20 @@
+@if (request(); as req) {
+    <div #flyout class="color-flyout" [class.flipped]="position().flipped"
+         [style.left.px]="position().left" [style.top.px]="position().top"
+         [style.--caret-top]="position().caretTop + 'px'">
+        <div class="swatch-grid">
+            @for (c of solids; track c) {
+                <button class="swatch" [class.active]="req.current === c" [style.background]="c" (click)="pick(c)"></button>
+            }
+        </div>
+        <div class="swatch-grid">
+            @for (c of pastels; track c) {
+                <button class="swatch" [class.active]="req.current === c" [style.background]="c" (click)="pick(c)"></button>
+            }
+        </div>
+        <label class="custom-row">
+            <input class="custom-input" type="color" [value]="customValue()" (change)="pickCustom($event)" />
+            <span>Custom…</span>
+        </label>
+    </div>
+}

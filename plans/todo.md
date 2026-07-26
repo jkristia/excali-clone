@@ -23,12 +23,6 @@ the panel shows a scrollbar. this is not ideal - lets see if it can be imoroved.
 ## 2. Additional fill styles (via RoughJS)
 - Beyond current fill handling, add: hachure (default), solid, zigzag, cross-hatch, dots, sunburst, dashed, zigzag-line — matching Excalidraw's fill style set.
 
-## 3. Color palette flyout — stroke color & fill color
-- Popout/flyout panel with ~32–48 swatches (exact count TBD).
-- "Main" quick-select panel shows a small subset; selecting a palette color promotes it into the main panel.
-- `transparent` and `black` are pinned/always available in the main panel.
-- Other quick-select slots get replaced (MRU-style) as new colors are used.
-
 ## 4. Line style flyout
 - Popout for line style: solid / dashed / dotted (existing concept, if any, to confirm) plus whatever RoughJS sketchy variants make sense.
 

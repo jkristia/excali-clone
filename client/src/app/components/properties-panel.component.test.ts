@@ -2,14 +2,21 @@ import { Injector, runInInjectionContext, signal, type Signal } from '@angular/c
 import { beforeEach, describe, expect, it } from 'vitest';
 import { PropertiesPanelComponent } from './properties-panel.component';
 import { UiStoreService } from '../state/ui-store.service';
+import { RecentColorsService } from '../state/recent-colors.service';
+import { ColorFlyoutService } from './color-flyout.service';
 import { CollabService } from '../collab/collab.service';
-import { CANVAS_DOCUMENT, CLIPBOARD_CONTROLLER, SHAPE_REGISTRY, TEXT_MEASURE, TOOL_REGISTRY, UI_STORE } from '../di-tokens';
+import { CANVAS_DOCUMENT, CLIPBOARD_CONTROLLER, SHAPE_REGISTRY, TEXT_MEASURE, TOOL_REGISTRY, UI_STORE, RECENT_COLORS } from '../di-tokens';
 import { ShapeRegistry } from '../../shapes/shapeRegistry';
 import { ToolRegistry } from '../../tools/toolRegistry';
 import { UIStore } from '../../state/uiStore';
+import { RecentColorsStore } from '../../state/recentColors';
 import type { ReorderOp } from '../../document/canvasDocument';
-import type { Shape } from '../../model/types';
+import type { Shape, Color } from '../../model/types';
+import type { ColorRole } from '../../state/recentColors';
 import { arrow, diamond, draw, ellipse, group, note, rect, text } from '../../test-support/shapeFactories';
+import { MemoryStorage } from '../../test-support/memoryStorage';
+
+globalThis.localStorage = new MemoryStorage();
 
 /** Records the calls the panel forwards to the CanvasDocument, so specs can assert the
  *  per-shape patches it built without a real Yjs document. */
@@ -66,18 +73,54 @@ class FakeCollabService {
     }
 }
 
+/** Records `open()` calls and lets a spec settle the returned promise on demand,
+ *  standing in for the real flyout without mounting a component or DOM. */
+class FakeColorFlyoutService {
+    public readonly openCalls: Array<{ role: ColorRole; anchor: HTMLElement; current: Color }> = [];
+    private openRole: ColorRole | null = null;
+    private pendingResolve: ((color: Color | null) => void) | null = null;
+
+    public open(role: ColorRole, anchorEl: HTMLElement, current: Color): Promise<Color | null> {
+        this.openCalls.push({ role, anchor: anchorEl, current });
+        this.openRole = role;
+        return new Promise((resolve) => {
+            this.pendingResolve = resolve;
+        });
+    }
+    public isOpenFor(role: ColorRole): boolean {
+        return this.openRole === role;
+    }
+    public dismiss(): void {
+        this.resolveWith(null);
+    }
+    public resolveWith(color: Color | null): void {
+        this.pendingResolve?.(color);
+        this.openRole = null;
+        this.pendingResolve = null;
+    }
+}
+
 /** The panel exposes its logic through protected members (template-facing). Specs reach them
  *  via bracket access, which TypeScript permits without a visibility error while keeping types. */
 function setup() {
+    localStorage.clear();
     const shapeRegistry = new ShapeRegistry();
     const toolRegistry = new ToolRegistry(shapeRegistry);
     const uiStore = new UIStore(toolRegistry);
+    const recentColorsStore = new RecentColorsStore();
     const doc = new FakeCanvasDocument();
     const clipboard = new FakeClipboardController();
     const collab = new FakeCollabService();
+    const flyout = new FakeColorFlyoutService();
 
-    const bootInjector = Injector.create({ providers: [{ provide: UI_STORE, useValue: uiStore }] });
+    const bootInjector = Injector.create({
+        providers: [
+            { provide: UI_STORE, useValue: uiStore },
+            { provide: RECENT_COLORS, useValue: recentColorsStore },
+        ],
+    });
     const uiStoreService = runInInjectionContext(bootInjector, () => new UiStoreService());
+    const recentColorsService = runInInjectionContext(bootInjector, () => new RecentColorsService());
 
     const injector = Injector.create({
         providers: [
@@ -88,6 +131,8 @@ function setup() {
             { provide: CLIPBOARD_CONTROLLER, useValue: clipboard },
             { provide: UiStoreService, useValue: uiStoreService },
             { provide: CollabService, useValue: collab },
+            { provide: RecentColorsService, useValue: recentColorsService },
+            { provide: ColorFlyoutService, useValue: flyout },
         ],
     });
     const component = runInInjectionContext(injector, () => new PropertiesPanelComponent());
@@ -97,7 +142,7 @@ function setup() {
         uiStore.getState().setSelection(shapes.map((s) => s.id));
     };
 
-    return { component, uiStore, doc, clipboard, collab, setSelection };
+    return { component, uiStore, doc, clipboard, collab, flyout, recentColorsStore, setSelection };
 }
 
 /** Read the panel's current common style — apply* always writes it via the store. */
@@ -378,6 +423,73 @@ describe('PropertiesPanelComponent', () => {
             call('applyStroke', '#123');
             expect(style(ctx.uiStore).stroke).toBe('#123');
             expect(ctx.doc.updateCalls).toHaveLength(0);
+        });
+    });
+
+    describe('color flyout', () => {
+        const strokeSlots = () => (ctx.component as unknown as { strokeSlots: Signal<readonly Color[]> })['strokeSlots']();
+        const fillSlots = () => (ctx.component as unknown as { fillSlots: Signal<readonly Color[]> })['fillSlots']();
+        const toggle = (role: ColorRole, target: HTMLElement = {} as HTMLElement) =>
+            (ctx.component as unknown as { toggleColorFlyout: (r: ColorRole, e: MouseEvent) => void })['toggleColorFlyout'](
+                role,
+                { currentTarget: target } as unknown as MouseEvent,
+            );
+
+        it('strokeSlots/fillSlots start as transparent, black, then the default recents', () => {
+            expect(strokeSlots().slice(0, 2)).toEqual(['transparent', '#1e1e1e']);
+            expect(strokeSlots()).toHaveLength(8);
+            expect(fillSlots().slice(0, 2)).toEqual(['transparent', '#1e1e1e']);
+            expect(fillSlots()).toHaveLength(8);
+        });
+
+        it('toggleColorFlyout opens the flyout with the role and the current selection color', () => {
+            ctx.setSelection([rect({ id: 'r', stroke: '#e03131' })]);
+            const anchor = {} as HTMLElement;
+            toggle('stroke', anchor);
+
+            expect(ctx.flyout.openCalls).toHaveLength(1);
+            expect(ctx.flyout.openCalls[0]).toEqual({ role: 'stroke', anchor, current: '#e03131' });
+        });
+
+        it('resolving the flyout promotes the color into the recents and applies it like applyStroke', async () => {
+            ctx.setSelection([rect({ id: 'r' }), text({ id: 't' })]);
+            toggle('stroke');
+            ctx.flyout.resolveWith('#c2255c');
+            await Promise.resolve();
+
+            expect(strokeSlots()[2]).toBe('#c2255c');
+            const patches = lastPatches(ctx.doc);
+            expect(patches.get('r')).toEqual({ stroke: '#c2255c' });
+            expect(patches.get('t')).toEqual({ color: '#c2255c' });
+        });
+
+        it('dismissing the flyout (null) touches neither the recents nor the document', async () => {
+            const before = strokeSlots();
+            toggle('stroke');
+            ctx.flyout.dismiss();
+            await Promise.resolve();
+
+            expect(strokeSlots()).toEqual(before);
+            expect(ctx.doc.updateCalls).toHaveLength(0);
+        });
+
+        it('a fill pick promotes into fillSlots only, leaving strokeSlots unchanged', async () => {
+            const strokeBefore = strokeSlots();
+            toggle('fill');
+            ctx.flyout.resolveWith('#0c8599');
+            await Promise.resolve();
+
+            expect(fillSlots()[2]).toBe('#0c8599');
+            expect(strokeSlots()).toEqual(strokeBefore);
+        });
+
+        it('toggling while already open for that role dismisses instead of reopening', () => {
+            toggle('stroke');
+            expect(ctx.flyout.openCalls).toHaveLength(1);
+
+            toggle('stroke');
+            expect(ctx.flyout.openCalls).toHaveLength(1); // no second open() call
+            expect(ctx.flyout.isOpenFor('stroke')).toBe(false); // dismissed instead
         });
     });
 

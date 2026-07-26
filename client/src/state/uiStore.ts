@@ -1,6 +1,6 @@
 import { Font, type Color, type CornerStyle, type EndpointCap, type FillStyle, type StrokeStyle, type TextAlign, type VerticalAlign } from '../model/types';
 import { ToolRegistry } from '../tools/toolRegistry';
-import { STROKE_COLORS, FILL_COLORS, NOTE_COLORS } from '../util/palette';
+import { NOTE_COLORS, INK, TRANSPARENT } from '../util/palette';
 import { FontUtil } from '../util/fontUtil';
 
 export type Tool = 'select' | 'pan' | 'rectangle' | 'ellipse' | 'diamond' | 'line' | 'arrow' | 'draw' | 'text' | 'note';
@@ -88,8 +88,8 @@ export class UIStore {
             snapToGrid: false,
             camera: { x: 0, y: 0, zoom: 1 },
             style: {
-                stroke: STROKE_COLORS[1],
-                fill: FILL_COLORS[0],
+                stroke: INK,
+                fill: TRANSPARENT,
                 strokeWidth: 2,
                 strokeStyle: 'solid',
                 fillStyle: 'solid',
