@@ -1,4 +1,4 @@
-import type { Bounds, Shape } from '../model/types';
+import type { Bounds, Shape } from '../model/shapeTypes';
 import type { ShapeRegistry } from '../shapes/shapeRegistry';
 import { SceneTree } from './sceneTree';
 
@@ -12,7 +12,7 @@ export type AlignOp = 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom
  * mutation.
  */
 export class ShapeAligner {
-    public constructor(private readonly shapeRegistry: ShapeRegistry) {}
+    public constructor(private readonly shapeRegistry: ShapeRegistry) { }
 
     /**
      * New x/y patches for `op`. Each selected id becomes an "alignable unit": a plain shape

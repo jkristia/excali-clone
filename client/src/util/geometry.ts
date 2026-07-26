@@ -1,4 +1,4 @@
-import type { Bounds } from '../model/types';
+import type { Bounds } from '../model/shapeTypes';
 
 /** Pure geometric primitives shared by shape definitions and multi-shape queries. */
 export class Geometry {

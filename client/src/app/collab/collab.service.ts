@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import type { PeerPresence, Shape } from '../../model/types';
+import type { PeerPresence, Shape } from '../../model/shapeTypes';
 import { CANVAS_DOCUMENT } from '../di-tokens';
 
 export type ConnStatus = 'connecting' | 'connected' | 'disconnected';

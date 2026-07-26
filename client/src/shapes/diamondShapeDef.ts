@@ -1,10 +1,11 @@
-import type { Bounds, DiamondShape } from '../model/types';
+import type { Bounds, DiamondShape } from '../model/shapeTypes';
 import type { ShapeDefinition } from './shapeDefinition';
 import { Geometry } from '../util/geometry';
 import { CanvasDraw } from '../util/canvasDraw';
+import { RoughDraw } from '../util/roughDraw';
 
 export class DiamondShapeDef implements ShapeDefinition<DiamondShape> {
-    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false, edges: true, strokeStyle: true, fillStyle: true, label: true, textAlign: true, textVAlign: true };
+    public readonly capabilities = { stroke: true, fill: true, width: true, ends: false, edges: true, strokeStyle: true, fillStyle: true, sloppiness: true, label: true, textAlign: true, textVAlign: true };
     public readonly defaultTextOptions = { hAlign: 'center' as const, vAlign: 'middle' as const };
     public readonly resizable = true;
     public readonly rotatable = true;
@@ -24,14 +25,14 @@ export class DiamondShapeDef implements ShapeDefinition<DiamondShape> {
     }
 
     public draw(ctx: CanvasRenderingContext2D, shape: DiamondShape): void {
-        CanvasDraw.applyStroke(ctx, shape.stroke, shape.strokeWidth, shape.strokeStyle);
         const b = this.getBounds(shape);
+        const hasFill = !!shape.fill && shape.fill !== 'transparent';
         const r = shape.edges === 'rounded' ? Math.min(b.w, b.h) * 0.18 : 0;
-        CanvasDraw.diamondPath(ctx, b.x, b.y, b.w, b.h, r);
-        if (shape.fill && shape.fill !== 'transparent') {
-            ctx.fillStyle = CanvasDraw.fillFor(ctx, shape.fillStyle ?? 'solid', shape.fill);
-            ctx.fill();
-        }
-        if (shape.strokeWidth > 0) ctx.stroke();
+        const pathData = CanvasDraw.diamondPathData(b.w, b.h, r);
+        const drawable = RoughDraw.box(shape.id, pathData, b.w, b.h, shape.sloppiness, shape.strokeWidth, hasFill, shape.fillStyle);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        RoughDraw.paint(ctx, drawable, shape.stroke, shape.strokeWidth, shape.strokeStyle, hasFill ? shape.fill : undefined);
+        ctx.restore();
     }
 }

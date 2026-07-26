@@ -2,7 +2,7 @@ import { Component, ElementRef, OnDestroy, AfterViewInit, computed, effect, inje
 import { UiStoreService } from '../state/ui-store.service';
 import { CollabService } from '../collab/collab.service';
 import { InlineEditorComponent } from '../components/inline-editor.component';
-import type { Bounds, PeerPresence, Shape } from '../../model/types';
+import type { Bounds, PeerPresence, Shape } from '../../model/shapeTypes';
 import { CameraMath } from '../../canvas/camera';
 import { SCENE_RENDERER, CANVAS_DOCUMENT, TOOL_REGISTRY, SHAPE_REGISTRY, CLIPBOARD_CONTROLLER, TEXT_MEASURE } from '../di-tokens';
 import { InteractionController } from '../../interaction/interactionController';
@@ -10,6 +10,7 @@ import type { PointerInfo } from '../../interaction/interaction';
 import { SceneTree } from '../../util/sceneTree';
 import { Geometry } from '../../util/geometry';
 import { Handles } from '../../util/handles';
+import { FontUtil } from '../../util/fontUtil';
 
 /** World-space offset applied to each duplicate, down-right from its source. */
 const DUPLICATE_OFFSET = 20;
@@ -127,6 +128,12 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
         resize();
         this.ro = new ResizeObserver(resize);
         this.ro.observe(container);
+
+        // --- Force the custom @font-face files to load, then redraw so the first paint
+        // isn't stuck on the fallback font (canvas never repaints itself on font load). ---
+        void FontUtil.loadAll()
+            .then(() => this.scheduleRender())
+            .catch((e: unknown) => console.error(e));
 
         // --- Keyboard shortcuts (delete / escape) ---
         const onKeyDown = (e: KeyboardEvent) => {

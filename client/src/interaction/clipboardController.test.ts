@@ -4,7 +4,7 @@ import { UIStore } from '../state/uiStore';
 import { ToolRegistry } from '../tools/toolRegistry';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import type { CanvasDocument } from '../document/canvasDocument';
-import type { Shape } from '../model/types';
+import type { Shape } from '../model/shapeTypes';
 import { rect, ellipse } from '../test-support/shapeFactories';
 
 /** Minimal in-memory stand-in for CanvasDocument's shape store. */

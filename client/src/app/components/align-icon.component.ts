@@ -1,5 +1,5 @@
 import { Component, Input } from '@angular/core';
-import type { TextAlign } from '../../model/types';
+import type { TextAlign } from '../../model/shapeTypes';
 
 /** Small line icon for text horizontal-alignment (three rows justified left/center/right). */
 @Component({

@@ -2,14 +2,21 @@ import { Injector, runInInjectionContext, signal, type Signal } from '@angular/c
 import { beforeEach, describe, expect, it } from 'vitest';
 import { PropertiesPanelComponent } from './properties-panel.component';
 import { UiStoreService } from '../state/ui-store.service';
+import { RecentColorsService } from '../state/recent-colors.service';
+import { ColorFlyoutService } from './color-flyout.service';
 import { CollabService } from '../collab/collab.service';
-import { CANVAS_DOCUMENT, CLIPBOARD_CONTROLLER, SHAPE_REGISTRY, TEXT_MEASURE, TOOL_REGISTRY, UI_STORE } from '../di-tokens';
+import { CANVAS_DOCUMENT, CLIPBOARD_CONTROLLER, SHAPE_REGISTRY, TEXT_MEASURE, TOOL_REGISTRY, UI_STORE, RECENT_COLORS } from '../di-tokens';
 import { ShapeRegistry } from '../../shapes/shapeRegistry';
 import { ToolRegistry } from '../../tools/toolRegistry';
 import { UIStore } from '../../state/uiStore';
+import { RecentColorsStore } from '../../state/recentColors';
 import type { ReorderOp } from '../../document/canvasDocument';
-import type { Shape } from '../../model/types';
+import type { Shape, Color } from '../../model/shapeTypes';
+import type { ColorRole } from '../../state/recentColors';
 import { arrow, diamond, draw, ellipse, group, note, rect, text } from '../../test-support/shapeFactories';
+import { MemoryStorage } from '../../test-support/memoryStorage';
+
+globalThis.localStorage = new MemoryStorage();
 
 /** Records the calls the panel forwards to the CanvasDocument, so specs can assert the
  *  per-shape patches it built without a real Yjs document. */
@@ -66,18 +73,53 @@ class FakeCollabService {
     }
 }
 
+/** Records `open()` calls and lets a spec fire picks via the stored onPick callback
+ *  on demand, standing in for the real flyout without mounting a component or DOM. */
+class FakeColorFlyoutService {
+    public readonly openCalls: Array<{ role: ColorRole; anchor: HTMLElement; current: Color }> = [];
+    private openRole: ColorRole | null = null;
+    private onPick: ((color: Color) => void) | null = null;
+
+    public open(role: ColorRole, anchorEl: HTMLElement, current: Color, onPick: (color: Color) => void): void {
+        this.openCalls.push({ role, anchor: anchorEl, current });
+        this.openRole = role;
+        this.onPick = onPick;
+    }
+    public isOpenFor(role: ColorRole): boolean {
+        return this.openRole === role;
+    }
+    public dismiss(): void {
+        this.openRole = null;
+        this.onPick = null;
+    }
+    /** Simulates a swatch click: invokes the stored onPick without closing,
+     *  mirroring the real service's stay-open pick(). */
+    public pick(color: Color): void {
+        this.onPick?.(color);
+    }
+}
+
 /** The panel exposes its logic through protected members (template-facing). Specs reach them
  *  via bracket access, which TypeScript permits without a visibility error while keeping types. */
 function setup() {
+    localStorage.clear();
     const shapeRegistry = new ShapeRegistry();
     const toolRegistry = new ToolRegistry(shapeRegistry);
     const uiStore = new UIStore(toolRegistry);
+    const recentColorsStore = new RecentColorsStore();
     const doc = new FakeCanvasDocument();
     const clipboard = new FakeClipboardController();
     const collab = new FakeCollabService();
+    const flyout = new FakeColorFlyoutService();
 
-    const bootInjector = Injector.create({ providers: [{ provide: UI_STORE, useValue: uiStore }] });
+    const bootInjector = Injector.create({
+        providers: [
+            { provide: UI_STORE, useValue: uiStore },
+            { provide: RECENT_COLORS, useValue: recentColorsStore },
+        ],
+    });
     const uiStoreService = runInInjectionContext(bootInjector, () => new UiStoreService());
+    const recentColorsService = runInInjectionContext(bootInjector, () => new RecentColorsService());
 
     const injector = Injector.create({
         providers: [
@@ -88,6 +130,8 @@ function setup() {
             { provide: CLIPBOARD_CONTROLLER, useValue: clipboard },
             { provide: UiStoreService, useValue: uiStoreService },
             { provide: CollabService, useValue: collab },
+            { provide: RecentColorsService, useValue: recentColorsService },
+            { provide: ColorFlyoutService, useValue: flyout },
         ],
     });
     const component = runInInjectionContext(injector, () => new PropertiesPanelComponent());
@@ -97,7 +141,7 @@ function setup() {
         uiStore.getState().setSelection(shapes.map((s) => s.id));
     };
 
-    return { component, uiStore, doc, clipboard, collab, setSelection };
+    return { component, uiStore, doc, clipboard, collab, flyout, recentColorsStore, setSelection };
 }
 
 /** Read the panel's current common style — apply* always writes it via the store. */
@@ -321,6 +365,21 @@ describe('PropertiesPanelComponent', () => {
             expect(patches.has('g2')).toBe(false);
         });
 
+        it('applySloppiness touches rect/ellipse/diamond/arrow but skips draw, text and note', () => {
+            ctx.setSelection([rect({ id: 'r' }), ellipse({ id: 'e' }), diamond({ id: 'dm' }), arrow({ id: 'a' }), draw({ id: 'd' }), text({ id: 't' }), note({ id: 'n' })]);
+            call('applySloppiness', 'medium');
+
+            expect(style(ctx.uiStore).sloppiness).toBe('medium');
+            const patches = lastPatches(ctx.doc);
+            expect(patches.get('r')).toEqual({ sloppiness: 'medium' });
+            expect(patches.get('e')).toEqual({ sloppiness: 'medium' });
+            expect(patches.get('dm')).toEqual({ sloppiness: 'medium' });
+            expect(patches.get('a')).toEqual({ sloppiness: 'medium' });
+            expect(patches.has('d')).toBe(false);
+            expect(patches.has('t')).toBe(false);
+            expect(patches.has('n')).toBe(false);
+        });
+
         it('applyHAlign patches textOptions on every selected shape unconditionally — the same option now serves captions and body text alike', () => {
             ctx.setSelection([text({ id: 't' }), note({ id: 'n' }), rect({ id: 'r' }), arrow({ id: 'a' })]);
             call('applyHAlign', 'right');
@@ -378,6 +437,84 @@ describe('PropertiesPanelComponent', () => {
             call('applyStroke', '#123');
             expect(style(ctx.uiStore).stroke).toBe('#123');
             expect(ctx.doc.updateCalls).toHaveLength(0);
+        });
+    });
+
+    describe('color flyout', () => {
+        const strokeSlots = () => (ctx.component as unknown as { strokeSlots: Signal<readonly Color[]> })['strokeSlots']();
+        const fillSlots = () => (ctx.component as unknown as { fillSlots: Signal<readonly Color[]> })['fillSlots']();
+        const toggle = (role: ColorRole, target: HTMLElement = {} as HTMLElement) =>
+            (ctx.component as unknown as { toggleColorFlyout: (r: ColorRole, e: MouseEvent) => void })['toggleColorFlyout'](
+                role,
+                { currentTarget: target } as unknown as MouseEvent,
+            );
+
+        it('strokeSlots/fillSlots start as transparent, black, then the default recents', () => {
+            expect(strokeSlots().slice(0, 2)).toEqual(['transparent', '#1e1e1e']);
+            expect(strokeSlots()).toHaveLength(9);
+            expect(fillSlots().slice(0, 2)).toEqual(['transparent', '#1e1e1e']);
+            expect(fillSlots()).toHaveLength(9);
+        });
+
+        it('toggleColorFlyout opens the flyout with the role and the current selection color', () => {
+            ctx.setSelection([rect({ id: 'r', stroke: '#e03131' })]);
+            const anchor = {} as HTMLElement;
+            toggle('stroke', anchor);
+
+            expect(ctx.flyout.openCalls).toHaveLength(1);
+            expect(ctx.flyout.openCalls[0]).toEqual({ role: 'stroke', anchor, current: '#e03131' });
+        });
+
+        it('picking a color promotes it into the recents and applies it like applyStroke', () => {
+            ctx.setSelection([rect({ id: 'r' }), text({ id: 't' })]);
+            toggle('stroke');
+            ctx.flyout.pick('#c2255c');
+
+            expect(strokeSlots()[2]).toBe('#c2255c');
+            const patches = lastPatches(ctx.doc);
+            expect(patches.get('r')).toEqual({ stroke: '#c2255c' });
+            expect(patches.get('t')).toEqual({ color: '#c2255c' });
+        });
+
+        it('picking multiple colors in one open session applies and promotes each one, without closing', () => {
+            ctx.setSelection([rect({ id: 'r' })]);
+            toggle('stroke');
+
+            ctx.flyout.pick('#c2255c');
+            expect(lastPatches(ctx.doc).get('r')).toEqual({ stroke: '#c2255c' });
+            expect(ctx.flyout.isOpenFor('stroke')).toBe(true);
+
+            ctx.flyout.pick('#2f9e44');
+            expect(lastPatches(ctx.doc).get('r')).toEqual({ stroke: '#2f9e44' });
+            expect(strokeSlots()[2]).toBe('#2f9e44');
+            expect(ctx.flyout.isOpenFor('stroke')).toBe(true);
+        });
+
+        it('dismissing the flyout without a pick touches neither the recents nor the document', () => {
+            const before = strokeSlots();
+            toggle('stroke');
+            ctx.flyout.dismiss();
+
+            expect(strokeSlots()).toEqual(before);
+            expect(ctx.doc.updateCalls).toHaveLength(0);
+        });
+
+        it('a fill pick promotes into fillSlots only, leaving strokeSlots unchanged', () => {
+            const strokeBefore = strokeSlots();
+            toggle('fill');
+            ctx.flyout.pick('#0c8599');
+
+            expect(fillSlots()[2]).toBe('#0c8599');
+            expect(strokeSlots()).toEqual(strokeBefore);
+        });
+
+        it('toggling while already open for that role dismisses instead of reopening', () => {
+            toggle('stroke');
+            expect(ctx.flyout.openCalls).toHaveLength(1);
+
+            toggle('stroke');
+            expect(ctx.flyout.openCalls).toHaveLength(1); // no second open() call
+            expect(ctx.flyout.isOpenFor('stroke')).toBe(false); // dismissed instead
         });
     });
 

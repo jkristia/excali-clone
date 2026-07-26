@@ -8,7 +8,7 @@ import { NOTE_LINE_HEIGHT, NOTE_PADDING } from '../../shapes/noteShapeDef';
 import { CanvasDraw } from '../../util/canvasDraw';
 import { FontUtil } from '../../util/fontUtil';
 import { TextOptionsUtil, type ResolvedTextOptions } from '../../util/textOptions';
-import type { NoteShape, Shape, TextShape } from '../../model/types';
+import type { NoteShape, Shape, TextShape } from '../../model/shapeTypes';
 
 @Component({
     selector: 'app-inline-editor',

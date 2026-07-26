@@ -1,4 +1,4 @@
-import type { Shape, ShapeType } from '../model/types';
+import type { Shape, ShapeType } from '../model/shapeTypes';
 import type { Handle } from '../util/handles';
 
 /**

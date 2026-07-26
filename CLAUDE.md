@@ -33,4 +33,4 @@ Open http://localhost:5173. `?room=<name>` = shared board (default: `default-roo
 - No auth — server trusts any client on an allowed origin. Needs token auth + per-room ACLs before real deployment.
 - Single-node — room map is in-process. Horizontal scale needs Redis pub/sub or a hosted Yjs backend.
 - Tooling: Prettier not set up (ESLint, Vitest, Playwright are).
-- Product: grouping, `Ctrl+D`, alignment, image shapes, PNG/SVG export, snapshot compaction, rate limiting.
+- Product: frames (see [GROUPING.md](docs/GROUPING.md)), multi-selection scaling, image shapes, PNG/SVG export, snapshot compaction, rate limiting.

@@ -4,7 +4,7 @@
             <div class="prop-section">
                 <div class="prop-label">Stroke</div>
                 <div class="swatch-row">
-                    @for (c of strokeColors; track c) {
+                    @for (c of strokeSlots(); track c) {
                         <button
                             class="swatch"
                             [class.active]="selectedStroke() === c"
@@ -13,6 +13,7 @@
                             (click)="applyStroke(c)"
                         ></button>
                     }
+                    <button class="swatch swatch-more" title="More colors" (click)="toggleColorFlyout('stroke', $event)">→</button>
                 </div>
             </div>
         }
@@ -21,7 +22,7 @@
             <div class="prop-section">
                 <div class="prop-label">Fill</div>
                 <div class="swatch-row">
-                    @for (c of fillColors; track c) {
+                    @for (c of fillSlots(); track c) {
                         <button
                             class="swatch"
                             [class.active]="selectedFill() === c"
@@ -30,6 +31,7 @@
                             (click)="applyFill(c)"
                         ></button>
                     }
+                    <button class="swatch swatch-more" title="More colors" (click)="toggleColorFlyout('fill', $event)">→</button>
                 </div>
             </div>
         }
@@ -66,6 +68,19 @@
                 <div class="width-row">
                     @for (s of strokeStyles; track s.value) {
                         <button class="width-btn" [class.active]="selectedStrokeStyle() === s.value" [title]="s.label" (click)="applyStrokeStyle(s.value)">
+                            <span class="cap-icon">{{ s.icon }}</span>
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (flags().sloppiness) {
+            <div class="prop-section">
+                <div class="prop-label">Sloppiness</div>
+                <div class="width-row">
+                    @for (s of sloppinessLevels; track s.value) {
+                        <button class="width-btn" [class.active]="selectedSloppiness() === s.value" [title]="s.label" (click)="applySloppiness(s.value)">
                             <span class="cap-icon">{{ s.icon }}</span>
                         </button>
                     }

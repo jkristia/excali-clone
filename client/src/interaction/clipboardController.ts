@@ -1,5 +1,5 @@
 import { nanoid } from 'nanoid';
-import type { Shape } from '../model/types';
+import type { Shape } from '../model/shapeTypes';
 import { UIStore } from '../state/uiStore';
 import { CanvasDocument } from '../document/canvasDocument';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
@@ -34,7 +34,7 @@ export class ClipboardController {
         private readonly canvasDocument: CanvasDocument,
         private readonly shapeRegistry: ShapeRegistry,
         private readonly author: () => string,
-    ) {}
+    ) { }
 
     /** Snapshot the current selection into the in-memory buffer and mirror it to the OS
      *  clipboard. A no-op keeps the previous contents if nothing is selected, so an

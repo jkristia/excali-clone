@@ -1,4 +1,4 @@
-import type { Bounds } from '../model/types';
+import type { Bounds } from '../model/shapeTypes';
 
 /**
  * The 8 resize handles, clockwise from top-left. Values are 0–7 by declaration

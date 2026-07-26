@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Shape } from '../model/types';
+import type { Shape } from '../model/shapeTypes';
 import { SceneTree } from './sceneTree';
 
 function rect(id: string, z: number, parentId?: string): Shape {

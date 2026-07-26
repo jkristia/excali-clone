@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Shape } from '../model/types';
+import type { Shape } from '../model/shapeTypes';
 import type { IdentityStore } from './identity';
 import { FakeBroadcastChannel } from '../test-support/fakeBroadcastChannel';
 
@@ -14,7 +14,7 @@ vi.mock('y-websocket', () => ({
 }));
 
 vi.mock('y-indexeddb', () => ({
-    IndexeddbPersistence: vi.fn().mockImplementation(function IndexeddbPersistence() {}),
+    IndexeddbPersistence: vi.fn().mockImplementation(function IndexeddbPersistence() { }),
 }));
 
 vi.stubGlobal('window', { location: { search: '', hostname: 'localhost' } });

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { ShapeAligner } from './shapeAligner';
 import { arrow, group, rect } from '../test-support/shapeFactories';
-import type { Shape } from '../model/types';
+import type { Shape } from '../model/shapeTypes';
 
 const aligner = new ShapeAligner(new ShapeRegistry());
 
