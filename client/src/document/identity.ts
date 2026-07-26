@@ -1,4 +1,4 @@
-import type { Color, UserPresence } from '../model/types';
+import type { Color, UserPresence } from '../model/shapeTypes';
 
 /** Stable-per-browser identity, persisted in localStorage. */
 export class IdentityStore {

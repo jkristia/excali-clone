@@ -1,25 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { CanvasDraw } from './canvasDraw';
-import { Font, type FillStyle } from '../model/types';
-
-/** Fake offscreen tile so `fillFor`'s `document.createElement('canvas')` works under the
- *  node test env (no DOM). getContext returns a no-op 2D context; the tile is opaque to
- *  `createPattern`, which the recording context stubs with a sentinel. */
-function stubDocument(): void {
-    const fakeCanvas = {
-        width: 0,
-        height: 0,
-        getContext: () => ({
-            strokeStyle: '',
-            lineWidth: 0,
-            beginPath: () => {},
-            moveTo: () => {},
-            lineTo: () => {},
-            stroke: () => {},
-        }),
-    };
-    vi.stubGlobal('document', { createElement: () => fakeCanvas });
-}
+import { Font } from '../model/shapeTypes';
 
 /** Minimal recording 2D context: captures setLineDash args in order and tracks the
  *  last strokeStyle/lineWidth assigned, which is all these specs assert against. */
@@ -28,13 +9,12 @@ function recordingContext(): { ctx: CanvasRenderingContext2D; dashCalls: number[
     const state: Record<string, unknown> = {};
     const target: Record<string, unknown> = {
         setLineDash: (pattern: number[]) => { dashCalls.push(pattern); },
-        beginPath: () => {},
-        moveTo: () => {},
-        lineTo: () => {},
-        arc: () => {},
-        stroke: () => {},
-        fill: () => {},
-        createPattern: () => ({ __pattern: true }),
+        beginPath: () => { },
+        moveTo: () => { },
+        lineTo: () => { },
+        arc: () => { },
+        stroke: () => { },
+        fill: () => { },
     };
     const ctx = new Proxy(target, {
         get: (obj, prop: string) => (prop in obj ? obj[prop] : state[prop]),
@@ -64,30 +44,41 @@ describe('CanvasDraw.applyStroke', () => {
         CanvasDraw.applyStroke(dashed.ctx, '#000', 2, 'dashed');
         expect(dashed.dashCalls).toEqual([[8, 4]]);
 
+        // Dotted gaps are 1.5x the width (not 2x): dots sit tighter than dashes.
         const dotted = recordingContext();
         CanvasDraw.applyStroke(dotted.ctx, '#000', 3, 'dotted');
-        expect(dotted.dashCalls).toEqual([[3, 6]]);
+        expect(dotted.dashCalls).toEqual([[3, 4.5]]);
     });
 });
 
-describe('CanvasDraw.fillFor', () => {
-    it('returns the color unchanged for solid (no pattern built)', () => {
-        const { ctx } = recordingContext();
-        expect(CanvasDraw.fillFor(ctx, 'solid', '#abcdef')).toBe('#abcdef');
+describe('CanvasDraw.roundRectPathData', () => {
+    it('builds an SVG path with a quarter-circle arc at each corner', () => {
+        expect(CanvasDraw.roundRectPathData(10, 10, 2)).toBe(
+            'M 2,0 H 8 A 2,2 0 0 1 10,2 V 8 A 2,2 0 0 1 8,10 H 2 A 2,2 0 0 1 0,8 V 2 A 2,2 0 0 1 2,0 Z',
+        );
     });
 
-    it('returns a CanvasPattern (not the color) for hatch and crossHatch', () => {
-        stubDocument();
-        try {
-            const { ctx } = recordingContext();
-            for (const style of ['hatch', 'crossHatch'] as FillStyle[]) {
-                const result = CanvasDraw.fillFor(ctx, style, '#000000');
-                expect(result).not.toBe('#000000');
-                expect(typeof result).not.toBe('string');
-            }
-        } finally {
-            vi.unstubAllGlobals();
-        }
+    it('degenerates to a sharp-cornered rect (0-radius arcs) when r is 0', () => {
+        expect(CanvasDraw.roundRectPathData(10, 10, 0)).toBe(
+            'M 0,0 H 10 A 0,0 0 0 1 10,0 V 10 A 0,0 0 0 1 10,10 H 0 A 0,0 0 0 1 0,10 V 0 A 0,0 0 0 1 0,0 Z',
+        );
+    });
+
+    it('clamps the radius to half the smaller side', () => {
+        // r=100 requested on a 10x10 box clamps to 5 (w/2 and h/2), same as roundRect.
+        expect(CanvasDraw.roundRectPathData(10, 10, 100)).toBe(CanvasDraw.roundRectPathData(10, 10, 5));
+    });
+});
+
+describe('CanvasDraw.diamondPathData', () => {
+    it('builds a sharp rhombus through the four edge midpoints when r is 0', () => {
+        expect(CanvasDraw.diamondPathData(10, 10, 0)).toBe('M 5,0 L 10,5 L 5,10 L 0,5 Z');
+    });
+
+    it('rounds each vertex with a quadratic curve when r > 0', () => {
+        const d = CanvasDraw.diamondPathData(10, 10, 2);
+        expect(d.startsWith('M 3.585786437626905,1.414213562373095 Q 5,0 6.414213562373095,1.414213562373095')).toBe(true);
+        expect(d.endsWith('Z')).toBe(true);
     });
 });
 
@@ -133,16 +124,16 @@ function labelRecordingContext(): { ctx: CanvasRenderingContext2D; fills: { x: n
     const fills: { x: number; align: string }[] = [];
     const state: Record<string, unknown> = {};
     const target: Record<string, unknown> = {
-        save: () => {},
-        restore: () => {},
+        save: () => { },
+        restore: () => { },
         measureText: (t: string) => ({ width: t.length * 10 }),
         fillText: (_t: string, x: number) => { fills.push({ x, align: String(state.textAlign) }); },
         // Path ops the pill background (roundRect + fill) exercises — no-ops for these specs.
-        beginPath: () => {},
-        moveTo: () => {},
-        arcTo: () => {},
-        closePath: () => {},
-        fill: () => {},
+        beginPath: () => { },
+        moveTo: () => { },
+        arcTo: () => { },
+        closePath: () => { },
+        fill: () => { },
     };
     const ctx = new Proxy(target, {
         get: (obj, prop: string) => (prop in obj ? obj[prop] : state[prop]),
@@ -176,16 +167,5 @@ describe('CanvasDraw.drawCenteredLabel', () => {
         const { ctx, fills } = labelRecordingContext();
         CanvasDraw.drawCenteredLabel(ctx, 'A', bounds, { fontSize: 20, fontFamily: Font.Font1, hAlign: 'left', vAlign: 'top' }, true);
         expect(fills).toEqual([{ x: 200, align: 'center' }]);
-    });
-});
-
-describe('CanvasDraw.drawArrow', () => {
-    it('resets the dash pattern before drawing caps so arrowheads stay solid', () => {
-        const { ctx, dashCalls } = recordingContext();
-        // Caller applies the (possibly dashed) line style first, exactly as the shape def does.
-        CanvasDraw.applyStroke(ctx, '#000', 2, 'dashed');
-        CanvasDraw.drawArrow(ctx, 0, 0, 100, 0, 2, 'none', 'arrow');
-        // First the dashed line pattern, then a reset to solid for the caps.
-        expect(dashCalls).toEqual([[8, 4], []]);
     });
 });

@@ -1,10 +1,9 @@
-import type { Bounds, Color, EndpointCap, FillStyle, StrokeStyle, TextAlign, VerticalAlign } from '../model/types';
+import type { Bounds, Color, EndpointCap, StrokeStyle, TextAlign, VerticalAlign } from '../model/shapeTypes';
 import { FontUtil } from './fontUtil';
 import type { ResolvedTextOptions } from './textOptions';
 
 /** Small reusable canvas-2D drawing primitives shared by multiple shape definitions. */
 export class CanvasDraw {
-    private static readonly HATCH_TILE = 8;
     /** Line spacing for wrapped shape captions, and the pill padding for the arrow/draw
      *  caption background. Shared so canvas rendering and the editor overlay agree. */
     public static readonly LABEL_LINE_HEIGHT = 1.3;
@@ -12,51 +11,6 @@ export class CanvasDraw {
      *  doesn't sit flush against the border. Shared with the editor overlay so they agree. */
     public static readonly LABEL_PADDING = 4;
     private static readonly LABEL_PILL_PADDING = 4;
-    /** Cache of hatch/cross-hatch tiles keyed by `style|color`, so a pattern is built
-     *  once per distinct look and reused across shapes and frames. */
-    private static readonly hatchTiles = new Map<string, HTMLCanvasElement>();
-
-    /** Resolve a fill for the given style: the color itself for 'solid', or a tiled
-     *  hatch/cross-hatch {@link CanvasPattern} drawn in `color`. The pattern is anchored
-     *  to the current (world) transform origin — it stays fixed to the page and slides
-     *  under a shape as it moves, like Excalidraw. */
-    public static fillFor(
-        ctx: CanvasRenderingContext2D,
-        style: FillStyle,
-        color: Color,
-    ): Color | CanvasPattern {
-        if (style === 'solid') return color;
-        const tile = CanvasDraw.hatchTile(style, color);
-        return ctx.createPattern(tile, 'repeat') ?? color;
-    }
-
-    private static hatchTile(style: FillStyle, color: Color): HTMLCanvasElement {
-        const key = `${style}|${color}`;
-        const cached = CanvasDraw.hatchTiles.get(key);
-        if (cached) return cached;
-
-        const size = CanvasDraw.HATCH_TILE;
-        const tile = document.createElement('canvas');
-        tile.width = size;
-        tile.height = size;
-        const tctx = tile.getContext('2d');
-        if (tctx) {
-            tctx.strokeStyle = color;
-            tctx.lineWidth = 1;
-            // A diagonal line from bottom-left to top-right; tiling 'repeat' turns it into
-            // continuous +45° hatching. Cross-hatch overlays the mirrored −45° line.
-            tctx.beginPath();
-            tctx.moveTo(0, size);
-            tctx.lineTo(size, 0);
-            if (style === 'crossHatch') {
-                tctx.moveTo(0, 0);
-                tctx.lineTo(size, size);
-            }
-            tctx.stroke();
-        }
-        CanvasDraw.hatchTiles.set(key, tile);
-        return tile;
-    }
 
     public static applyStroke(
         ctx: CanvasRenderingContext2D,
@@ -71,41 +25,17 @@ export class CanvasDraw {
         ctx.setLineDash(CanvasDraw.dashPattern(style, width));
     }
 
-    /** Dash array for a stroke style, scaled by width so it stays proportional. */
-    private static dashPattern(style: StrokeStyle, width: number): number[] {
+    /** Dash array for a stroke style, scaled by width so it stays proportional. Public so
+     *  {@link RoughDraw} can apply the same dash pattern to a sketchy stroke's outline. */
+    public static dashPattern(style: StrokeStyle, width: number): number[] {
         switch (style) {
             case 'dashed':
                 return [width * 4, width * 2];
             case 'dotted':
-                return [width, width * 2];
+                return [width, width * 1.5];
             default:
                 return [];
         }
-    }
-
-    public static drawArrow(
-        ctx: CanvasRenderingContext2D,
-        x1: number,
-        y1: number,
-        x2: number,
-        y2: number,
-        width: number,
-        startCap: EndpointCap,
-        endCap: EndpointCap,
-    ) {
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-
-        // The connecting line may be dashed/dotted, but the arrowheads must stay solid.
-        ctx.setLineDash([]);
-
-        // Cap angle points *outward* from the line at each end.
-        const angle = Math.atan2(y2 - y1, x2 - x1);
-        CanvasDraw.drawCap(ctx, endCap, x2, y2, angle, width);
-        CanvasDraw.drawCap(ctx, startCap, x1, y1, angle + Math.PI, width);
     }
 
     public static drawCap(
@@ -153,43 +83,45 @@ export class CanvasDraw {
         ctx.closePath();
     }
 
-    /** Build the path for a diamond (rhombus) inscribed in the (x, y, w, h) box —
-     *  vertices at the four edge midpoints. `r > 0` rounds each vertex by trimming
-     *  the adjacent edges inward and curving through the vertex; `r = 0` is sharp.
-     *  Path-only, like {@link roundRect}: the caller does `fill()`/`stroke()`. */
-    public static diamondPath(
-        ctx: CanvasRenderingContext2D,
-        x: number,
-        y: number,
-        w: number,
-        h: number,
-        r = 0,
-    ) {
-        const cx = x + w / 2;
-        const cy = y + h / 2;
+    /** SVG path data for a rounded rect inscribed in (0, 0, w, h) — local box space, for
+     *  {@link RoughDraw} to sketch via `RoughGenerator.path`. Corner geometry matches
+     *  {@link roundRect}. `r = 0` still rounds nothing (SVG arcs of radius 0 degenerate
+     *  to straight lines), so callers can pass it unconditionally. */
+    public static roundRectPathData(w: number, h: number, r: number): string {
+        const radius = Math.min(r, w / 2, h / 2);
+        return `M ${radius},0 H ${w - radius} A ${radius},${radius} 0 0 1 ${w},${radius} `
+            + `V ${h - radius} A ${radius},${radius} 0 0 1 ${w - radius},${h} `
+            + `H ${radius} A ${radius},${radius} 0 0 1 0,${h - radius} `
+            + `V ${radius} A ${radius},${radius} 0 0 1 ${radius},0 Z`;
+    }
+
+    /** SVG path data for a diamond (rhombus) inscribed in (0, 0, w, h) — local box space,
+     *  for {@link RoughDraw} to sketch via `RoughGenerator.path`. `r > 0` rounds each
+     *  vertex by trimming the adjacent edges inward by `r` and curving through the
+     *  vertex (SVG `Q` mirrors the quadratic curve a canvas path would use); `r = 0`
+     *  is sharp. */
+    public static diamondPathData(w: number, h: number, r = 0): string {
+        const cx = w / 2;
+        const cy = h / 2;
         const pts = [
-            { x: cx, y }, // top
-            { x: x + w, y: cy }, // right
-            { x: cx, y: y + h }, // bottom
-            { x, y: cy }, // left
+            { x: cx, y: 0 }, // top
+            { x: w, y: cy }, // right
+            { x: cx, y: h }, // bottom
+            { x: 0, y: cy }, // left
         ];
-        ctx.beginPath();
         if (r <= 0) {
-            ctx.moveTo(pts[0].x, pts[0].y);
-            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-            ctx.closePath();
-            return;
+            return `M ${pts[0].x},${pts[0].y} L ${pts[1].x},${pts[1].y} L ${pts[2].x},${pts[2].y} L ${pts[3].x},${pts[3].y} Z`;
         }
         const n = pts.length;
+        let d = '';
         for (let i = 0; i < n; i++) {
             const curr = pts[i];
             const inPt = CanvasDraw.pointToward(curr, pts[(i - 1 + n) % n], r);
             const outPt = CanvasDraw.pointToward(curr, pts[(i + 1) % n], r);
-            if (i === 0) ctx.moveTo(inPt.x, inPt.y);
-            else ctx.lineTo(inPt.x, inPt.y);
-            ctx.quadraticCurveTo(curr.x, curr.y, outPt.x, outPt.y);
+            d += i === 0 ? `M ${inPt.x},${inPt.y} ` : `L ${inPt.x},${inPt.y} `;
+            d += `Q ${curr.x},${curr.y} ${outPt.x},${outPt.y} `;
         }
-        ctx.closePath();
+        return `${d}Z`;
     }
 
     /** A point `dist` from `from` toward `to`, never past the edge midpoint. */

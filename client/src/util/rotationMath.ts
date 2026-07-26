@@ -1,4 +1,4 @@
-import type { Bounds } from '../model/types';
+import type { Bounds } from '../model/shapeTypes';
 
 /** Rotation is stored per shape as radians about its bounds center. These pure
  *  helpers convert between world and a shape's local (un-rotated) frame so that

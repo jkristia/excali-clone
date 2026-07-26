@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { SceneRenderer } from './render';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import type { Camera } from '../state/uiStore';
-import type { Shape } from '../model/types';
+import type { Shape } from '../model/shapeTypes';
 
 const sceneRenderer = new SceneRenderer(new ShapeRegistry());
 
@@ -17,7 +17,7 @@ function createRecordingContext(): { ctx: CanvasRenderingContext2D; calls: strin
     const state: Record<string, unknown> = {};
     const methods = [
         'save', 'restore', 'clearRect', 'fillRect', 'strokeRect', 'beginPath', 'moveTo', 'lineTo',
-        'closePath', 'stroke', 'fill', 'arc', 'arcTo', 'ellipse', 'fillText', 'measureText',
+        'bezierCurveTo', 'closePath', 'stroke', 'fill', 'arc', 'arcTo', 'ellipse', 'fillText', 'measureText',
         'setTransform', 'translate', 'scale', 'setLineDash', 'createPattern',
     ];
     const target: Record<string, unknown> = {};
@@ -66,32 +66,35 @@ function baseInput(shapes: Shape[]) {
 
 describe('renderScene characterization', () => {
     it('rectangle: draws fill then stroke when both present', () => {
+        // RoughJS sketches the outline as bezier curves rather than a single strokeRect/
+        // fillRect call, even at 'plain' (roughness 0) — assert the fill-then-stroke
+        // sequence and colors instead of the old exact-geometry calls.
         const { ctx, calls } = createRecordingContext();
         const shape: Shape = {
             id: 'r1', type: 'rectangle', x: 0, y: 0, z: 1, createdBy: 'u',
             w: 10, h: 10, fill: '#fff', stroke: '#000', strokeWidth: 2,
         };
         sceneRenderer.render({ ctx, ...baseInput([shape]) });
-        expect(calls).toContain('fillRect(0,0,10,10)');
-        expect(calls).toContain('strokeRect(0,0,10,10)');
+        const fillCallIdx = calls.indexOf('fill("evenodd")');
+        const strokeCallIdx = calls.indexOf('stroke()');
+        expect(calls).toContain('set fillStyle="#fff"');
+        expect(calls).toContain('set strokeStyle="#000"');
+        expect(fillCallIdx).toBeGreaterThanOrEqual(0);
+        expect(strokeCallIdx).toBeGreaterThan(fillCallIdx);
     });
 
     it('rectangle: still fills when hatched (fillStyle set)', () => {
-        // fillFor builds an offscreen tile via document.createElement; stub it for the node env.
-        vi.stubGlobal('document', {
-            createElement: () => ({ width: 0, height: 0, getContext: () => null }),
-        });
-        try {
-            const { ctx, calls } = createRecordingContext();
-            const shape: Shape = {
-                id: 'r1', type: 'rectangle', x: 0, y: 0, z: 1, createdBy: 'u',
-                w: 10, h: 10, fill: '#fff', stroke: '#000', strokeWidth: 2, fillStyle: 'hatch',
-            };
-            sceneRenderer.render({ ctx, ...baseInput([shape]) });
-            expect(calls).toContain('fillRect(0,0,10,10)');
-        } finally {
-            vi.unstubAllGlobals();
-        }
+        // A hatch/cross-hatch fill has no enclosed region to fillRect — RoughJS paints it
+        // as hachure lines stroked in the fill color (a 'fillSketch' opset), so assert
+        // that instead of a fillRect call.
+        const { ctx, calls } = createRecordingContext();
+        const shape: Shape = {
+            id: 'r1', type: 'rectangle', x: 0, y: 0, z: 1, createdBy: 'u',
+            w: 10, h: 10, fill: '#fff', stroke: '#000', strokeWidth: 2, fillStyle: 'hatch',
+        };
+        sceneRenderer.render({ ctx, ...baseInput([shape]) });
+        expect(calls).toContain('set strokeStyle="#fff"'); // hachure lines stroked in the fill color
+        expect(calls.filter((c) => c === 'stroke()').length).toBeGreaterThanOrEqual(2); // hachure + outline
     });
 
     it('opacity: sets globalAlpha from shape.opacity, defaulting to 1 when absent', () => {
@@ -112,27 +115,34 @@ describe('renderScene characterization', () => {
         expect(opaque.calls).toContain('set globalAlpha=1');
     });
 
-    it('ellipse: uses ctx.ellipse with bounds-derived center/radii', () => {
+    it('ellipse: sketches a closed bezier curve inscribed in its bounds', () => {
+        // RoughJS approximates an ellipse with a chain of bezier curves rather than
+        // ctx.ellipse() — assert it's actually drawn (fill + stroke), not the old exact call.
         const { ctx, calls } = createRecordingContext();
         const shape: Shape = {
             id: 'e1', type: 'ellipse', x: 0, y: 0, z: 1, createdBy: 'u',
             w: 40, h: 20, fill: '#fff', stroke: '#000', strokeWidth: 2,
         };
         sceneRenderer.render({ ctx, ...baseInput([shape]) });
-        expect(calls).toContain('ellipse(20,10,20,10,0,0,6.283185307179586)');
+        expect(calls.some((c) => c.startsWith('bezierCurveTo('))).toBe(true);
+        // 'nonzero', not 'evenodd' — RoughJS's own renderer fills an ellipse's sketchy
+        // double-stroke fillPath with 'nonzero'; 'evenodd' would cancel the two curves'
+        // shared interior and leave only a sliver filled (see roughDraw.test.ts).
+        expect(calls).toContain('fill("nonzero")');
+        expect(calls).toContain('stroke()');
     });
 
     it('arrow: draws the line plus an arrowhead at the end cap', () => {
+        // The shaft is sketched via RoughJS (bezier ops, even at roughness 0); the
+        // arrowhead cap is still drawn exactly, as two lineTo segments from the tip.
         const { ctx, calls } = createRecordingContext();
         const shape: Shape = {
             id: 'a1', type: 'arrow', x: 0, y: 0, z: 1, createdBy: 'u',
             dx: 100, dy: 0, stroke: '#000', strokeWidth: 2, startCap: 'none', endCap: 'arrow',
         };
         sceneRenderer.render({ ctx, ...baseInput([shape]) });
-        expect(calls).toContain('moveTo(0,0)');
-        expect(calls).toContain('lineTo(100,0)');
-        // arrowhead adds two more lineTo calls beyond the shaft's single lineTo
-        expect(calls.filter((c) => c.startsWith('lineTo(')).length).toBe(3);
+        expect(calls.some((c) => c.startsWith('bezierCurveTo('))).toBe(true);
+        expect(calls.filter((c) => c.startsWith('lineTo(')).length).toBe(2);
     });
 
     it('draw: strokes a polyline through all points', () => {

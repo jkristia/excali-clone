@@ -1,4 +1,4 @@
-import { Font, type TextAlign, type TextOptions, type VerticalAlign } from '../model/types';
+import { Font, type TextAlign, type TextOptions, type VerticalAlign } from '../model/shapeTypes';
 import type { Style } from '../state/uiStore';
 import { FontUtil } from './fontUtil';
 

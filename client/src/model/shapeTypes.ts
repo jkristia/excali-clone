@@ -17,6 +17,10 @@ export type StrokeStyle = 'solid' | 'dashed' | 'dotted';
 /** Fill pattern for the fillable box shapes. Absent ⇒ 'solid'. */
 export type FillStyle = 'solid' | 'hatch' | 'crossHatch';
 
+/** Hand-drawn "sketchiness" level for stroked shapes (rectangle/ellipse/diamond/arrow),
+ *  rendered via RoughJS. Absent ⇒ 'plain' (roughness 0 — an exact, non-sketchy line). */
+export type Sloppiness = 'plain' | 'light' | 'medium';
+
 export interface BaseShape {
     id: string;
     type: ShapeType;
@@ -54,6 +58,7 @@ export interface RectShape extends BaseShape {
     strokeStyle?: StrokeStyle;
     fillStyle?: FillStyle;
     edges?: CornerStyle;
+    sloppiness?: Sloppiness;
 }
 
 export interface EllipseShape extends BaseShape {
@@ -65,6 +70,7 @@ export interface EllipseShape extends BaseShape {
     strokeWidth: number;
     strokeStyle?: StrokeStyle;
     fillStyle?: FillStyle;
+    sloppiness?: Sloppiness;
 }
 
 export interface DiamondShape extends BaseShape {
@@ -77,6 +83,7 @@ export interface DiamondShape extends BaseShape {
     strokeStyle?: StrokeStyle;
     fillStyle?: FillStyle;
     edges?: CornerStyle;
+    sloppiness?: Sloppiness;
 }
 
 /** Decoration drawn at an arrow/line endpoint. */
@@ -92,6 +99,7 @@ export interface ArrowShape extends BaseShape {
     stroke: Color;
     strokeWidth: number;
     strokeStyle?: StrokeStyle;
+    sloppiness?: Sloppiness;
     /** decoration at the start point (x, y). */
     startCap: EndpointCap;
     /** decoration at the end point (x+dx, y+dy). */

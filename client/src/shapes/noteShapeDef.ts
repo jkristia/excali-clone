@@ -1,4 +1,4 @@
-import type { Bounds, NoteShape, VerticalAlign } from '../model/types';
+import type { Bounds, NoteShape, VerticalAlign } from '../model/shapeTypes';
 import type { ShapeDefinition } from './shapeDefinition';
 import { Geometry } from '../util/geometry';
 import { CanvasDraw } from '../util/canvasDraw';

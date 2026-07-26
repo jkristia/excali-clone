@@ -1,4 +1,4 @@
-import type { Shape } from '../model/types';
+import type { Shape } from '../model/shapeTypes';
 import type { Tool as ToolName } from '../state/uiStore';
 import type { ShapeCapabilities } from '../shapes/shapeDefinition';
 import type { ShapeRegistry } from '../shapes/shapeRegistry';
@@ -30,11 +30,12 @@ export function panelFlags(
                 edges: acc.edges || c.edges,
                 strokeStyle: acc.strokeStyle || c.strokeStyle,
                 fillStyle: acc.fillStyle || c.fillStyle,
+                sloppiness: acc.sloppiness || c.sloppiness,
                 label: acc.label || c.label,
                 textAlign: acc.textAlign || c.textAlign,
                 textVAlign: acc.textVAlign || c.textVAlign,
             };
         },
-        { stroke: false, fill: false, width: false, ends: false, note: false, text: false, edges: false, strokeStyle: false, fillStyle: false, label: false, textAlign: false, textVAlign: false },
+        { stroke: false, fill: false, width: false, ends: false, note: false, text: false, edges: false, strokeStyle: false, fillStyle: false, sloppiness: false, label: false, textAlign: false, textVAlign: false },
     );
 }

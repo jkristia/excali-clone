@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { panelFlags } from './panelCapabilities';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { ToolRegistry } from '../tools/toolRegistry';
-import type { Shape } from '../model/types';
+import type { Shape } from '../model/shapeTypes';
 
 function rect(id: string): Shape {
     return { id, type: 'rectangle', x: 0, y: 0, z: 0, w: 10, h: 10, fill: '#fff', stroke: '#000', strokeWidth: 1, createdBy: 'x' };
@@ -21,7 +21,7 @@ describe('panelFlags', () => {
 
     it('with selection: unions capabilities across all selected shapes', () => {
         const flags = panelFlags(toolRegistry, shapeRegistry, 'select', [rect('a'), note('b')]);
-        expect(flags).toEqual({ stroke: true, fill: true, width: true, ends: false, note: true, text: true, edges: true, strokeStyle: true, fillStyle: true, label: true, textAlign: true, textVAlign: true });
+        expect(flags).toEqual({ stroke: true, fill: true, width: true, ends: false, note: true, text: true, edges: true, strokeStyle: true, fillStyle: true, sloppiness: true, label: true, textAlign: true, textVAlign: true });
     });
 
     it('label capability: on for captionable shapes, off for a note-only selection', () => {

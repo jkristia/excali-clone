@@ -1,4 +1,4 @@
-import type { Shape } from '../model/types';
+import type { Shape } from '../model/shapeTypes';
 import type { Tool } from './tool';
 import type { Tool as ToolName } from '../state/uiStore';
 import { SelectTool } from './selectTool';
@@ -21,7 +21,7 @@ export class ToolRegistry {
             const style = ctx.style();
             return {
                 id, type: 'rectangle', x: p.x, y: p.y, z, createdBy: ctx.author(),
-                w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle, fillStyle: style.fillStyle, edges: style.edges,
+                w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle, fillStyle: style.fillStyle, edges: style.edges, sloppiness: style.sloppiness,
                 textOptions: TextOptionsUtil.fromStyle(style),
             };
         }, shapeRegistry.getCapabilities('rectangle'));
@@ -30,7 +30,7 @@ export class ToolRegistry {
             const style = ctx.style();
             return {
                 id, type: 'ellipse', x: p.x, y: p.y, z, createdBy: ctx.author(),
-                w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle, fillStyle: style.fillStyle,
+                w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle, fillStyle: style.fillStyle, sloppiness: style.sloppiness,
                 textOptions: TextOptionsUtil.fromStyle(style),
             };
         }, shapeRegistry.getCapabilities('ellipse'));
@@ -39,7 +39,7 @@ export class ToolRegistry {
             const style = ctx.style();
             return {
                 id, type: 'diamond', x: p.x, y: p.y, z, createdBy: ctx.author(),
-                w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle, fillStyle: style.fillStyle, edges: style.edges,
+                w: 0, h: 0, fill: style.fill, stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle, fillStyle: style.fillStyle, edges: style.edges, sloppiness: style.sloppiness,
                 textOptions: TextOptionsUtil.fromStyle(style),
             };
         }, shapeRegistry.getCapabilities('diamond'));
@@ -71,7 +71,7 @@ export class ToolRegistry {
         const style = ctx.style();
         return {
             id, type: 'arrow', x: p.x, y: p.y, z, createdBy: ctx.author(),
-            dx: 0, dy: 0, stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle,
+            dx: 0, dy: 0, stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle, sloppiness: style.sloppiness,
             startCap: style.startCap, endCap: style.endCap,
             textOptions: TextOptionsUtil.fromStyle(style),
         };

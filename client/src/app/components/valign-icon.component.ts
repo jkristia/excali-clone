@@ -1,5 +1,5 @@
 import { Component, Input } from '@angular/core';
-import type { VerticalAlign } from '../../model/types';
+import type { VerticalAlign } from '../../model/shapeTypes';
 
 /** Small line icon for caption vertical-alignment (three rows clustered top/middle/bottom). */
 @Component({

@@ -1,5 +1,5 @@
 import type { Camera } from '../state/uiStore';
-import type { Bounds, Color, PeerPresence, Shape } from '../model/types';
+import type { Bounds, Color, PeerPresence, Shape } from '../model/shapeTypes';
 import { CameraMath } from './camera';
 import { Handles } from '../util/handles';
 import { RotationMath } from '../util/rotationMath';
@@ -43,7 +43,7 @@ export class SceneRenderer {
     private static readonly ACTIVE_CONTAINER_COLOR = '#9775fa';
     private static readonly HANDLE_SIZE = 8;
 
-    constructor(private readonly shapeRegistry: ShapeRegistry) {}
+    constructor(private readonly shapeRegistry: ShapeRegistry) { }
 
     public render(input: RenderInput): void {
         const { ctx, width, height, dpr, camera } = input;

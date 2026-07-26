@@ -2,14 +2,14 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { InteractionController, type InteractionStore } from './interactionController';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { ToolRegistry } from '../tools/toolRegistry';
-import { Font, type Shape } from '../model/types';
+import { Font, type Shape } from '../model/shapeTypes';
 import type { PointerInfo } from './interaction';
 
 function makeStore(overrides: Partial<InteractionStore> = {}): InteractionStore {
     return {
         tool: 'select',
         style: {
-            stroke: '#000', fill: 'transparent', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', opacity: 1, fontSize: 18, fontFamily: Font.Font1, hAlign: 'left', vAlign: 'middle',
+            stroke: '#000', fill: 'transparent', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', sloppiness: 'plain', opacity: 1, fontSize: 18, fontFamily: Font.Font1, hAlign: 'left', vAlign: 'middle',
             noteFill: '#fff', startCap: 'none', endCap: 'arrow', edges: 'sharp',
         },
         camera: { x: 0, y: 0, zoom: 1 },
@@ -17,12 +17,12 @@ function makeStore(overrides: Partial<InteractionStore> = {}): InteractionStore 
         selection: [],
         editingGroupId: null,
         setSelection(ids) { this.selection = ids; },
-        toggleSelection: () => {},
-        clearSelection: () => {},
-        setTool: () => {},
-        panBy: () => {},
-        activateEditing: () => {},
-        setEditing: () => {},
+        toggleSelection: () => { },
+        clearSelection: () => { },
+        setTool: () => { },
+        panBy: () => { },
+        activateEditing: () => { },
+        setEditing: () => { },
         ...overrides,
     };
 }

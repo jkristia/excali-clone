@@ -1,4 +1,4 @@
-import { Font, type TextAlign, type VerticalAlign } from '../model/types';
+import { Font, type TextAlign, type VerticalAlign } from '../model/shapeTypes';
 import { TEXT_LINE_HEIGHT, TextShapeDef } from '../shapes/textShapeDef';
 import { NoteShapeDef } from '../shapes/noteShapeDef';
 import { CanvasDraw } from './canvasDraw';
@@ -64,8 +64,8 @@ export class TextMeasure {
         const lineWidth = measureCtx.measureText(line.text).width;
         const anchor =
             layout.textAlign === 'center' ? (layout.boxWidth - lineWidth) / 2
-            : layout.textAlign === 'right' ? layout.boxWidth - lineWidth
-            : 0;
+                : layout.textAlign === 'right' ? layout.boxWidth - lineWidth
+                    : 0;
         const relX = localX - anchor;
         if (relX <= 0) return line.start;
         for (let i = 1; i <= line.text.length; i++) {

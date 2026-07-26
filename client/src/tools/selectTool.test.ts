@@ -3,7 +3,7 @@ import { SelectTool } from './selectTool';
 import type { ToolContext } from './tool';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { Handle } from '../util/handles';
-import { Font, type ArrowShape, type RectShape, type Shape, type TextShape } from '../model/types';
+import { Font, type ArrowShape, type RectShape, type Shape, type TextShape } from '../model/shapeTypes';
 import type { PointerInfo } from '../interaction/interaction';
 
 /** Records the mutations the tool asks its context to perform. */
@@ -20,17 +20,17 @@ function makeCtx(shapes: Shape[], selection: string[] = [], zoom = 1): { ctx: To
         selection: () => state.selection,
         camera: () => ({ x: 0, y: 0, zoom }),
         style: () => ({
-            stroke: '#000', fill: 'transparent', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', opacity: 1, fontSize: 18, fontFamily: Font.Font1, hAlign: 'left', vAlign: 'middle',
+            stroke: '#000', fill: 'transparent', strokeWidth: 2, strokeStyle: 'solid', fillStyle: 'solid', sloppiness: 'plain', opacity: 1, fontSize: 18, fontFamily: Font.Font1, hAlign: 'left', vAlign: 'middle',
             noteFill: '#fff', startCap: 'none', endCap: 'arrow', edges: 'sharp',
         }),
         author: () => 'u',
         newId: () => 'new',
         nextZ: () => 0,
         editingGroupId: () => null,
-        addShape: () => {},
+        addShape: () => { },
         setSelection: (ids) => { state.setSelectionCalls.push(ids); state.selection = ids; },
         toggleSelection: (id, additive) => { state.toggleCalls.push({ id, additive }); state.selection = [...state.selection, id]; },
-        activateEditing: () => {},
+        activateEditing: () => { },
     };
     return { ctx, state };
 }

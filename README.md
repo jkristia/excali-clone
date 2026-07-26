@@ -1,25 +1,27 @@
-# Realtime Collaborative Whiteboard
+# Excali-Clone
 
-A hobby project — basically an Excalidraw clone where multiple people can draw on the same board at the same time and see each other's cursors live. Built mostly with Claude Opus.
+A hobby project — my own version of Excalidraw. Draw rectangles, ellipses, lines, arrows, freehand shapes, text, and sticky notes, all with that hand-drawn look.
 
-![alt text](images/app.png)
+This is built mainly for **offline, local use**. Everything runs in your browser and boards save/open as a `.json` file — no server or account needed.
 
-Edits sync in real time using [Yjs](https://yjs.dev), so people can draw at the same time (even offline) without stepping on each other's changes.
+![Sample board](images/jk-sample.png)
+
+It also supports live sharing — just add `?room=<anyname>` to the URL and anyone with that link edits the same board with you, live. That's a nice extra, but not the main point of this project.
+
+Built almost entirely by Claude — Opus did the planning, Sonnet did the implementation. I just steered the ship.
 
 ## Features
 
-- Real-time multi-user editing, low latency
-- See everyone's cursor, name, and selection live
-- Works offline, syncs back up when you reconnect
 - Tools: select, pan, rectangle, ellipse, line, arrow, freehand pen, text, sticky notes
-- Infinite canvas with pan & zoom
-- Undo/redo (only undoes your own edits)
-- Copy/paste shapes (pastes at the pointer)
-- Save/open boards as a local `.json` file (menu, or `Ctrl/⌘ + S` / `O`)
-- Boards can persist across server restarts
+- Infinite canvas, pan & zoom
+- Undo/redo, copy/paste, duplicate
+- Grouping, layering, opacity, rotation
+- Style options: fill, stroke, sloppiness, and more
+- Save/open boards as a local `.json` file (`Ctrl/⌘ + S` / `O`)
+- Works fully offline, boards persist across restarts
 
-For how it's built under the hood, see [DESIGN.md](docs/DESIGN.md).
-
+![Feature showcase](images/feature-showcase.json.png)  
+*feature-showcase.json sample file*
 ## Getting started
 
 Requires **Node.js 22+**.
@@ -29,19 +31,7 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:5173>. By default (no room), the board is **local to your browser** — nothing is shared. Changes persist in the browser (and sync live across your own open tabs), and you can save/open boards as a `.json` file.
-
-To collaborate, add a room: `?room=team-standup`. Anyone who opens the same URL — another tab, device, or person — sees and edits the same board live, with cursors and presence.
-
-### Individual commands
-
-```bash
-npm run dev:server   # websocket server only
-npm run dev:client   # vite dev server only
-npm run build        # type-check + build both packages
-npm run typecheck    # type-check both packages
-npm start            # run the built server (after npm run build)
-```
+Open <http://localhost:5173>.
 
 ## Configuration
 
@@ -61,6 +51,9 @@ npm start            # run the built server (after npm run build)
 | `VITE_WS_URL` | `ws://<host>:1234`  | WebSocket server URL   |
 
 ## Keyboard shortcuts
+
+![Keyboard shortcuts](images/keyboard-shortcuts.json.png)  
+*keyboard-shortcuts.json sample file*
 
 **Tools**
 

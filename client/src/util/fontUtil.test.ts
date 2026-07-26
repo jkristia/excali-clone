@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Font } from '../model/types';
+import { Font } from '../model/shapeTypes';
 import { FontSize, FontUtil } from './fontUtil';
 
 describe('FontUtil.stack', () => {

@@ -1,4 +1,4 @@
-import type { Shape } from '../model/types';
+import type { Shape } from '../model/shapeTypes';
 
 /**
  * Membership/tree queries over a flat `Shape[]`. Groups form a scene tree via each
