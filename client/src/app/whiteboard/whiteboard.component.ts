@@ -10,6 +10,7 @@ import type { PointerInfo } from '../../interaction/interaction';
 import { SceneTree } from '../../util/sceneTree';
 import { Geometry } from '../../util/geometry';
 import { Handles } from '../../util/handles';
+import { ArrowPoints } from '../../util/arrowPoints';
 import { FontUtil } from '../../util/fontUtil';
 
 /** World-space offset applied to each duplicate, down-right from its source. */
@@ -50,6 +51,8 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
     private readonly camera = this.ui.select((s) => s.camera);
     private readonly editingId = this.ui.select((s) => s.editingId);
     private readonly editingGroupId = this.ui.select((s) => s.editingGroupId);
+    private readonly pointEditId = this.ui.select((s) => s.pointEditId);
+    private readonly pointEditNodes = this.ui.select((s) => s.pointEditNodes);
 
     private shapesLatest: Shape[] = [];
     private peersLatest: PeerPresence[] = [];
@@ -101,6 +104,8 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
             void this.selection();
             void this.editingId();
             void this.editingGroupId();
+            void this.pointEditId();
+            void this.pointEditNodes();
             void this.tool();
             void this.spacePan();
             void this.snapToGrid();
@@ -164,6 +169,9 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
             }
 
             if (e.key === 'Delete' || e.key === 'Backspace') {
+                // In point-edit mode with nodes picked, Delete removes those nodes rather
+                // than the shape — deleting the line itself means leaving point-edit first.
+                if (this.deleteSelectedNodes()) return;
                 const sel = this.ui.snapshot.selection;
                 if (sel.length) {
                     this.canvasDocument.deleteShapes(sel);
@@ -180,8 +188,35 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
                     const patches = moved.map((s) => ({ id: s.id, patch: { x: s.x + dx, y: s.y + dy } }));
                     if (patches.length) this.canvasDocument.updateShapes(patches);
                 }
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (this.controller.getInteraction().kind === 'arrow-multi') {
+                    this.controller.finishMultiPoint();
+                    return;
+                }
+                const sel = this.ui.snapshot.selection;
+                if (sel.length === 1) {
+                    const s = this.shapesLatest.find((sh) => sh.id === sel[0]);
+                    if (s && s.type !== 'group') this.ui.snapshot.activateEditing(s.id);
+                }
             } else if (e.key === 'Escape') {
-                this.ui.snapshot.clearSelection();
+                // Layered, innermost state first. While placing a multi-point line Escape
+                // *keeps* it — finishMultiPoint commits once two anchors are down and
+                // discards a stillborn one — so ending the gesture never loses work.
+                if (this.controller.getInteraction().kind === 'arrow-multi') {
+                    this.controller.finishMultiPoint();
+                    return;
+                }
+                const store = this.ui.snapshot;
+                if (store.pointEditNodes.length) {
+                    store.setPointEditNodes([]);
+                    return;
+                }
+                if (store.pointEditId) {
+                    store.setPointEditing(null);
+                    return;
+                }
+                store.clearSelection();
                 this.controller.reset();
             } else if (e.shiftKey && e.code === 'Digit1') {
                 const bounds = this.shapeRegistry.unionBounds(this.shapesLatest);
@@ -254,6 +289,14 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
             this.handleCursor.set(null);
         };
         const onDoubleClick = (e: MouseEvent) => {
+            // The second click of a double-click that finishes a multi-point line
+            // already went through onPointerDown/stepMultiPoint; this just makes sure
+            // the dblclick itself doesn't fall through to caption-editing on the shape
+            // it just created (finishMultiPoint is a no-op if it already finished).
+            if (this.controller.getInteraction().kind === 'arrow-multi') {
+                this.controller.finishMultiPoint();
+                return;
+            }
             const rect = canvas.getBoundingClientRect();
             const cam = this.ui.snapshot.camera;
             const world = CameraMath.screenToWorld(e.clientX - rect.left, e.clientY - rect.top, cam);
@@ -269,7 +312,13 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
                 store.setSelection([SceneTree.resolveContainer(this.shapesLatest, hit.id, container)]);
                 return;
             }
-            // Otherwise inline-edit: text/note edit their body; others edit their caption.
+            // Lines/arrows enter point-edit mode (midpoint insert handles); caption
+            // editing for them moved to Enter. Everything else edits its caption/body.
+            if (hit.type === 'arrow') {
+                store.setSelection([hit.id]);
+                store.setPointEditing(hit.id);
+                return;
+            }
             store.setSelection([hit.id]);
             store.setEditing(hit.id);
         };
@@ -339,6 +388,21 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
         if (!bounds || !Geometry.pointInBounds(p.x, p.y, bounds, pad)) store.setEditingGroup(null);
     }
 
+    /** Remove the point-edit node selection from its line, keeping at least two anchors
+     *  (see `ArrowPoints.removeAnchors`). Returns whether Delete was handled here, so the
+     *  caller can skip deleting the whole shape. */
+    private deleteSelectedNodes(): boolean {
+        const store = this.ui.snapshot;
+        if (!store.pointEditId || !store.pointEditNodes.length) return false;
+        const shape = this.shapesLatest.find((s) => s.id === store.pointEditId);
+        if (shape?.type === 'arrow') {
+            const points = ArrowPoints.removeAnchors(shape.points, store.pointEditNodes);
+            if (points) this.canvasDocument.updateShapes([{ id: shape.id, patch: { points } }]);
+        }
+        store.setPointEditNodes([]); // the surviving anchors have shifted; indices are stale
+        return true;
+    }
+
     /** Paste at the pointer, or the viewport center if the pointer hasn't been over the canvas yet.
      *  The world anchor is captured synchronously (before the async clipboard read) so paste lands
      *  where the pointer was at keypress. */
@@ -360,13 +424,17 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        const { camera, selection: sel, editingId, editingGroupId, snapToGrid } = this.ui.snapshot;
+        const { camera, selection: sel, editingId, editingGroupId, pointEditId, pointEditNodes, snapToGrid } = this.ui.snapshot;
         const inter = this.controller.getInteraction();
 
         let draft: Shape | null = null;
+        let draftAnchors: readonly number[] | null = null;
         let marquee: Bounds | null = null;
         if (inter.kind === 'create' || inter.kind === 'draw') draft = inter.draft;
-        else if (inter.kind === 'marquee') {
+        else if (inter.kind === 'arrow-multi') {
+            draft = inter.builder.preview();
+            draftAnchors = inter.builder.placedAnchors();
+        } else if (inter.kind === 'marquee') {
             marquee = { x: inter.startX, y: inter.startY, w: inter.curX - inter.startX, h: inter.curY - inter.startY };
         }
 
@@ -376,7 +444,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
             shapes: this.shapesLatest,
             selection: sel,
             peers: this.peersLatest,
-            marquee, draft, editingId, editingGroupId,
+            marquee, draft, draftAnchors, editingId, editingGroupId, pointEditId, pointEditNodes,
             showGrid: snapToGrid,
             rotatingSelection: inter.kind === 'rotate-selection',
         });

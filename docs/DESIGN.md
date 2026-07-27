@@ -25,7 +25,8 @@ npm **workspaces** monorepo. Node **≥ 22**.
       │  ├─ localDocChannel.ts cross-tab live sync (BroadcastChannel) for a local-only (no `?room`) board
       │  └─ identity.ts        per-browser name+color (localStorage)
       ├─ state/
-      │  ├─ uiStore.ts          ⭐ UIStore class: tool, camera, style, selection, editingId/editingGroupId (plain pub-sub)
+      │  ├─ uiStore.ts          ⭐ UIStore class: tool, camera, style, selection, editingId/editingGroupId,
+      │  │                        pointEditId/pointEditNodes (plain pub-sub)
       │  └─ recentColors.ts     RecentColorsStore: MRU stroke/fill swatches + custom color list (localStorage)
       ├─ shapes/                one class per shape type (behavior — see "Add a new shape type")
       │  ├─ shapeDefinition.ts    interface: capabilities, getBounds, hitTest, draw
@@ -39,15 +40,19 @@ npm **workspaces** monorepo. Node **≥ 22**.
       │  ├─ selectTool.ts / panTool.ts / createShapeTool.ts / drawTool.ts / textTool.ts / noteTool.ts
       │  └─ toolRegistry.ts       the one tool-name -> behavior switch
       ├─ interaction/
-      │  ├─ interaction.ts        the pan|create|draw|move|marquee|resize|rotate|rotate-selection|arrow-endpoint union
+      │  ├─ interaction.ts        the pan|create|draw|move|marquee|resize|rotate|rotate-selection|arrow-point|arrow-multi union
       │  ├─ interactionController.ts  ⭐ the pointer-interaction state machine (framework-free, unit-tested)
+      │  ├─ selectionCursor.ts     hover-cursor lookups for the select tool's idle state (handles/anchors/midpoints)
+      │  ├─ multiPointBuilder.ts   pending state of a line/arrow being placed click-by-click (see "Multi-point lines")
       │  ├─ keyboardController.ts     shortcut -> command map (undo/redo, snap-to-grid, group/ungroup, layers, tool letters)
       │  └─ clipboardController.ts    copy/paste/duplicate, framework-free (needs the pointer position for paste)
       ├─ canvas/
       │  ├─ render.ts           SceneRenderer class: pure Canvas2D drawing of the whole scene
       │  └─ camera.ts           CameraMath class: screen<->world transforms, zoomAt, fitBounds
       └─ util/                  static-method util classes + shared cross-shell logic
-         ├─ geometry.ts / vectorMath.ts / resizeMath.ts / handles.ts / canvasDraw.ts / arrowEndpoints.ts / rotationMath.ts
+         ├─ geometry.ts / vectorMath.ts / resizeMath.ts / handles.ts / canvasDraw.ts / arrowPoints.ts / rotationMath.ts
+         ├─ splineMath.ts          SplineMath: the clamped Catmull-Rom spline a multi-point line/arrow curves
+         │                         through — segments/sample/bounds/tangent-angle, RoughJS-identical geometry
          ├─ sceneTree.ts           SceneTree: group/parentId tree ops — paint-order DFS, a container's children,
          │                         its subtree (delete/copy), bounds over its descendants (see "Grouping")
          ├─ shapeAligner.ts        ShapeAligner: align left/center/right/top/middle/bottom against the
@@ -115,15 +120,34 @@ You **cannot store class instances in Yjs** — the CRDT needs POJOs. Shape *dat
 
 `SceneRenderer` is a **pure** class (no Angular, no globals) driven only by its inputs — easy to unit-test by calling it against a throwaway canvas; see `canvas/render.test.ts`.
 
-Rectangle/ellipse/diamond/arrow draw via `util/roughDraw.ts` (`RoughDraw`), a thin wrapper around RoughJS's `RoughGenerator` for the hand-drawn "Sloppiness" look (plain/light/medium — see `util/palette.ts`'s `SLOPPINESS`). Because every pointer-move triggers a full scene redraw but RoughJS re-rolls its sketchy geometry on every call, `RoughDraw` caches one `Drawable` per shape id, invalidated only when something that actually changes the geometry changes (size, sloppiness, fill style/presence, stroke width) — colors and dash pattern are applied at paint time and don't bust the cache. The sketch is seeded deterministically from the shape's `id` (`RoughDraw.seedFor`), not a stored field, so it never jitters across reloads, peers, or frames, and needs no migration for shapes that predate the feature. Freehand `draw`, `text`, and `note` are unaffected — freehand is already hand-drawn, and roughening text would desync the inline-editor overlay's shared baseline/box model.
+Rectangle/ellipse/diamond/arrow draw via `util/roughDraw.ts` (`RoughDraw`), a thin wrapper around RoughJS's `RoughGenerator` for the hand-drawn "Sloppiness" look (plain/light/medium — see `util/palette.ts`'s `SLOPPINESS`). A 2-anchor arrow/line uses `RoughDraw.line` (straight, with bowing — the sketchy bulge); a 3+ anchor one uses `RoughDraw.spline` (`generator.curve`), which is the same clamped Catmull-Rom spline `util/splineMath.ts` computes at `curveTightness: 0` — see "Multi-point lines" below. Because every pointer-move triggers a full scene redraw but RoughJS re-rolls its sketchy geometry on every call, `RoughDraw` caches one `Drawable` per shape id, invalidated only when something that actually changes the geometry changes (size, sloppiness, fill style/presence, stroke width) — colors and dash pattern are applied at paint time and don't bust the cache. The sketch is seeded deterministically from the shape's `id` (`RoughDraw.seedFor`), not a stored field, so it never jitters across reloads, peers, or frames, and needs no migration for shapes that predate the feature. Freehand `draw`, `text`, and `note` are unaffected — freehand is already hand-drawn, and roughening text would desync the inline-editor overlay's shared baseline/box model.
 
-The renderer also draws, when asked to via its `RenderInput` flags: the snap-to-grid line grid (`showGrid`, minor/major lines from `util/gridMath.ts`), a dashed "active container" outline around an entered group's members (`editingGroupId`), and a dashed union frame + rotate handle around a multi-selection or a selected group (see "Grouping" and "Selection transforms" below). It draws shapes in `CanvasDocument.readAllShapes()`'s order, which is already the correct depth-first paint order — the renderer itself doesn't know about groups beyond "some shapes have no geometry and draw nothing."
+The renderer also draws, when asked to via its `RenderInput` flags: the snap-to-grid line grid (`showGrid`, minor/major lines from `util/gridMath.ts`), a dashed "active container" outline around an entered group's members (`editingGroupId`), a dashed union frame + rotate handle around a multi-selection or a selected group (see "Grouping" and "Selection transforms" below), and — for a selected arrow/line — a round handle per anchor plus, in point-edit mode (`pointEditId`), smaller filled midpoint "insert a point here" handles (see "Multi-point lines"). It draws shapes in `CanvasDocument.readAllShapes()`'s order, which is already the correct depth-first paint order — the renderer itself doesn't know about groups beyond "some shapes have no geometry and draw nothing."
 
 ## Interaction model
 
-`InteractionController` (in `interaction/`, no framework import) owns a single `Interaction` union: `none | pan | create | draw | move | marquee | resize | rotate | rotate-selection | arrow-endpoint`. `app/whiteboard/whiteboard.component.ts` wires DOM pointer events to it via `onPointerDown`/`onPointerMove`/`onPointerUp`, translating screen coordinates to world coordinates first (`CameraMath`). Which interaction a pointer-down starts is decided by the current tool's `onPointerDown` (`tools/*.ts`, looked up via `toolRegistry.ts`) — read from `uiStore.getState()` directly, not through a reactive binding, so tool lookups don't cause spurious re-renders. Live cursor position is published on every `pointermove` via `awareness.setLocalStateField('cursor', ...)`.
+`InteractionController` (in `interaction/`, no framework import) owns a single `Interaction` union: `none | pan | create | draw | move | marquee | resize | rotate | rotate-selection | arrow-point | arrow-multi`. `app/whiteboard/whiteboard.component.ts` wires DOM pointer events to it via `onPointerDown`/`onPointerMove`/`onPointerUp`, translating screen coordinates to world coordinates first (`CameraMath`). Which interaction a pointer-down starts is decided by the current tool's `onPointerDown` (`tools/*.ts`, looked up via `toolRegistry.ts`) — read from `uiStore.getState()` directly, not through a reactive binding, so tool lookups don't cause spurious re-renders. Live cursor position is published on every `pointermove` via `awareness.setLocalStateField('cursor', ...)`.
+
+`arrow-multi` is the one exception to "a pointer-up ends the interaction": it's a click-by-click gesture (see "Multi-point lines" below), so it deliberately survives `onPointerUp` and is ended only by `finishMultiPoint`/`cancelMultiPoint`. It's also the only variant holding a class instance (`MultiPointBuilder`) rather than plain data — fine, since `Interaction` is never persisted to Yjs.
 
 Copy/paste/duplicate don't go through `InteractionController` — they're one-shot commands, not drags — and live in the framework-agnostic `interaction/clipboardController.ts` instead, wired from keyboard handlers in `whiteboard.component.ts` (paste needs the current pointer position, which only the component tracks).
+
+### Multi-point lines
+
+A line/arrow's geometry is an anchor `(x, y)` plus a flattened `points: number[]` array of anchors relative to it (`model/shapeTypes.ts`'s `ArrowShape`, the same shape `DrawShape` uses). `util/splineMath.ts`'s `SplineMath` runs a clamped, uniform Catmull-Rom spline through every anchor — 2 anchors degenerate to a straight line, since the clamped end condition makes both control points colinear with the endpoints. Its control-point formula is deliberately identical to RoughJS's own `_curve`/`_curveWithOffset` (`roughjs/bin/renderer.js`), so the rendered stroke, the hit-tested polyline (`SplineMath.sample`), and the computed bounds (`SplineMath.bounds`, exact per-segment Bezier extrema — never the control-point hull, which the curve overshoots) can never drift apart. The arrowhead/cap angle at each end is the *tangent* at that anchor (`startAngle`/`endAngle` — the first/last chord, not the overall anchor-to-anchor chord), so it points along the curve rather than at the far end.
+
+Drag-to-create still makes a plain 2-anchor line (`tools/createShapeTool.ts`, unchanged). A **click without drag** promotes the discarded create-draft into the `arrow-multi` interaction instead of throwing it away (`InteractionController.onPointerUp`): each further click appends an anchor (`interaction/multiPointBuilder.ts`'s `MultiPointBuilder`), live-previewed to the cursor through the normal draft-rendering path so the in-progress curve bends as you move. Every way of ending the gesture — Enter, Escape, a click within `ArrowPoints.HIT_RADIUS` of the last placed anchor, or a double-click (whose second click already lands on that same anchor) — routes through `InteractionController.finishMultiPoint()`, which commits when `MultiPointBuilder.finish()` returns a shape and discards a stillborn one (fewer than 2 anchors, or a 2-anchor span under the threshold). **Escape included** — ending the gesture never throws away a line the user actually drew, which is why there is no separate cancel path; abandoning an in-progress line is Escape then undo.
+
+Once placed, a selected arrow/line shows a round handle per anchor (`util/arrowPoints.ts`'s `ArrowPoints`, the anchor-hit-testing analog of `Handles` for box shapes) — dragging one patches the whole `points` array (`arrow-point` interaction), which is *why* endpoint 0 no longer needs the old tail-rebase special case: every anchor, including the first, is just an index into the same array. Double-clicking a selected arrow enters **point-edit mode** (`uiStore.pointEditId`), which layers smaller filled midpoint handles between each pair of anchors; dragging one splices a new anchor into `points` at that position and drags it like any other. Caption editing for a line/arrow moved from double-click to **Enter** on the selection (`activateEditing`) to make room for point-edit mode; every other shape type keeps double-click → caption.
+
+Inside point-edit mode, anchors are **selectable**: `uiStore.pointEditNodes` holds the picked anchor indices (`togglePointEditNode` mirrors `toggleSelection` for shapes, so shift-click adds/removes). Pressing an unselected node makes it the selection and drags it in one motion; pressing a selected one drags the whole set, with `arrow-point`'s `primary` snapping to the grid/angle and every other index carried by that same delta. Delete removes the selected nodes via `ArrowPoints.removeAnchors`, which never lets a line drop below 2 anchors — deleting the line itself means leaving point-edit first. Escape unwinds one layer at a time: node selection → point-edit mode → shape selection.
+
+Two invariants worth knowing:
+
+- **`pointEditId` and `pointEditNodes` exit together.** Both are transient local-only view state, and a node selection must never outlive the shape it indexes. `UIStore.EXIT_POINT_EDIT` is spread into every state change that drops `pointEditId` (`setTool`, `clearSelection`, `setSelection` when the shape is no longer selected, `setPointEditing`) so a new call site can't clear one and forget the other.
+- **Anchors beat the insert dots by a wide margin.** `ANCHOR_HIT_RADIUS` (10 screen px) is deliberately far larger than `MID_HIT_RADIUS` (4) and anchors are tested first — shaping an existing curve must never be misread as "insert a node here", which is exactly what a near-tie between the two radii used to cause. Note `ANCHOR_HIT_RADIUS` is *separate* from `ArrowPoints.HIT_RADIUS`, which box-shape resize handles and last-anchor detection also read; widening that one would silently fatten every handle on the board.
+
+**Known tradeoff:** `points` is one Yjs property, so two peers dragging *different* anchors of the same line is last-writer-wins on the whole array — same as the old `dx`/`dy` pair, but more likely to be noticed on a many-anchor line. For the same reason node indices can go stale when a peer shortens the array, so read sites filter through `ArrowPoints.validIndices` rather than trying to remap.
 
 ## Selection transforms (rotate / scale)
 
@@ -144,7 +168,7 @@ shape and writes its `rotation` live in
 [`interactionController`](../client/src/interaction/interactionController.ts). The
 multi variant (`rotate-selection`) carries the set's ids, each shape's origin
 anchor + `origRotation`, and the pivot, in a `RotateOrigin` per shape (discriminated
-`box | arrow | draw`, since each rotates differently — see below).
+`box | points` — box shapes vs. arrow/draw, which rotate differently — see below).
 
 ### The selection frame
 
@@ -166,7 +190,7 @@ origin anchor `(x, y)` and `origRotation`. On each move, by delta `θ`:
   `rotation = origRotation + θ` (snap to 5° with Shift, via
   [`RotationMath`](../client/src/util/rotationMath.ts));
 - **`arrow`/`draw`** ignore the `rotation` field, so rotate their geometry
-  explicitly — the `dx/dy` endpoints and the relative `points` — about the pivot.
+  explicitly — the anchor and every point in the relative `points` array — about the pivot.
 
 Write the whole set in one [`updateShapes`](../client/src/document/canvasDocument.ts)
 per frame (live, like single-shape rotate). Because nothing stores an aggregate
@@ -303,7 +327,7 @@ Global shortcuts (undo/redo, snap-to-grid, group/ungroup, layers `Ctrl+[`/`]`, t
 
 Two safety nets, two jobs:
 
-- **Vitest** (`npm run test` from `client/`) — the core unit suite. Tests pure-TS logic only: shape bounds/hit-testing (`model/geometry.test.ts`), resize/vector/rotation math (`util/*.test.ts`), grouping (`util/sceneTree.test.ts`), alignment (`util/shapeAligner.test.ts`), the interaction state machine (`interaction/interactionController.test.ts`), keyboard shortcuts (`interaction/keyboardController.test.ts`), copy/paste/duplicate (`interaction/clipboardController.test.ts`), the `UIStore` class (`state/uiStore.test.ts`), panel-capability logic (`util/panelCapabilities.test.ts`), the file save/open codec (`document/documentFile.test.ts`), and draw-call characterization of the renderer (`canvas/render.test.ts`). It never imports a UI framework.
+- **Vitest** (`npm run test` from `client/`) — the core unit suite. Tests pure-TS logic only: shape bounds/hit-testing (`model/geometry.test.ts`), the multi-point spline math (`util/splineMath.test.ts`), arrow/line anchor + midpoint hit-testing (`util/arrowPoints.test.ts`), resize/vector/rotation math (`util/*.test.ts`), grouping (`util/sceneTree.test.ts`), alignment (`util/shapeAligner.test.ts`), the interaction state machine (`interaction/interactionController.test.ts`) and its multi-point builder (`interaction/multiPointBuilder.test.ts`), keyboard shortcuts (`interaction/keyboardController.test.ts`), copy/paste/duplicate (`interaction/clipboardController.test.ts`), the `UIStore` class (`state/uiStore.test.ts`), panel-capability logic (`util/panelCapabilities.test.ts`), the file save/open codec (`document/documentFile.test.ts`), and draw-call characterization of the renderer (`canvas/render.test.ts`). It never imports a UI framework.
 - **Playwright** (`npm run test:e2e` from `client/`) — drives the real app end-to-end (`client/e2e/`), asserting against DOM structure, class names, and `title` attributes.
 
 When adding logic, prefer a Vitest unit over a Playwright e2e if the logic can be reached without a DOM — it's faster and framework-proof by construction.

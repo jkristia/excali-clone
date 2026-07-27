@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid';
 import type { ArrowShape, Bounds, Font, Shape } from '../model/shapeTypes';
 import type { Camera, Style, Tool as ToolName } from '../state/uiStore';
 import type { Interaction, MarqueeMode, PointerInfo, RotateOrigin } from './interaction';
+import { MultiPointBuilder } from './multiPointBuilder';
 import type { ToolContext } from '../tools/tool';
 import { ToolRegistry } from '../tools/toolRegistry';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
@@ -11,9 +12,10 @@ import type { ResizeGeometry } from '../util/resizeMath';
 import { RotationMath } from '../util/rotationMath';
 import { VectorMath } from '../util/vectorMath';
 import { GridMath } from '../util/gridMath';
-import { ArrowEndpoints } from '../util/arrowEndpoints';
+import { ArrowPoints } from '../util/arrowPoints';
 import { SceneTree } from '../util/sceneTree';
 import { TextOptionsUtil } from '../util/textOptions';
+import { SelectionCursor } from './selectionCursor';
 
 /** Store surface the controller needs — a subset of uiStore's state + actions. */
 export interface InteractionStore {
@@ -23,6 +25,8 @@ export interface InteractionStore {
     snapToGrid: boolean;
     selection: string[];
     editingGroupId: string | null;
+    pointEditId: string | null;
+    pointEditNodes: readonly number[];
     setSelection: (ids: string[]) => void;
     toggleSelection: (id: string, additive: boolean) => void;
     clearSelection: () => void;
@@ -30,6 +34,9 @@ export interface InteractionStore {
     panBy: (dxScreen: number, dyScreen: number) => void;
     activateEditing: (id: string) => void;
     setEditing: (id: string | null, caret?: { x: number; y: number } | null) => void;
+    setPointEditing: (id: string | null) => void;
+    setPointEditNodes: (indices: readonly number[]) => void;
+    togglePointEditNode: (index: number, additive: boolean) => void;
 }
 
 /** Document mutation surface (document/canvasDocument.ts), injected so the controller stays testable. */
@@ -62,12 +69,15 @@ export interface InteractionDeps {
 export class InteractionController {
     private interaction: Interaction = { kind: 'none' };
     private cursor: string | null = null;
+    private readonly selectionCursor: SelectionCursor;
 
     constructor(
         private readonly deps: InteractionDeps,
         private readonly toolRegistry: ToolRegistry,
         private readonly shapeRegistry: ShapeRegistry,
-    ) { }
+    ) {
+        this.selectionCursor = new SelectionCursor(shapeRegistry);
+    }
 
     public getInteraction(): Interaction {
         return this.interaction;
@@ -92,6 +102,10 @@ export class InteractionController {
             newId: () => nanoid(),
             nextZ: () => deps.topZ() + 1,
             editingGroupId: () => deps.getStore().editingGroupId,
+            pointEditId: () => deps.getStore().pointEditId,
+            pointEditNodes: () => deps.getStore().pointEditNodes,
+            setPointEditNodes: (indices) => deps.getStore().setPointEditNodes(indices),
+            togglePointEditNode: (index, additive) => deps.getStore().togglePointEditNode(index, additive),
             addShape: deps.doc.addShape,
             setSelection: (ids) => deps.getStore().setSelection(ids),
             toggleSelection: (id, additive) => deps.getStore().toggleSelection(id, additive),
@@ -109,9 +123,28 @@ export class InteractionController {
         }
         if (p.button !== 0) return;
 
+        if (this.interaction.kind === 'arrow-multi') {
+            const snap = store.snapToGrid && !p.ctrlKey && !p.metaKey;
+            this.stepMultiPoint(this.interaction.builder, p, snap, p.shiftKey);
+            return;
+        }
+
         const tool = this.toolRegistry.get(store.tool);
         const next = tool.onPointerDown(this.toolContext(), p);
         if (next) this.interaction = next;
+    }
+
+    /** One click during multi-point placement: finish if it lands on the last placed
+     *  anchor, else append a new anchor (grid-snapped, Shift angle-snapped off that
+     *  anchor — matching a fresh 2-point line's snap behavior). */
+    private stepMultiPoint(builder: MultiPointBuilder, p: PointerInfo, snap: boolean, shiftKey: boolean): void {
+        const radius = ArrowPoints.HIT_RADIUS / this.deps.getStore().camera.zoom;
+        if (builder.isOnLastAnchor(p.x, p.y, radius)) {
+            this.finishMultiPoint();
+            return;
+        }
+        const { x, y } = this.snapToward(builder.lastAnchor(), p, snap, shiftKey);
+        builder.appendAnchor(x, y);
     }
 
     public onPointerMove(p: PointerInfo, shiftKey: boolean): void {
@@ -151,27 +184,32 @@ export class InteractionController {
                 this.deps.doc.updateShapes(patches);
                 break;
             }
-            case 'arrow-endpoint': {
-                const { origX, origY, origDx, origDy, endpoint, id } = inter;
-                // Snap the dragged endpoint to a grid node (matching create); the
-                // fixed end stays put and Shift still angle-snaps on top.
-                const px = snap ? GridMath.snap(p.x) : p.x;
-                const py = snap ? GridMath.snap(p.y) : p.y;
-                let patch: Partial<ArrowShape>;
-                if (endpoint === 1) {
-                    let dx = px - origX;
-                    let dy = py - origY;
-                    if (shiftKey) ({ dx, dy } = VectorMath.snapAngle(dx, dy));
-                    patch = { dx, dy };
-                } else {
-                    const headX = origX + origDx;
-                    const headY = origY + origDy;
-                    let vx = px - headX;
-                    let vy = py - headY;
-                    if (shiftKey) ({ dx: vx, dy: vy } = VectorMath.snapAngle(vx, vy));
-                    patch = { x: headX + vx, y: headY + vy, dx: -vx, dy: -vy };
+            case 'arrow-point': {
+                const { origX, origY, origPoints, primary, indices, id } = inter;
+                // Angle-snap (Shift) relative to the adjacent anchor — for anchor 0 that's
+                // anchor 1, otherwise the previous anchor — so Shift still means "5-degree
+                // steps off the adjacent segment" as it does for a plain 2-point line.
+                // `snapToward` works in world coordinates (matching `p`), so the neighbor
+                // and the result must be converted to/from the shape-relative `points` frame.
+                const neighborIdx = primary > 0 ? primary - 1 : Math.min(1, origPoints.length / 2 - 1);
+                const neighbor = { x: origX + origPoints[neighborIdx * 2], y: origY + origPoints[neighborIdx * 2 + 1] };
+                const { x, y } = this.snapToward(neighbor, p, snap, shiftKey);
+                // Move every selected anchor by the delta the *grabbed* one travelled, so a
+                // multi-node drag stays rigid while the grabbed node still lands on the grid.
+                // With a single node this reduces to "put it exactly where it was snapped to".
+                const dx = (x - origX) - origPoints[primary * 2];
+                const dy = (y - origY) - origPoints[primary * 2 + 1];
+                const points = [...origPoints];
+                for (const i of indices) {
+                    points[i * 2] = origPoints[i * 2] + dx;
+                    points[i * 2 + 1] = origPoints[i * 2 + 1] + dy;
                 }
-                this.deps.doc.updateShapes([{ id, patch }]);
+                this.deps.doc.updateShapes([{ id, patch: { points } as Partial<ArrowShape> }]);
+                break;
+            }
+            case 'arrow-multi': {
+                const { x, y } = this.snapToward(inter.builder.lastAnchor(), p, snap, shiftKey);
+                inter.builder.moveCursor(x, y);
                 break;
             }
             case 'create': {
@@ -182,7 +220,7 @@ export class InteractionController {
                     let dx = (snap ? GridMath.snap(p.x) : p.x) - ax;
                     let dy = (snap ? GridMath.snap(p.y) : p.y) - ay;
                     if (shiftKey) ({ dx, dy } = VectorMath.snapAngle(dx, dy));
-                    inter.draft = { ...inter.draft, x: ax, y: ay, dx, dy };
+                    inter.draft = { ...inter.draft, x: ax, y: ay, points: [0, 0, dx, dy] };
                 } else if (
                     inter.draft.type === 'rectangle' ||
                     inter.draft.type === 'ellipse' ||
@@ -235,6 +273,20 @@ export class InteractionController {
         this.updateCursor(store, p);
     }
 
+    /** Grid-snap `p` (independent of `from`), then — only when `shiftKey` is held —
+     *  override with an angle-snapped position relative to `from`. Shared by anchor
+     *  drags and multi-point placement, which both snap "off the adjacent anchor". */
+    private snapToward(from: { x: number; y: number }, p: PointerInfo, snap: boolean, shiftKey: boolean): { x: number; y: number } {
+        let x = snap ? GridMath.snap(p.x) : p.x;
+        let y = snap ? GridMath.snap(p.y) : p.y;
+        if (shiftKey) {
+            const angled = VectorMath.snapAngle(x - from.x, y - from.y);
+            x = from.x + angled.dx;
+            y = from.y + angled.dy;
+        }
+        return { x, y };
+    }
+
     /** Minimum width a text shape can be dragged to before its text stops wrapping narrower. */
     private static readonly MIN_TEXT_WIDTH = 20;
 
@@ -261,16 +313,12 @@ export class InteractionController {
     }
 
     /** Geometry patch for one shape in a multi-selection rotate by `theta` about `pivot`.
-     *  Box shapes accumulate the `rotation` field; arrow/draw rotate coordinates directly. */
+     *  Box shapes accumulate the `rotation` field; arrow/draw (both "anchor + relative
+     *  points") rotate their coordinates directly. */
     private rotatePatch(o: RotateOrigin, pivot: { x: number; y: number }, theta: number): Partial<Shape> {
         if (o.kind === 'box') {
             const c = RotationMath.rotatePoint(o.cx, o.cy, pivot.x, pivot.y, theta);
             return { x: c.x - o.hw, y: c.y - o.hh, rotation: o.origRotation + theta };
-        }
-        if (o.kind === 'arrow') {
-            const s = RotationMath.rotatePoint(o.x, o.y, pivot.x, pivot.y, theta);
-            const e = RotationMath.rotatePoint(o.x + o.dx, o.y + o.dy, pivot.x, pivot.y, theta);
-            return { x: s.x, y: s.y, dx: e.x - s.x, dy: e.y - s.y };
         }
         const a = RotationMath.rotatePoint(o.x, o.y, pivot.x, pivot.y, theta);
         const points: number[] = [];
@@ -293,10 +341,10 @@ export class InteractionController {
                 ? this.deps.shapes().find((s) => s.id === store.selection[0])
                 : undefined;
             if (single && single.type !== 'group') {
-                newCursor = this.selectedShapeCursor(store, p);
+                newCursor = this.selectionCursor.forSelectedShape(single, store.pointEditId, store.camera, p.x, p.y);
             } else if (store.selection.length >= 1) {
                 // A single group behaves like a multi-selection: one union frame.
-                newCursor = this.multiSelectionCursor(store, p);
+                newCursor = this.selectionCursor.forMultiSelection(store.selection, this.deps.shapes(), store.camera, p.x, p.y);
             }
             // Over any shape body a click selects+moves it (see SelectTool), so
             // show the move cursor there — but never over an anchor of the
@@ -308,57 +356,32 @@ export class InteractionController {
             newCursor = Handles.cursor(inter.handle, inter.orig.rotation);
         } else if (inter.kind === 'rotate' || inter.kind === 'rotate-selection') {
             newCursor = 'grabbing';
-        } else if (inter.kind === 'arrow-endpoint') {
+        } else if (inter.kind === 'arrow-point' || inter.kind === 'arrow-multi') {
             newCursor = 'crosshair';
         }
         this.cursor = newCursor;
-    }
-
-    /** Hover cursor for the single selected shape's endpoints / handles, else null. */
-    private selectedShapeCursor(store: InteractionStore, p: PointerInfo): string | null {
-        const selShape = this.deps.shapes().find((s) => s.id === store.selection[0]);
-        if (!selShape) return null;
-        if (selShape.type === 'arrow') {
-            const ep = ArrowEndpoints.hitTest(selShape, p.x, p.y, store.camera.zoom);
-            return ep !== null ? 'crosshair' : null;
-        }
-        const bounds = this.shapeRegistry.getBounds(selShape);
-        const radius = ArrowEndpoints.HIT_RADIUS / store.camera.zoom;
-        const c = RotationMath.center(bounds);
-        const local = RotationMath.rotatePoint(p.x, p.y, c.x, c.y, -(selShape.rotation ?? 0));
-        if (this.shapeRegistry.isRotatable(selShape)) {
-            const [rx, ry] = Handles.rotateHandlePoint(bounds, Handles.ROTATE_OFFSET / store.camera.zoom);
-            if (Math.hypot(local.x - rx, local.y - ry) <= radius) return 'grab';
-        }
-        if (this.shapeRegistry.isResizable(selShape)) {
-            const allowed = Handles.activeHandles(this.shapeRegistry.resizeAxis(selShape));
-            const h = Handles.hitTest(bounds, local.x, local.y, radius, allowed);
-            if (h !== -1) return Handles.cursor(h, selShape.rotation ?? 0);
-        }
-        return null;
-    }
-
-    /** Hover cursor over a multi-selection's rotate handle (off the padded union frame), else null. */
-    private multiSelectionCursor(store: InteractionStore, p: PointerInfo): string | null {
-        const members = store.selection.flatMap((id) => SceneTree.boundableDescendants(this.deps.shapes(), id));
-        const union = this.shapeRegistry.unionBounds(members);
-        if (!union) return null;
-        const zoom = store.camera.zoom;
-        const frame = Handles.padBounds(union, Handles.SELECTION_PAD / zoom);
-        const [rx, ry] = Handles.rotateHandlePoint(frame, Handles.ROTATE_OFFSET / zoom);
-        const radius = ArrowEndpoints.HIT_RADIUS / zoom;
-        return Math.hypot(p.x - rx, p.y - ry) <= radius ? 'grab' : null;
     }
 
     public onPointerUp(): void {
         const store = this.deps.getStore();
         const inter = this.interaction;
 
+        // A click sequence, not a drag — pointer-up here is just the end of one click,
+        // not a commit. Ending the gesture happens via finishMultiPoint.
+        if (inter.kind === 'arrow-multi') return;
+
         if (inter.kind === 'create') {
             const d = inter.draft;
-            const bounds = this.boundsOfDraft(d);
-            const bigEnough =
-                d.type === 'arrow' ? Math.hypot(d.dx, d.dy) > 4 : bounds.w > 3 || bounds.h > 3;
+            const bigEnough = this.isBigEnough(d);
+            if (!bigEnough && d.type === 'arrow') {
+                // A click, not a drag: promote the discarded draft into multi-point mode
+                // instead of throwing it away.
+                this.interaction = {
+                    kind: 'arrow-multi',
+                    builder: new MultiPointBuilder({ ...d, points: [0, 0] }, inter.startX, inter.startY),
+                };
+                return;
+            }
             if (bigEnough) {
                 this.deps.doc.addShape(InteractionController.normalizeDraft(d));
                 store.setSelection([d.id]);
@@ -400,6 +423,33 @@ export class InteractionController {
         this.cursor = null;
     }
 
+    /** End the in-progress multi-point line/arrow: commit it when the builder has enough
+     *  placed anchors to be worth keeping, otherwise discard it. Every way of ending the
+     *  gesture — Enter, Escape, double-click, click-on-last-anchor — routes here, so
+     *  ending it never silently throws away a line the user actually drew. A no-op unless
+     *  the interaction is `arrow-multi`, so callers needn't check. */
+    public finishMultiPoint(): void {
+        if (this.interaction.kind !== 'arrow-multi') return;
+        const shape = this.interaction.builder.finish();
+        this.interaction = { kind: 'none' };
+        if (!shape) return;
+        const store = this.deps.getStore();
+        this.deps.doc.addShape(shape);
+        store.setSelection([shape.id]);
+        store.setTool('select');
+    }
+
+    /** Whether a `create` draft is worth committing — a plain click (or a drag under
+     *  the threshold) should be discarded rather than leaving a zero-size shape. */
+    private isBigEnough(d: Shape): boolean {
+        if (d.type === 'arrow') {
+            const pts = d.points;
+            return Math.hypot(pts[2] - pts[0], pts[3] - pts[1]) > 4;
+        }
+        const bounds = this.boundsOfDraft(d);
+        return bounds.w > 3 || bounds.h > 3;
+    }
+
     /**
      * Map marquee-enclosed leaf ids to what should actually be selected: each leaf's
      * top-level container (so enclosing a group's members selects the group), deduped.
@@ -433,7 +483,6 @@ export class InteractionController {
         if (d.type === 'rectangle' || d.type === 'ellipse' || d.type === 'diamond') {
             return { x: d.x, y: d.y, w: Math.abs(d.w), h: Math.abs(d.h) };
         }
-        if (d.type === 'arrow') return { x: d.x, y: d.y, w: Math.abs(d.dx), h: Math.abs(d.dy) };
         return this.shapeRegistry.unionBounds([d]) ?? { x: d.x, y: d.y, w: 0, h: 0 };
     }
 

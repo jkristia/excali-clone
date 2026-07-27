@@ -71,7 +71,7 @@ export class ToolRegistry {
         const style = ctx.style();
         return {
             id, type: 'arrow', x: p.x, y: p.y, z, createdBy: ctx.author(),
-            dx: 0, dy: 0, stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle, sloppiness: style.sloppiness,
+            points: [0, 0, 0, 0], stroke: style.stroke, strokeWidth: style.strokeWidth, strokeStyle: style.strokeStyle, sloppiness: style.sloppiness,
             startCap: style.startCap, endCap: style.endCap,
             textOptions: TextOptionsUtil.fromStyle(style),
         };

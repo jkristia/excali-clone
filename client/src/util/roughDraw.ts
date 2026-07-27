@@ -1,4 +1,5 @@
 import { RoughGenerator } from 'roughjs/bin/generator';
+import type { Point } from 'roughjs/bin/geometry';
 import type { Drawable, Op, Options } from 'roughjs/bin/core';
 import type { Color, FillStyle, Sloppiness, StrokeStyle } from '../model/shapeTypes';
 import { CanvasDraw } from './canvasDraw';
@@ -73,18 +74,44 @@ export class RoughDraw {
             RoughDraw.generator.ellipse(w / 2, h / 2, w, h, RoughDraw.optionsFor(shapeId, sloppiness, strokeWidth, hasFill, fillStyle)));
     }
 
-    /** Geometry for a straight shaft from (0, 0) to (dx, dy) — the line/arrow body.
-     *  Endpoint caps are drawn separately by {@link CanvasDraw.drawCap}, exact as today. */
+    /** Geometry for a straight shaft from (x1, y1) to (x2, y2) — a 2-anchor line/arrow
+     *  body. Endpoint caps are drawn separately by {@link CanvasDraw.drawCap}, exact as
+     *  today. Uses `line()`'s bowing (the sketchy bulge) rather than `curve()`, which has
+     *  none — keeps a plain 2-point line looking exactly as it did before splines existed. */
     public static line(
         shapeId: string,
-        dx: number,
-        dy: number,
+        x1: number,
+        y1: number,
+        x2: number,
+        y2: number,
         sloppiness: Sloppiness | undefined,
         strokeWidth: number,
     ): Drawable {
-        const key = `line|${dx}|${dy}|${sloppiness ?? 'plain'}|${strokeWidth}`;
+        const key = `line|${x1}|${y1}|${x2}|${y2}|${sloppiness ?? 'plain'}|${strokeWidth}`;
         return RoughDraw.getOrCreate(shapeId, key, () =>
-            RoughDraw.generator.line(0, 0, dx, dy, RoughDraw.optionsFor(shapeId, sloppiness, strokeWidth, false, undefined)));
+            RoughDraw.generator.line(x1, y1, x2, y2, RoughDraw.optionsFor(shapeId, sloppiness, strokeWidth, false, undefined)));
+    }
+
+    /** Geometry for a multi-anchor spline through `points` (flattened `[x, y, ...]`,
+     *  already in the frame the caller has translated to). RoughJS's `curve()` *is* the
+     *  same clamped cardinal spline {@link SplineMath} computes at `curveTightness: 0`,
+     *  so what's drawn and what's hit-tested/bounded can't drift apart. */
+    public static spline(
+        shapeId: string,
+        points: readonly number[],
+        sloppiness: Sloppiness | undefined,
+        strokeWidth: number,
+    ): Drawable {
+        const key = `spline|${points.join(',')}|${sloppiness ?? 'plain'}|${strokeWidth}`;
+        return RoughDraw.getOrCreate(shapeId, key, () =>
+            RoughDraw.generator.curve(RoughDraw.toPointPairs(points),
+                RoughDraw.optionsFor(shapeId, sloppiness, strokeWidth, false, undefined)));
+    }
+
+    private static toPointPairs(points: readonly number[]): Point[] {
+        const pairs: Point[] = [];
+        for (let i = 0; i + 1 < points.length; i += 2) pairs.push([points[i], points[i + 1]]);
+        return pairs;
     }
 
     /** Paint a cached drawable's op sets onto `ctx`, which must already be translated to

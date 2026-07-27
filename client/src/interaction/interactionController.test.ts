@@ -16,6 +16,8 @@ function makeStore(overrides: Partial<InteractionStore> = {}): InteractionStore 
         snapToGrid: false,
         selection: [],
         editingGroupId: null,
+        pointEditId: null,
+        pointEditNodes: [],
         setSelection(ids) { this.selection = ids; },
         toggleSelection: () => { },
         clearSelection: () => { },
@@ -23,6 +25,14 @@ function makeStore(overrides: Partial<InteractionStore> = {}): InteractionStore 
         panBy: () => { },
         activateEditing: () => { },
         setEditing: () => { },
+        setPointEditing: () => { },
+        setPointEditNodes(indices) { this.pointEditNodes = indices; },
+        togglePointEditNode(index, additive) {
+            if (!additive) { this.pointEditNodes = [index]; return; }
+            this.pointEditNodes = this.pointEditNodes.includes(index)
+                ? this.pointEditNodes.filter((i) => i !== index)
+                : [...this.pointEditNodes, index];
+        },
         ...overrides,
     };
 }
@@ -270,10 +280,10 @@ describe('InteractionController', () => {
             expect(p2.rotation).toBeCloseTo(Math.PI / 2, 6);
         });
 
-        it('rotates arrow endpoints and draw points explicitly (no rotation field)', () => {
+        it('rotates arrow/draw anchor + relative points explicitly (no rotation field)', () => {
             const arrow: Shape = {
                 id: 'a1', type: 'arrow', x: 0, y: 0, z: 0, createdBy: 'u',
-                dx: 100, dy: 0, stroke: '#000', strokeWidth: 2, startCap: 'none', endCap: 'arrow',
+                points: [0, 0, 100, 0], stroke: '#000', strokeWidth: 2, startCap: 'none', endCap: 'arrow',
             };
             const draw: Shape = {
                 id: 'd1', type: 'draw', x: 0, y: 0, z: 0, createdBy: 'u',
@@ -282,11 +292,13 @@ describe('InteractionController', () => {
             shapes = [arrow, draw]; // union (0,0,100,100), pivot (50,50), handle [50,-28]
             store.selection = ['a1', 'd1'];
             rotate90([50, -28]);
-            const pa = last('a1') as { x: number; y: number; dx: number; dy: number };
+            const pa = last('a1') as { x: number; y: number; points: number[] };
             expect(pa.x).toBeCloseTo(100, 6);
             expect(pa.y).toBeCloseTo(0, 6);
-            expect(pa.dx).toBeCloseTo(0, 6);
-            expect(pa.dy).toBeCloseTo(100, 6);
+            expect(pa.points[0]).toBeCloseTo(0, 6);
+            expect(pa.points[1]).toBeCloseTo(0, 6);
+            expect(pa.points[2]).toBeCloseTo(0, 6);
+            expect(pa.points[3]).toBeCloseTo(100, 6);
             expect('rotation' in (last('a1') as object)).toBe(false);
             const pd = last('d1') as { x: number; y: number; points: number[] };
             expect(pd.x).toBeCloseTo(100, 6);
@@ -389,20 +401,76 @@ describe('InteractionController', () => {
             controller.onPointerDown(pointer(3, 4), false); // tail snaps to (0, 0)
             controller.onPointerMove(pointer(57, 44), false); // head snaps to (60, 40)
             controller.onPointerUp();
-            expect(addedShapes[0]).toMatchObject({ type: 'arrow', x: 0, y: 0, dx: 60, dy: 40 });
+            expect(addedShapes[0]).toMatchObject({ type: 'arrow', x: 0, y: 0, points: [0, 0, 60, 40] });
         });
 
-        it('dragging a line/arrow endpoint snaps it to the grid', () => {
+        it('dragging a line/arrow anchor snaps it to the grid', () => {
             const arrow: Shape = {
                 id: 'a1', type: 'arrow', x: 0, y: 0, z: 0, createdBy: 'u',
-                dx: 100, dy: 0, stroke: '#000', strokeWidth: 2, startCap: 'none', endCap: 'arrow',
+                points: [0, 0, 100, 0], stroke: '#000', strokeWidth: 2, startCap: 'none', endCap: 'arrow',
             };
             shapes = [arrow];
             store.selection = ['a1'];
             store.snapToGrid = true;
-            controller.onPointerDown(pointer(100, 0), false); // grabs the head endpoint
+            controller.onPointerDown(pointer(100, 0), false); // grabs the head anchor
             controller.onPointerMove(pointer(57, 44), false); // head snaps to (60, 40)
-            expect(patches.at(-1)).toEqual({ id: 'a1', patch: { dx: 60, dy: 40 } });
+            expect(patches.at(-1)).toEqual({ id: 'a1', patch: { points: [0, 0, 60, 40] } });
+        });
+
+        it('dragging an anchor of a shape anchored away from the origin patches world-relative, not world-absolute, points', () => {
+            // Regression test: the world pointer position must be converted into the
+            // shape-relative `points` frame by subtracting the shape's own (x, y) anchor —
+            // getting this wrong once made a dragged anchor jump to (shape.x + pointerX).
+            const arrow: Shape = {
+                id: 'a1', type: 'arrow', x: 500, y: 400, z: 0, createdBy: 'u',
+                points: [0, 0, 100, -50, 200, 50], stroke: '#000', strokeWidth: 2, startCap: 'none', endCap: 'none',
+            };
+            shapes = [arrow];
+            store.selection = ['a1'];
+            controller.onPointerDown(pointer(500, 400), false); // grabs anchor 0, at world (500, 400)
+            controller.onPointerMove(pointer(490, 360), false); // drag it 10 left, 40 up
+            expect(patches.at(-1)).toEqual({ id: 'a1', patch: { points: [-10, -40, 100, -50, 200, 50] } });
+        });
+    });
+
+    describe('multi-node drag (point-edit mode)', () => {
+        const curve: Shape = {
+            id: 'a1', type: 'arrow', x: 0, y: 0, z: 0, createdBy: 'u',
+            points: [0, 0, 100, 0, 200, 0, 300, 0], stroke: '#000', strokeWidth: 2, startCap: 'none', endCap: 'none',
+        };
+
+        beforeEach(() => {
+            shapes = [curve];
+            store.selection = ['a1'];
+            store.pointEditId = 'a1';
+        });
+
+        it('moves every selected node by the delta the grabbed one travelled', () => {
+            store.pointEditNodes = [1, 2];
+            controller.onPointerDown(pointer(100, 0), false); // grab anchor 1 (selected)
+            controller.onPointerMove(pointer(130, -20), false); // +30, -20
+            expect(patches.at(-1)).toEqual({
+                id: 'a1', patch: { points: [0, 0, 130, -20, 230, -20, 300, 0] },
+            });
+        });
+
+        it('grid-snaps the grabbed node and carries the others by that same snapped delta', () => {
+            store.snapToGrid = true;
+            store.pointEditNodes = [1, 2];
+            controller.onPointerDown(pointer(100, 0), false);
+            controller.onPointerMove(pointer(117, 23), false); // grabbed node snaps to (120, 20) => delta +20/+20
+            expect(patches.at(-1)).toEqual({
+                id: 'a1', patch: { points: [0, 0, 120, 20, 220, 20, 300, 0] },
+            });
+        });
+
+        it('leaves unselected nodes exactly where they were', () => {
+            store.pointEditNodes = [0];
+            controller.onPointerDown(pointer(0, 0), false);
+            controller.onPointerMove(pointer(-15, 5), false);
+            expect(patches.at(-1)).toEqual({
+                id: 'a1', patch: { points: [-15, 5, 100, 0, 200, 0, 300, 0] },
+            });
         });
     });
 

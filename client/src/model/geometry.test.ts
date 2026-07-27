@@ -32,8 +32,8 @@ describe('getBounds', () => {
         expect(getBounds(text({ x: 3, y: 4, w: 20, h: 25 }))).toEqual({ x: 3, y: 4, w: 20, h: 25 });
     });
 
-    it('arrow: bounds from x/y + dx/dy, normalized', () => {
-        expect(getBounds(arrow({ x: 5, y: 5, dx: -10, dy: 20 }))).toEqual({ x: -5, y: 5, w: 10, h: 20 });
+    it('arrow: bounds from x/y + points, normalized', () => {
+        expect(getBounds(arrow({ x: 5, y: 5, points: [0, 0, -10, 20] }))).toEqual({ x: -5, y: 5, w: 10, h: 20 });
     });
 
     it('draw: bounds from min/max of points relative to x/y', () => {
@@ -49,7 +49,7 @@ describe('getBounds', () => {
 
 describe('hitTest', () => {
     it('arrow: hits near the segment within tolerance + strokeWidth', () => {
-        const s = arrow({ x: 0, y: 0, dx: 100, dy: 0, strokeWidth: 2 });
+        const s = arrow({ x: 0, y: 0, points: [0, 0, 100, 0], strokeWidth: 2 });
         expect(hitTest(s, 50, 0, 6)).toBe(true);
         expect(hitTest(s, 50, 20, 6)).toBe(false);
     });

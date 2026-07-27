@@ -93,16 +93,17 @@ export interface ArrowShape extends BaseShape {
     /** A plain line is just an arrow with both caps 'none'. The stored type stays
    * 'arrow' for persistence compatibility; the caps carry line-vs-arrow meaning. */
     type: 'arrow';
-    /** end point, relative to (x, y). */
-    dx: number;
-    dy: number;
+    /** Flattened [px, py, ...] anchors relative to (x, y); >= 2 anchors (4 numbers).
+     *  A clamped Catmull-Rom spline runs through every anchor — see util/splineMath.ts.
+     *  2 anchors degenerate to a straight line. */
+    points: number[];
     stroke: Color;
     strokeWidth: number;
     strokeStyle?: StrokeStyle;
     sloppiness?: Sloppiness;
-    /** decoration at the start point (x, y). */
+    /** decoration at the first anchor. */
     startCap: EndpointCap;
-    /** decoration at the end point (x+dx, y+dy). */
+    /** decoration at the last anchor. */
     endCap: EndpointCap;
 }
 

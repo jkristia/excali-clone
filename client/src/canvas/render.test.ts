@@ -57,8 +57,11 @@ function baseInput(shapes: Shape[]) {
         peers: [],
         marquee: null,
         draft: null,
+        draftAnchors: null,
         editingId: null,
         editingGroupId: null,
+        pointEditId: null,
+        pointEditNodes: [] as readonly number[],
         showGrid: false,
         rotatingSelection: false,
     };
@@ -138,7 +141,7 @@ describe('renderScene characterization', () => {
         const { ctx, calls } = createRecordingContext();
         const shape: Shape = {
             id: 'a1', type: 'arrow', x: 0, y: 0, z: 1, createdBy: 'u',
-            dx: 100, dy: 0, stroke: '#000', strokeWidth: 2, startCap: 'none', endCap: 'arrow',
+            points: [0, 0, 100, 0], stroke: '#000', strokeWidth: 2, startCap: 'none', endCap: 'arrow',
         };
         sceneRenderer.render({ ctx, ...baseInput([shape]) });
         expect(calls.some((c) => c.startsWith('bezierCurveTo('))).toBe(true);
@@ -176,6 +179,56 @@ describe('renderScene characterization', () => {
         sceneRenderer.render({ ctx, ...baseInput([shape]) });
         expect(calls).toContain('fill()');
         expect(calls.some((c) => c.startsWith('fillText('))).toBe(true);
+    });
+});
+
+describe('arrow point-edit handles', () => {
+    // 3 anchors → 3 anchor handles, and 2 midpoint insert dots once in point-edit mode.
+    const curve: Shape = {
+        id: 'a1', type: 'arrow', x: 0, y: 0, z: 1, createdBy: 'u',
+        points: [0, 0, 50, 50, 100, 0], stroke: '#000', strokeWidth: 2, startCap: 'none', endCap: 'none',
+    };
+    const arcCalls = (calls: string[]) => calls.filter((c) => c.startsWith('arc('));
+
+    it('a selected arrow draws one handle per anchor and no insert dots', () => {
+        const { ctx, calls } = createRecordingContext();
+        sceneRenderer.render({ ctx, ...baseInput([curve]), selection: ['a1'] });
+        expect(arcCalls(calls)).toHaveLength(3);
+    });
+
+    it('point-edit mode adds a midpoint dot per segment', () => {
+        const { ctx, calls } = createRecordingContext();
+        sceneRenderer.render({ ctx, ...baseInput([curve]), selection: ['a1'], pointEditId: 'a1' });
+        expect(arcCalls(calls)).toHaveLength(5); // 3 anchors + 2 midpoints
+    });
+
+    // A selected anchor inverts its fill/stroke, so a white *stroke* is the marker that
+    // identifies one — the solid midpoint dots also fill in SELECT_COLOR, so fill alone
+    // can't tell them apart.
+    const SELECTED_NODE = 'set strokeStyle="#fff"';
+
+    it('selected nodes invert their fill so they read as picked', () => {
+        const { ctx, calls } = createRecordingContext();
+        sceneRenderer.render({
+            ctx, ...baseInput([curve]), selection: ['a1'], pointEditId: 'a1', pointEditNodes: [1],
+        });
+        expect(calls).toContain(SELECTED_NODE);
+        expect(calls).toContain('set fillStyle="#fff"'); // the two unselected anchors
+    });
+
+    it('ignores node indices past the end — a peer can shrink points under the selection', () => {
+        const { ctx, calls } = createRecordingContext();
+        sceneRenderer.render({
+            ctx, ...baseInput([curve]), selection: ['a1'], pointEditId: 'a1', pointEditNodes: [99],
+        });
+        expect(arcCalls(calls)).toHaveLength(5); // still drawn, just nothing highlighted
+        expect(calls).not.toContain(SELECTED_NODE);
+    });
+
+    it('draws no node highlight when the arrow is selected but not point-edited', () => {
+        const { ctx, calls } = createRecordingContext();
+        sceneRenderer.render({ ctx, ...baseInput([curve]), selection: ['a1'], pointEditNodes: [1] });
+        expect(calls).not.toContain(SELECTED_NODE);
     });
 });
 

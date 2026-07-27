@@ -13,6 +13,8 @@ Built almost entirely by Claude — Opus did the planning, Sonnet did the implem
 ## Features
 
 - Tools: select, pan, rectangle, ellipse, line, arrow, freehand pen, text, sticky notes
+- Multi-point lines & arrows — click to place as many points as you like, then select,
+  move, add and delete points to shape the curve
 - Infinite canvas, pan & zoom
 - Undo/redo, copy/paste, duplicate
 - Grouping, layering, opacity, rotation
@@ -70,11 +72,33 @@ Open <http://localhost:5173>.
 | Key | Action | &nbsp; | Key | Action |
 | --- | ------ | :---: | --- | ------ |
 | `Del` / `Backspace` | Delete selection | &nbsp; | `Ctrl/⌘ + Z` | Undo |
-| `Ctrl/⌘ + C` | Copy selection | &nbsp; | `Ctrl/⌘ + Shift + Z` | Redo |
-| `Ctrl/⌘ + V` | Paste at pointer | &nbsp; | `Ctrl/⌘ + ]` / `[` | Bring forward / Send backward |
-| `Ctrl/⌘ + D` | Duplicate selection | &nbsp; | `Ctrl/⌘ + Shift + ]` / `[` | Bring to front / Send to back |
-| `Esc` | Clear selection | &nbsp; | `Ctrl/⌘ + G` | Group selection |
-| &nbsp; | &nbsp; | &nbsp; | `Ctrl/⌘ + Shift + G` | Ungroup selection |
+| `Enter` | Edit the selected shape's text | &nbsp; | `Ctrl/⌘ + Shift + Z` | Redo |
+| `Ctrl/⌘ + C` | Copy selection | &nbsp; | `Ctrl/⌘ + ]` / `[` | Bring forward / Send backward |
+| `Ctrl/⌘ + V` | Paste at pointer | &nbsp; | `Ctrl/⌘ + Shift + ]` / `[` | Bring to front / Send to back |
+| `Ctrl/⌘ + D` | Duplicate selection | &nbsp; | `Ctrl/⌘ + G` | Group selection |
+| `Esc` | Clear selection | &nbsp; | `Ctrl/⌘ + Shift + G` | Ungroup selection |
+| Arrow keys | Nudge selection (`Shift` = bigger step) | &nbsp; | | |
+
+Double-click opens the text editor too — except on lines and arrows, where double-click
+opens point editing instead (see below), so `Enter` is how you label those.
+
+**Lines & arrows**
+
+Drag to draw a straight line. Or **click** once and keep clicking to place as many points
+as you like — the curve bends through all of them as you go. Finish with `Enter`, `Esc`,
+a double-click, or by clicking the last point again; either way the line is kept.
+
+Double-click a line to edit its points. Small dots appear between the points — drag one
+to insert a new point there.
+
+| Input | Action | &nbsp; | Input | Action |
+| --- | ------ | :---: | --- | ------ |
+| Click a point | Select it; drag to move it | &nbsp; | `Del` / `Backspace` | Delete the selected points |
+| `Shift` + click | Add/remove a point from the selection | &nbsp; | `Esc` | Step back out one level |
+
+Deleting always leaves at least two points, so the line survives — to delete the line
+itself, press `Esc` first, then `Del`. `Esc` unwinds one level at a time: selected points
+→ point editing → the shape.
 
 **View**
 

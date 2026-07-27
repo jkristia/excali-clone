@@ -51,6 +51,16 @@ export interface UIState {
      *  While set, clicks/marquee act on that group's members and its bounds get a
      *  dashed active-container outline. */
     readonly editingGroupId: string | null;
+    /** id of the single arrow/line currently in point-edit mode (double-clicked; shows
+     *  midpoint insert handles), or null. Transient, local-only view state (never in
+     *  Yjs). Cleared by `setTool`, `clearSelection`, and by `setSelection` whenever the
+     *  point-edited shape is no longer in the new selection. */
+    readonly pointEditId: string | null;
+    /** Anchor indices selected within the point-edited line — what a drag moves and
+     *  what Delete removes. Always empty when `pointEditId` is null: the two exit
+     *  together via {@link UIStore.EXIT_POINT_EDIT}. Held by index, so read sites must
+     *  tolerate stale indices (see `ArrowPoints.validIndices`). */
+    readonly pointEditNodes: readonly number[];
 
     setTool: (tool: Tool) => void;
     setSpacePan: (active: boolean) => void;
@@ -67,6 +77,14 @@ export interface UIState {
     activateEditing: (id: string) => void;
     /** Enter (or, with null, exit) a group for scoped editing. */
     setEditingGroup: (id: string | null) => void;
+    /** Enter (or, with null, exit) point-edit mode for the given arrow/line. Always
+     *  resets the node selection. */
+    setPointEditing: (id: string | null) => void;
+    /** Replace the set of selected anchor indices within the point-edited line. */
+    setPointEditNodes: (indices: readonly number[]) => void;
+    /** Add/remove one anchor index (`additive`), or select just it. Mirrors
+     *  {@link UIState.toggleSelection} for shapes. */
+    togglePointEditNode: (index: number, additive: boolean) => void;
 }
 
 type SetState = (partial: Partial<UIState> | ((state: UIState) => Partial<UIState>), replace?: boolean) => void;
@@ -76,6 +94,11 @@ type SetState = (partial: Partial<UIState> | ((state: UIState) => Partial<UIStat
  * Non-framework code (tools/, interaction/) can read/write it via `.getState()` directly.
  */
 export class UIStore {
+    /** The one way to leave point-edit mode. Spread into every state change that drops
+     *  `pointEditId`, so the "no node selection without a point-edited shape" invariant
+     *  can't be broken by forgetting a field at a new call site. */
+    private static readonly EXIT_POINT_EDIT = { pointEditId: null, pointEditNodes: [] } as const;
+
     private state: UIState;
     private readonly initialState: UIState;
     private readonly listeners = new Set<(state: UIState) => void>();
@@ -109,12 +132,15 @@ export class UIStore {
             editingId: null,
             editingCaret: null,
             editingGroupId: null,
+            pointEditId: null,
+            pointEditNodes: [],
 
             setTool: (tool) =>
                 set((s) => ({
                     tool,
                     editingId: null,
                     editingGroupId: null,
+                    ...UIStore.EXIT_POINT_EDIT,
                     style: { ...s.style, ...toolRegistry.get(tool).defaultStyle?.(s.style) },
                 })),
             setSpacePan: (active) => set({ spacePan: active }),
@@ -130,7 +156,10 @@ export class UIStore {
                     },
                 })),
             setStyle: (patch) => set((s) => ({ style: { ...s.style, ...patch } })),
-            setSelection: (ids) => set({ selection: ids }),
+            setSelection: (ids) =>
+                set((s) => (s.pointEditId !== null && ids.includes(s.pointEditId)
+                    ? { selection: ids }
+                    : { selection: ids, ...UIStore.EXIT_POINT_EDIT })),
             toggleSelection: (id, additive) =>
                 set((s) => {
                     if (!additive) return { selection: [id] };
@@ -138,10 +167,19 @@ export class UIStore {
                         ? { selection: s.selection.filter((x) => x !== id) }
                         : { selection: [...s.selection, id] };
                 }),
-            clearSelection: () => set({ selection: [], editingGroupId: null }),
+            clearSelection: () => set({ selection: [], editingGroupId: null, ...UIStore.EXIT_POINT_EDIT }),
             setEditing: (id, caret = null) => set({ editingId: id, editingCaret: caret }),
             activateEditing: (id) => set({ tool: 'select', editingId: id, editingCaret: null }),
             setEditingGroup: (id) => set({ editingGroupId: id }),
+            setPointEditing: (id) => set({ ...UIStore.EXIT_POINT_EDIT, pointEditId: id }),
+            setPointEditNodes: (indices) => set({ pointEditNodes: indices }),
+            togglePointEditNode: (index, additive) =>
+                set((s) => {
+                    if (!additive) return { pointEditNodes: [index] };
+                    return s.pointEditNodes.includes(index)
+                        ? { pointEditNodes: s.pointEditNodes.filter((i) => i !== index) }
+                        : { pointEditNodes: [...s.pointEditNodes, index] };
+                }),
         };
         this.initialState = this.state;
     }
