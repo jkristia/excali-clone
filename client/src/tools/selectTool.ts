@@ -5,7 +5,8 @@ import { NO_PANEL_CAPABILITIES } from './tool';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { Handles } from '../util/handles';
 import { RotationMath } from '../util/rotationMath';
-import { ArrowEndpoints } from '../util/arrowEndpoints';
+import { ArrowPoints } from '../util/arrowPoints';
+import { SplineMath } from '../util/splineMath';
 import { SceneTree } from '../util/sceneTree';
 
 /**
@@ -24,17 +25,12 @@ export class SelectTool implements Tool {
         // rotate handle), not a single shape with its own resize/rotate handles.
         if (selShape && selShape.type !== 'group') {
             if (selShape.type === 'arrow') {
-                const ep = ArrowEndpoints.hitTest(selShape, p.x, p.y, ctx.camera().zoom);
-                if (ep !== null) {
-                    return {
-                        kind: 'arrow-endpoint', id: selShape.id, endpoint: ep,
-                        origX: selShape.x, origY: selShape.y, origDx: selShape.dx, origDy: selShape.dy,
-                    };
-                }
+                const arrowPoint = this.tryStartArrowPoint(ctx, selShape, p);
+                if (arrowPoint !== undefined) return arrowPoint;
             } else {
                 const bounds = this.shapeRegistry.getBounds(selShape);
                 const rot = selShape.rotation ?? 0;
-                const radius = ArrowEndpoints.HIT_RADIUS / ctx.camera().zoom;
+                const radius = ArrowPoints.HIT_RADIUS / ctx.camera().zoom;
                 // Handles are drawn in the shape's rotated frame, so test the
                 // pointer un-rotated into that local frame.
                 const c = RotationMath.center(bounds);
@@ -115,6 +111,58 @@ export class SelectTool implements Tool {
     }
 
     /**
+     * Anchor / midpoint grab on the single selected line or arrow. Returns the drag to
+     * start, `null` when the press was consumed but starts no drag (a shift-click that
+     * *de*selects a node), or `undefined` when nothing was hit so the caller should fall
+     * through to a body drag.
+     *
+     * Anchors are tested before midpoints and grab from much further
+     * (`ANCHOR_HIT_RADIUS` vs `MID_HIT_RADIUS`) — shaping an existing curve must never
+     * be misread as "insert a node here".
+     */
+    private tryStartArrowPoint(
+        ctx: ToolContext,
+        shape: Extract<Shape, { type: 'arrow' }>,
+        p: PointerInfo,
+    ): Interaction | null | undefined {
+        const zoom = ctx.camera().zoom;
+        const origin = { origX: shape.x, origY: shape.y };
+        const anchor = ArrowPoints.hitTestAnchor(shape, p.x, p.y, zoom);
+        if (anchor !== null) {
+            // Outside point-edit mode there is no node selection to speak of — dragging an
+            // endpoint of a merely-selected line behaves exactly as it always has.
+            if (ctx.pointEditId() !== shape.id) {
+                return { kind: 'arrow-point', id: shape.id, primary: anchor, indices: [anchor], ...origin, origPoints: shape.points };
+            }
+            if (p.shiftKey) {
+                ctx.togglePointEditNode(anchor, true);
+                const after = ctx.pointEditNodes();
+                // The shift-click removed it: that gesture is a deselect, not a drag.
+                if (!after.includes(anchor)) return null;
+                return { kind: 'arrow-point', id: shape.id, primary: anchor, indices: after, ...origin, origPoints: shape.points };
+            }
+            // Pressing an unselected node makes it the selection; pressing one that is
+            // already selected keeps the set, so a drag moves all of them together.
+            if (!ctx.pointEditNodes().includes(anchor)) ctx.setPointEditNodes([anchor]);
+            return { kind: 'arrow-point', id: shape.id, primary: anchor, indices: ctx.pointEditNodes(), ...origin, origPoints: shape.points };
+        }
+
+        if (ctx.pointEditId() === shape.id) {
+            const seg = ArrowPoints.hitTestMidpoint(shape, p.x, p.y, zoom);
+            if (seg !== null) {
+                // Insert the new anchor now; it commits on the first pointermove of
+                // the drag that follows (a click that never drags inserts nothing).
+                const mid = SplineMath.segmentMidpoint(shape.points, seg);
+                const origPoints = [...shape.points];
+                origPoints.splice((seg + 1) * 2, 0, mid.x, mid.y);
+                ctx.setPointEditNodes([seg + 1]); // the new node becomes the selection
+                return { kind: 'arrow-point', id: shape.id, primary: seg + 1, indices: [seg + 1], ...origin, origPoints };
+            }
+        }
+        return undefined;
+    }
+
+    /**
      * Rotate handle for a multi-selection: hit-tested off the axis-aligned padded
      * union frame (the same box the renderer draws), so no un-rotation is needed.
      * Returns the interaction if the handle is grabbed, else null.
@@ -128,7 +176,7 @@ export class SelectTool implements Tool {
         const zoom = ctx.camera().zoom;
         const frame = Handles.padBounds(union, Handles.SELECTION_PAD / zoom);
         const [rx, ry] = Handles.rotateHandlePoint(frame, Handles.ROTATE_OFFSET / zoom);
-        const radius = ArrowEndpoints.HIT_RADIUS / zoom;
+        const radius = ArrowPoints.HIT_RADIUS / zoom;
         if (Math.hypot(p.x - rx, p.y - ry) > radius) return null;
 
         const pivot = RotationMath.center(frame);
@@ -141,8 +189,7 @@ export class SelectTool implements Tool {
     }
 
     private rotateOrigin(s: Shape): RotateOrigin {
-        if (s.type === 'arrow') return { kind: 'arrow', x: s.x, y: s.y, dx: s.dx, dy: s.dy };
-        if (s.type === 'draw') return { kind: 'draw', x: s.x, y: s.y, points: s.points };
+        if (s.type === 'arrow' || s.type === 'draw') return { kind: 'points', x: s.x, y: s.y, points: s.points };
         const b = this.shapeRegistry.getBounds(s);
         const c = RotationMath.center(b);
         return { kind: 'box', cx: c.x, cy: c.y, hw: b.w / 2, hh: b.h / 2, origRotation: s.rotation ?? 0 };

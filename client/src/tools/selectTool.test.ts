@@ -4,17 +4,30 @@ import type { ToolContext } from './tool';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { Handle } from '../util/handles';
 import { Font, type ArrowShape, type RectShape, type Shape, type TextShape } from '../model/shapeTypes';
-import type { PointerInfo } from '../interaction/interaction';
+import type { Interaction, PointerInfo } from '../interaction/interaction';
+import { ArrowPoints } from '../util/arrowPoints';
+import { arrow as arrowFactory } from '../test-support/shapeFactories';
 
 /** Records the mutations the tool asks its context to perform. */
 interface CtxState {
     selection: string[];
     setSelectionCalls: string[][];
     toggleCalls: Array<{ id: string; additive: boolean }>;
+    /** Point-edit mode state, mutated in place so the tool sees its own writes. */
+    pointEditId: string | null;
+    pointEditNodes: readonly number[];
 }
 
-function makeCtx(shapes: Shape[], selection: string[] = [], zoom = 1): { ctx: ToolContext; state: CtxState } {
-    const state: CtxState = { selection: [...selection], setSelectionCalls: [], toggleCalls: [] };
+function makeCtx(
+    shapes: Shape[],
+    selection: string[] = [],
+    zoom = 1,
+    pointEdit: { id?: string | null; nodes?: readonly number[] } = {},
+): { ctx: ToolContext; state: CtxState } {
+    const state: CtxState = {
+        selection: [...selection], setSelectionCalls: [], toggleCalls: [],
+        pointEditId: pointEdit.id ?? null, pointEditNodes: pointEdit.nodes ?? [],
+    };
     const ctx: ToolContext = {
         shapes: () => shapes,
         selection: () => state.selection,
@@ -27,6 +40,15 @@ function makeCtx(shapes: Shape[], selection: string[] = [], zoom = 1): { ctx: To
         newId: () => 'new',
         nextZ: () => 0,
         editingGroupId: () => null,
+        pointEditId: () => state.pointEditId,
+        pointEditNodes: () => state.pointEditNodes,
+        setPointEditNodes: (indices) => { state.pointEditNodes = indices; },
+        togglePointEditNode: (index, additive) => {
+            if (!additive) { state.pointEditNodes = [index]; return; }
+            state.pointEditNodes = state.pointEditNodes.includes(index)
+                ? state.pointEditNodes.filter((i) => i !== index)
+                : [...state.pointEditNodes, index];
+        },
         addShape: () => { },
         setSelection: (ids) => { state.setSelectionCalls.push(ids); state.selection = ids; },
         toggleSelection: (id, additive) => { state.toggleCalls.push({ id, additive }); state.selection = [...state.selection, id]; },
@@ -48,12 +70,9 @@ function rect(over: Partial<RectShape> = {}): RectShape {
     };
 }
 
-// Horizontal arrow from (0,0) to (100,0): tail endpoint 0, head endpoint 1.
+// Horizontal arrow from (0,0) to (100,0): anchor 0 (tail), anchor 1 (head).
 function arrow(over: Partial<ArrowShape> = {}): ArrowShape {
-    return {
-        id: 'a1', type: 'arrow', x: 0, y: 0, z: 0, createdBy: 'u',
-        dx: 100, dy: 0, stroke: '#000', strokeWidth: 2, startCap: 'none', endCap: 'arrow', ...over,
-    };
+    return arrowFactory({ z: 0, points: [0, 0, 100, 0], ...over });
 }
 
 // 100x20 text at the origin: body center (50,10); E/W resize handles at (100,10)/(0,10).
@@ -67,27 +86,90 @@ function text(over: Partial<TextShape> = {}): TextShape {
 describe('SelectTool', () => {
     const tool = () => new SelectTool(new ShapeRegistry());
 
-    describe('single selected arrow: endpoint grab takes priority', () => {
-        it('grabs the tail endpoint', () => {
+    describe('single selected arrow: anchor grab takes priority', () => {
+        it('grabs the tail anchor', () => {
             const { ctx } = makeCtx([arrow()], ['a1']);
             const result = tool().onPointerDown(ctx, pointer(0, 0));
             expect(result).toEqual({
-                kind: 'arrow-endpoint', id: 'a1', endpoint: 0,
-                origX: 0, origY: 0, origDx: 100, origDy: 0,
+                kind: 'arrow-point', id: 'a1', primary: 0, indices: [0],
+                origX: 0, origY: 0, origPoints: [0, 0, 100, 0],
             });
         });
 
-        it('grabs the head endpoint', () => {
+        it('grabs the head anchor', () => {
             const { ctx } = makeCtx([arrow()], ['a1']);
             const result = tool().onPointerDown(ctx, pointer(100, 0));
-            expect(result).toMatchObject({ kind: 'arrow-endpoint', id: 'a1', endpoint: 1 });
+            expect(result).toMatchObject({ kind: 'arrow-point', id: 'a1', primary: 1 });
         });
 
         it('falls through to a body drag when the pointer misses both endpoints', () => {
             const { ctx, state } = makeCtx([arrow()], ['a1']);
-            const result = tool().onPointerDown(ctx, pointer(50, 0)); // mid-line, > HIT_RADIUS from either end
+            const result = tool().onPointerDown(ctx, pointer(50, 0)); // mid-line, > ANCHOR_HIT_RADIUS from either end
             expect(result?.kind).toBe('move');
             expect(state.setSelectionCalls).toEqual([]); // already selected, selection untouched
+        });
+
+        it('drags a single node and touches no node selection when not in point-edit mode', () => {
+            const { ctx, state } = makeCtx([arrow()], ['a1']); // pointEditId defaults to null
+            const result = tool().onPointerDown(ctx, pointer(0, 0));
+            expect(result).toMatchObject({ primary: 0, indices: [0] });
+            expect(state.pointEditNodes).toEqual([]);
+        });
+    });
+
+    describe('point-edit mode: node selection', () => {
+        // 3-anchor arrow so there is an interior node to select alongside the endpoints.
+        const curve = () => arrow({ points: [0, 0, 50, 50, 100, 0] });
+        const inPointEdit = (nodes: readonly number[] = []) =>
+            makeCtx([curve()], ['a1'], 1, { id: 'a1', nodes });
+
+        it('pressing an unselected node makes it the selection and drags just it', () => {
+            const { ctx, state } = inPointEdit([2]);
+            const result = tool().onPointerDown(ctx, pointer(0, 0)); // anchor 0
+            expect(state.pointEditNodes).toEqual([0]);
+            expect(result).toMatchObject({ kind: 'arrow-point', primary: 0, indices: [0] });
+        });
+
+        it('pressing an already-selected node keeps the set, so the drag moves all of them', () => {
+            const { ctx, state } = inPointEdit([0, 1]);
+            const result = tool().onPointerDown(ctx, pointer(0, 0));
+            expect(state.pointEditNodes).toEqual([0, 1]); // untouched
+            expect(result).toMatchObject({ primary: 0, indices: [0, 1] });
+        });
+
+        it('shift-pressing an unselected node adds it and drags the whole set', () => {
+            const { ctx, state } = inPointEdit([0]);
+            const result = tool().onPointerDown(ctx, pointer(50, 50, { shiftKey: true })); // anchor 1
+            expect(state.pointEditNodes).toEqual([0, 1]);
+            expect(result).toMatchObject({ primary: 1, indices: [0, 1] });
+        });
+
+        it('shift-pressing a selected node deselects it and starts no drag', () => {
+            const { ctx, state } = inPointEdit([0, 1]);
+            const result = tool().onPointerDown(ctx, pointer(0, 0, { shiftKey: true }));
+            expect(state.pointEditNodes).toEqual([1]);
+            expect(result).toBeNull(); // a deselect gesture, not a drag
+        });
+
+        it('pressing a midpoint inserts a node there and selects only the new one', () => {
+            const { ctx, state } = inPointEdit([0]);
+            const mid = ArrowPoints.midpoints(curve())[0];
+            const result = tool().onPointerDown(ctx, pointer(mid.x, mid.y));
+            expect(state.pointEditNodes).toEqual([1]);
+            const drag = result as Extract<Interaction, { kind: 'arrow-point' }>;
+            expect(drag.primary).toBe(1);
+            expect(drag.indices).toEqual([1]);
+            // origPoints already carries the spliced-in anchor; it commits on first move.
+            expect(drag.origPoints).toHaveLength(8);
+        });
+
+        it('an anchor near a midpoint still grabs the anchor — shaping a curve must not insert', () => {
+            const { ctx, state } = inPointEdit();
+            // 8 units off anchor 1: inside ANCHOR_HIT_RADIUS (10), and the old 6px grab
+            // would have missed and fallen through toward the insert dots.
+            const result = tool().onPointerDown(ctx, pointer(58, 50));
+            expect(result).toMatchObject({ kind: 'arrow-point', primary: 1 });
+            expect(state.pointEditNodes).toEqual([1]);
         });
     });
 
@@ -152,8 +234,8 @@ describe('SelectTool', () => {
             const result = tool().onPointerDown(ctx, pointer(50, -28));
             const rs = result as Extract<typeof result, { kind: 'rotate-selection' }>;
             expect(rs.kind).toBe('rotate-selection');
-            expect(rs.origins.get('a1')).toEqual({ kind: 'arrow', x: 0, y: 0, dx: 100, dy: 0 });
-            expect(rs.origins.get('d1')).toEqual({ kind: 'draw', x: 5, y: 5, points: [0, 0, 10, 10] });
+            expect(rs.origins.get('a1')).toEqual({ kind: 'points', x: 0, y: 0, points: [0, 0, 100, 0] });
+            expect(rs.origins.get('d1')).toEqual({ kind: 'points', x: 5, y: 5, points: [0, 0, 10, 10] });
         });
 
         it('falls through to a body drag when the pointer misses the handle', () => {

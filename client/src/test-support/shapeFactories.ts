@@ -55,10 +55,16 @@ export function text(over: Partial<TextShape> = {}): TextShape {
 export function arrow(over: Partial<ArrowShape> = {}): ArrowShape {
     return {
         id: 'a1', type: 'arrow', x: 0, y: 0, z: 1, createdBy: 'u',
-        dx: 30, dy: 0, stroke: '#000', strokeWidth: 2,
+        points: [0, 0, 30, 0], stroke: '#000', strokeWidth: 2,
         startCap: 'none', endCap: 'arrow',
         ...over,
     };
+}
+
+/** A 4-anchor curved arrow — for tests that need a real spline, not the 2-anchor
+ *  straight-line fast path. */
+export function curvedArrow(over: Partial<ArrowShape> = {}): ArrowShape {
+    return arrow({ points: [0, 0, 30, -20, 60, 20, 90, 0], ...over });
 }
 
 export function draw(over: Partial<DrawShape> = {}): DrawShape {
