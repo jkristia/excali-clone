@@ -8,6 +8,7 @@ import { CanvasDraw } from '../util/canvasDraw';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { SceneTree } from '../util/sceneTree';
 import { TextOptionsUtil } from '../util/textOptions';
+import { ArrowPoints } from '../util/arrowPoints';
 
 export interface RenderInput {
     ctx: CanvasRenderingContext2D;
@@ -28,6 +29,16 @@ export interface RenderInput {
     /** id of the group currently entered for scoped editing — drawn with a dashed
      *  active-container outline around its members. Null when not scoped. */
     editingGroupId: string | null;
+    /** id of the single arrow/line in point-edit mode — shown with midpoint insert
+     *  handles in addition to its anchor handles. Null when not in that mode. */
+    pointEditId: string | null;
+    /** Anchor indices selected within that line — drawn filled rather than hollow.
+     *  Indices are tolerated stale (a peer can shrink `points`) and filtered on read. */
+    pointEditNodes: readonly number[];
+    /** World-coordinate `[x, y, ...]` anchors placed so far while a multi-point
+     *  line/arrow is being drawn (see `arrow-multi`), or null. Drawn as handles
+     *  alongside the live preview `draft`. */
+    draftAnchors: readonly number[] | null;
     /** draw the snap-to-grid line grid (only while snap mode is enabled). */
     showGrid: boolean;
     /** a multi-selection rotate is in progress — hide its rotate handle, which
@@ -68,6 +79,7 @@ export class SceneRenderer {
             this.drawShape(ctx, shape, editing);
         }
         if (input.draft) this.drawShape(ctx, input.draft);
+        if (input.draftAnchors) this.drawArrowHandles(ctx, input.draftAnchors, camera.zoom);
 
         // Peer selections (highlight what others are editing).
         const selById = new Map<string, Shape>();
@@ -125,7 +137,13 @@ export class SceneRenderer {
         } else if (selected.length === 1 && selected[0].id !== input.editingId && selected[0].type !== 'group') {
             const s = selected[0];
             if (s.type === 'arrow') {
-                this.drawArrowHandles(ctx, s.x, s.y, s.x + s.dx, s.y + s.dy, camera.zoom);
+                const anchors = ArrowPoints.anchors(s).flatMap((a) => [a.x, a.y]);
+                const inPointEdit = s.id === input.pointEditId;
+                const selectedNodes = inPointEdit ? ArrowPoints.validIndices(s, input.pointEditNodes) : [];
+                this.drawArrowHandles(ctx, anchors, camera.zoom, selectedNodes);
+                if (inPointEdit) {
+                    this.drawInsertHandles(ctx, ArrowPoints.midpoints(s), camera.zoom);
+                }
             } else {
                 this.withShapeTransform(ctx, s, () => {
                     const b = this.shapeRegistry.getBounds(s);
@@ -242,22 +260,43 @@ export class SceneRenderer {
         ctx.restore();
     }
 
+    /** One round handle per anchor of an arrow/line — `anchors` is a flattened
+     *  `[x, y, ...]` world-coordinate array (so it doubles as the draft-preview path,
+     *  which has no `Shape` to build an `{x,y}[]` from). Anchor indices listed in
+     *  `selected` invert their fill, which reads as "picked" at a glance and stays
+     *  distinct from the smaller solid midpoint dots. */
     private drawArrowHandles(
         ctx: CanvasRenderingContext2D,
-        x1: number, y1: number,
-        x2: number, y2: number,
+        anchors: readonly number[],
         zoom: number,
+        selected: readonly number[] = [],
     ): void {
         const r = SceneRenderer.HANDLE_SIZE / 2 / zoom;
+        const picked = new Set(selected);
         ctx.save();
-        ctx.fillStyle = '#fff';
-        ctx.strokeStyle = SceneRenderer.SELECT_COLOR;
         ctx.lineWidth = 1.5 / zoom;
-        for (const [px, py] of [[x1, y1], [x2, y2]] as [number, number][]) {
+        for (let i = 0; i + 1 < anchors.length; i += 2) {
+            const isSelected = picked.has(i / 2);
+            ctx.fillStyle = isSelected ? SceneRenderer.SELECT_COLOR : '#fff';
+            ctx.strokeStyle = isSelected ? '#fff' : SceneRenderer.SELECT_COLOR;
             ctx.beginPath();
-            ctx.arc(px, py, r, 0, Math.PI * 2);
+            ctx.arc(anchors[i], anchors[i + 1], r, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    /** The smaller, filled "insert a point here" handles shown at each segment's
+     *  midpoint while a line/arrow is in point-edit mode. */
+    private drawInsertHandles(ctx: CanvasRenderingContext2D, midpoints: { x: number; y: number }[], zoom: number): void {
+        const r = SceneRenderer.HANDLE_SIZE / 3 / zoom;
+        ctx.save();
+        ctx.fillStyle = SceneRenderer.SELECT_COLOR;
+        for (const { x, y } of midpoints) {
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
         }
         ctx.restore();
     }

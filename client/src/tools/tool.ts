@@ -16,6 +16,13 @@ export interface ToolContext {
     /** The group currently entered for scoped editing, or null. Container-aware
      *  selection stops at this group's members instead of selecting the group. */
     editingGroupId: () => string | null;
+    /** The single arrow/line currently in point-edit mode (double-clicked, showing
+     *  midpoint insert handles), or null. */
+    pointEditId: () => string | null;
+    /** Anchor indices selected within that line — what an anchor drag moves. */
+    pointEditNodes: () => readonly number[];
+    setPointEditNodes: (indices: readonly number[]) => void;
+    togglePointEditNode: (index: number, additive: boolean) => void;
     /** Add a fully-formed shape immediately (text/note — no drag-to-create). */
     addShape: (shape: Shape) => void;
     setSelection: (ids: string[]) => void;

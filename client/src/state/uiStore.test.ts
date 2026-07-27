@@ -121,3 +121,80 @@ describe('toggleSelection', () => {
         expect(uiStore.getState().selection).toEqual(['b']);
     });
 });
+
+describe('point-edit mode', () => {
+    /** Enter point-edit on `a1` with some nodes already picked. */
+    function enterPointEdit(): void {
+        uiStore.getState().setSelection(['a1']);
+        uiStore.getState().setPointEditing('a1');
+        uiStore.getState().setPointEditNodes([1, 2]);
+    }
+
+    it('defaults to no point-edited shape and no selected nodes', () => {
+        expect(uiStore.getState().pointEditId).toBeNull();
+        expect(uiStore.getState().pointEditNodes).toEqual([]);
+    });
+
+    it('setPointEditing enters, and resets any node selection on the way in and out', () => {
+        enterPointEdit();
+        expect(uiStore.getState().pointEditId).toBe('a1');
+        expect(uiStore.getState().pointEditNodes).toEqual([1, 2]);
+
+        uiStore.getState().setPointEditing('a2'); // switching shapes drops the old nodes
+        expect(uiStore.getState().pointEditNodes).toEqual([]);
+
+        uiStore.getState().setPointEditNodes([0]);
+        uiStore.getState().setPointEditing(null);
+        expect(uiStore.getState().pointEditId).toBeNull();
+        expect(uiStore.getState().pointEditNodes).toEqual([]);
+    });
+
+    // The invariant: a node selection can never outlive the shape it belongs to.
+    it('setTool exits point-edit entirely', () => {
+        enterPointEdit();
+        uiStore.getState().setTool('rectangle');
+        expect(uiStore.getState().pointEditId).toBeNull();
+        expect(uiStore.getState().pointEditNodes).toEqual([]);
+    });
+
+    it('clearSelection exits point-edit entirely', () => {
+        enterPointEdit();
+        uiStore.getState().clearSelection();
+        expect(uiStore.getState().pointEditId).toBeNull();
+        expect(uiStore.getState().pointEditNodes).toEqual([]);
+    });
+
+    it('setSelection keeps point-edit while the shape stays selected', () => {
+        enterPointEdit();
+        uiStore.getState().setSelection(['a1']);
+        expect(uiStore.getState().pointEditId).toBe('a1');
+        expect(uiStore.getState().pointEditNodes).toEqual([1, 2]);
+    });
+
+    it('setSelection exits point-edit once the shape is no longer selected', () => {
+        enterPointEdit();
+        uiStore.getState().setSelection(['r1']);
+        expect(uiStore.getState().pointEditId).toBeNull();
+        expect(uiStore.getState().pointEditNodes).toEqual([]);
+    });
+});
+
+describe('togglePointEditNode', () => {
+    it('non-additive: replaces the node selection with just that index', () => {
+        uiStore.setState({ pointEditNodes: [0, 3] });
+        uiStore.getState().togglePointEditNode(2, false);
+        expect(uiStore.getState().pointEditNodes).toEqual([2]);
+    });
+
+    it('additive: adds an index that is not selected', () => {
+        uiStore.setState({ pointEditNodes: [0] });
+        uiStore.getState().togglePointEditNode(2, true);
+        expect(uiStore.getState().pointEditNodes).toEqual([0, 2]);
+    });
+
+    it('additive: removes an index that is already selected', () => {
+        uiStore.setState({ pointEditNodes: [0, 2] });
+        uiStore.getState().togglePointEditNode(0, true);
+        expect(uiStore.getState().pointEditNodes).toEqual([2]);
+    });
+});

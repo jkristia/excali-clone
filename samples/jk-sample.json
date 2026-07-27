@@ -192,16 +192,22 @@
     {
       "id": "0F1-UhL3orG7ITiRRY_5I",
       "type": "arrow",
-      "x": 614.60546875,
-      "y": 354.45703125,
+      "x": 611.721568421092,
+      "y": 353.06288683246635,
       "z": 8,
       "createdBy": "4135925194",
-      "dx": -100.890625,
-      "dy": 91.203125,
+      "points": [
+        0,
+        0,
+        -11.491329421570754,
+        53.86881924336183,
+        -100.890625,
+        91.203125
+      ],
       "stroke": "#e9a649",
       "strokeWidth": 4,
       "strokeStyle": "solid",
-      "sloppiness": "medium",
+      "sloppiness": "plain",
       "startCap": "none",
       "endCap": "arrow",
       "textOptions": {
@@ -322,9 +328,9 @@
   ],
   "view": {
     "camera": {
-      "x": 0,
-      "y": 0,
-      "zoom": 1
+      "zoom": 1.2214027581601703,
+      "x": 40.48441215880365,
+      "y": -52.802660223879855
     },
     "snapToGrid": false
   }

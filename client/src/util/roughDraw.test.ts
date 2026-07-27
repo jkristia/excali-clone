@@ -68,9 +68,27 @@ describe('RoughDraw geometry cache', () => {
     });
 
     it('line: caches per shape id the same way as box', () => {
-        const a = RoughDraw.line('s5', 100, 0, 'plain', 2);
-        const b = RoughDraw.line('s5', 100, 0, 'plain', 2);
+        const a = RoughDraw.line('s5', 0, 0, 100, 0, 'plain', 2);
+        const b = RoughDraw.line('s5', 0, 0, 100, 0, 'plain', 2);
         expect(a).toBe(b);
+    });
+
+    it('line: regenerates when an endpoint changes', () => {
+        const a = RoughDraw.line('s5b', 0, 0, 100, 0, 'plain', 2);
+        const b = RoughDraw.line('s5b', 0, 0, 120, 0, 'plain', 2);
+        expect(a).not.toBe(b);
+    });
+
+    it('spline: caches per shape id the same way as line', () => {
+        const a = RoughDraw.spline('s6', [0, 0, 50, 40, 100, 0], 'plain', 2);
+        const b = RoughDraw.spline('s6', [0, 0, 50, 40, 100, 0], 'plain', 2);
+        expect(a).toBe(b);
+    });
+
+    it('spline: regenerates when any point changes', () => {
+        const a = RoughDraw.spline('s6b', [0, 0, 50, 40, 100, 0], 'plain', 2);
+        const b = RoughDraw.spline('s6b', [0, 0, 50, 45, 100, 0], 'plain', 2);
+        expect(a).not.toBe(b);
     });
 });
 

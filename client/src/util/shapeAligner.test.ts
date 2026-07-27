@@ -68,11 +68,11 @@ describe('ShapeAligner', () => {
         expect(aligner.align(pair, ['a'], 'left')).toEqual([]); // only one id selected
     });
 
-    it('patches the anchor for shapes whose anchor differs from their bounds (arrow with negative dx)', () => {
+    it('patches the anchor for shapes whose anchor differs from their bounds (arrow pointing left)', () => {
         // Arrow anchored at x=200 pointing left: bounds x 150..200. Group with a rect at 0..20
         // spans x 0..200; aligning left should put the arrow's *bounds* left edge at 0, i.e.
         // its left endpoint (200 + dx = 150) moves by -150, so the anchor becomes 50.
-        const leftArrow = arrow({ id: 'ar', x: 200, y: 0, dx: -50, dy: 0 });
+        const leftArrow = arrow({ id: 'ar', x: 200, y: 0, points: [0, 0, -50, 0] });
         const r = rect({ id: 'r', x: 0, y: 0, w: 20, h: 20 });
         expect(alignedXY([r, leftArrow], 'left', 'ar')).toEqual({ x: 50, y: 0 });
     });
