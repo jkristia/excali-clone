@@ -1,9 +1,16 @@
 import { nanoid } from 'nanoid';
-import type { Shape } from '../model/shapeTypes';
+import type { ImageShape, Shape } from '../model/shapeTypes';
 import { UIStore } from '../state/uiStore';
 import { CanvasDocument } from '../document/canvasDocument';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
 import { SceneTree } from '../util/sceneTree';
+import { ImageCache } from '../util/imageCache';
+import { ImageShapeDef } from '../shapes/imageShapeDef';
+
+/** Bytes read from a clipboard `Blob` per `btoa` call while building a `data:` URI —
+ *  keeps each call well under the argument-count limit `btoa(String.fromCharCode(...))`
+ *  would hit converting a multi-megabyte image in one shot. */
+const BASE64_CHUNK_BYTES = 32 * 1024;
 
 /** Tag on the clipboard envelope so pasted text from other apps isn't mis-read as shapes. */
 const CLIPBOARD_KIND = 'whiteboard/shapes@1';
@@ -34,6 +41,7 @@ export class ClipboardController {
         private readonly canvasDocument: CanvasDocument,
         private readonly shapeRegistry: ShapeRegistry,
         private readonly author: () => string,
+        private readonly imageCache: ImageCache,
     ) { }
 
     /** Snapshot the current selection into the in-memory buffer and mirror it to the OS
@@ -57,6 +65,8 @@ export class ClipboardController {
      * clipboard when it holds our envelope (cross-tab), otherwise the in-memory buffer.
      */
     public async paste(centerX: number, centerY: number): Promise<void> {
+        if (await this.pasteImage(centerX, centerY)) return;
+
         const source = (await this.readClipboard()) ?? this.contents;
         if (source.length === 0) return;
         // Groups have no bounds of their own — center on the concrete shapes only.
@@ -66,6 +76,62 @@ export class ClipboardController {
         const dx = centerX - (bounds.x + bounds.w / 2);
         const dy = centerY - (bounds.y + bounds.h / 2);
         this.addClones(source, dx, dy);
+    }
+
+    /**
+     * Checked before the app's own shape envelope: if the OS clipboard holds an
+     * actual image (a copied screenshot, an image copied from another app), insert
+     * it as a fresh `ImageShape` centered at the anchor and return true. Must run
+     * first — an image on the OS clipboard alongside a *stale* in-memory shape
+     * buffer would otherwise be silently ignored, since `readClipboard()` only
+     * looks at text and would fall through to that buffer. Returns false (never
+     * throws) for anything short of a successfully inserted image, so the caller
+     * falls back to the existing shape-paste path — covers `clipboard.read` being
+     * unsupported/denied, no image present, or a decode failure.
+     */
+    private async pasteImage(centerX: number, centerY: number): Promise<boolean> {
+        const clipboard = this.clipboard();
+        if (!clipboard || typeof clipboard.read !== 'function') return false;
+        try {
+            const items = await clipboard.read();
+            const blob = await ClipboardController.findImageBlob(items);
+            if (!blob) return false;
+
+            const src = await ClipboardController.blobToDataUrl(blob);
+            const decoded = await this.imageCache.load(src);
+            const { w, h } = ImageShapeDef.initialSize(decoded.naturalWidth, decoded.naturalHeight);
+
+            const shape: ImageShape = {
+                id: nanoid(), type: 'image', src, w, h,
+                x: centerX - w / 2, y: centerY - h / 2,
+                z: this.canvasDocument.topZ() + 1,
+                createdBy: this.author(),
+            };
+            this.canvasDocument.addShapes([shape]);
+            this.uiStore.getState().setSelection([shape.id]);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    private static async findImageBlob(items: ClipboardItem[]): Promise<Blob | null> {
+        for (const item of items) {
+            const type = item.types.find((t) => t.startsWith('image/'));
+            if (type) return item.getType(type);
+        }
+        return null;
+    }
+
+    /** Converts a `Blob` to a `data:` URI without `FileReader`, chunking the base64
+     *  encode so a multi-megabyte image doesn't blow `btoa`'s argument-count limit. */
+    private static async blobToDataUrl(blob: Blob): Promise<string> {
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        let binary = '';
+        for (let i = 0; i < bytes.length; i += BASE64_CHUNK_BYTES) {
+            binary += String.fromCharCode(...bytes.subarray(i, i + BASE64_CHUNK_BYTES));
+        }
+        return `data:${blob.type};base64,${btoa(binary)}`;
     }
 
     /**

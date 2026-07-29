@@ -9,20 +9,27 @@ import { ArrowShapeDef } from './arrowShapeDef';
 import { DrawShapeDef } from './drawShapeDef';
 import { TextShapeDef } from './textShapeDef';
 import { NoteShapeDef } from './noteShapeDef';
+import { ImageShapeDef } from './imageShapeDef';
 import { GroupShapeDef } from './groupShapeDef';
+import { ImageCache } from '../util/imageCache';
 
 export class ShapeRegistry {
     /** The one switch: shape type -> its behavior. Add a shape by adding one entry here. */
-    private readonly definitions: { [T in ShapeType]: ShapeDefinition<Extract<Shape, { type: T }>> } = {
-        rectangle: new RectangleShapeDef(),
-        ellipse: new EllipseShapeDef(),
-        diamond: new DiamondShapeDef(),
-        arrow: new ArrowShapeDef(),
-        draw: new DrawShapeDef(),
-        text: new TextShapeDef(),
-        note: new NoteShapeDef(),
-        group: new GroupShapeDef(),
-    };
+    private readonly definitions: { [T in ShapeType]: ShapeDefinition<Extract<Shape, { type: T }>> };
+
+    constructor(imageCache: ImageCache = new ImageCache()) {
+        this.definitions = {
+            rectangle: new RectangleShapeDef(),
+            ellipse: new EllipseShapeDef(),
+            diamond: new DiamondShapeDef(),
+            arrow: new ArrowShapeDef(),
+            draw: new DrawShapeDef(),
+            text: new TextShapeDef(),
+            note: new NoteShapeDef(),
+            image: new ImageShapeDef(imageCache),
+            group: new GroupShapeDef(),
+        };
+    }
 
     public getDefinition<S extends Shape>(shape: S): ShapeDefinition<S> {
         return this.definitions[shape.type] as unknown as ShapeDefinition<S>;

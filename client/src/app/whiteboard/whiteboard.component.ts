@@ -4,7 +4,7 @@ import { CollabService } from '../collab/collab.service';
 import { InlineEditorComponent } from '../components/inline-editor.component';
 import type { Bounds, PeerPresence, Shape } from '../../model/shapeTypes';
 import { CameraMath } from '../../canvas/camera';
-import { SCENE_RENDERER, CANVAS_DOCUMENT, TOOL_REGISTRY, SHAPE_REGISTRY, CLIPBOARD_CONTROLLER, TEXT_MEASURE } from '../di-tokens';
+import { SCENE_RENDERER, CANVAS_DOCUMENT, TOOL_REGISTRY, SHAPE_REGISTRY, CLIPBOARD_CONTROLLER, TEXT_MEASURE, IMAGE_CACHE } from '../di-tokens';
 import { InteractionController } from '../../interaction/interactionController';
 import type { PointerInfo } from '../../interaction/interaction';
 import { SceneTree } from '../../util/sceneTree';
@@ -34,6 +34,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
     private readonly toolRegistry = inject(TOOL_REGISTRY);
     private readonly shapeRegistry = inject(SHAPE_REGISTRY);
     private readonly textMeasure = inject(TEXT_MEASURE);
+    private readonly imageCache = inject(IMAGE_CACHE);
 
     private readonly author = () => String(this.canvasDocument.awareness.clientID);
 
@@ -139,6 +140,9 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
         void FontUtil.loadAll()
             .then(() => this.scheduleRender())
             .catch((e: unknown) => console.error(e));
+
+        // --- Redraw once a pasted image finishes decoding (draw() can't await it). ---
+        this.cleanups.push(this.imageCache.onChange(() => this.scheduleRender()));
 
         // --- Keyboard shortcuts (delete / escape) ---
         const onKeyDown = (e: KeyboardEvent) => {

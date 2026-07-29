@@ -4,6 +4,7 @@ import type {
     DrawShape,
     EllipseShape,
     GroupShape,
+    ImageShape,
     NoteShape,
     RectShape,
     TextShape,
@@ -71,6 +72,14 @@ export function draw(over: Partial<DrawShape> = {}): DrawShape {
     return {
         id: 'd1', type: 'draw', x: 0, y: 0, z: 1, createdBy: 'u',
         points: [0, 0, 10, 10, 20, 0], stroke: '#000', strokeWidth: 2,
+        ...over,
+    };
+}
+
+export function image(over: Partial<ImageShape> = {}): ImageShape {
+    return {
+        id: 'im1', type: 'image', x: 0, y: 0, z: 1, createdBy: 'u',
+        w: 100, h: 80, src: 'data:image/png;base64,AAAA',
         ...over,
     };
 }

@@ -3,7 +3,7 @@
  * moving a shape is always "add delta to x/y" regardless of type. Type-specific
  * geometry is expressed relative to that anchor.
  */
-export type ShapeType = 'rectangle' | 'ellipse' | 'diamond' | 'arrow' | 'draw' | 'text' | 'note' | 'group';
+export type ShapeType = 'rectangle' | 'ellipse' | 'diamond' | 'arrow' | 'draw' | 'text' | 'note' | 'image' | 'group';
 
 /** A CSS color string (hex, rgb(), 'transparent', …) as stored on shapes and consumed by canvas 2D. */
 export type Color = string;
@@ -163,6 +163,15 @@ export interface NoteShape extends BaseShape {
     fill: Color;
 }
 
+export interface ImageShape extends BaseShape {
+    type: 'image';
+    w: number;
+    h: number;
+    /** A data: URI — the decoded pixels, embedded directly so the shape stays
+     *  plain JSON with no external asset store. */
+    src: string;
+}
+
 /** A container that holds shapes (and other groups) and stacks/moves/rotates as a
  *  unit. It has no geometry of its own — its bounds are the union of its
  *  descendants — and it draws nothing (see {@link GroupShapeDef}). Members point
@@ -179,6 +188,7 @@ export type Shape =
     | DrawShape
     | TextShape
     | NoteShape
+    | ImageShape
     | GroupShape;
 
 export interface Bounds {
