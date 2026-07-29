@@ -8,6 +8,7 @@ import type { SceneRenderer } from '../canvas/render';
 import type { TextMeasure } from '../util/textMeasure';
 import type { ClipboardController } from '../interaction/clipboardController';
 import type { DocumentFile } from '../document/documentFile';
+import type { ImageCache } from '../util/imageCache';
 
 /**
  * DI tokens for the framework-agnostic singletons. They are instantiated once in
@@ -24,3 +25,4 @@ export const SCENE_RENDERER = new InjectionToken<SceneRenderer>('SCENE_RENDERER'
 export const TEXT_MEASURE = new InjectionToken<TextMeasure>('TEXT_MEASURE');
 export const CLIPBOARD_CONTROLLER = new InjectionToken<ClipboardController>('CLIPBOARD_CONTROLLER');
 export const DOCUMENT_FILE = new InjectionToken<DocumentFile>('DOCUMENT_FILE');
+export const IMAGE_CACHE = new InjectionToken<ImageCache>('IMAGE_CACHE');

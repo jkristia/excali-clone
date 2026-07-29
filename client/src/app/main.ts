@@ -11,12 +11,14 @@ import { SceneRenderer } from '../canvas/render';
 import { TextMeasure } from '../util/textMeasure';
 import { ClipboardController } from '../interaction/clipboardController';
 import { DocumentFile } from '../document/documentFile';
-import { SHAPE_REGISTRY, TOOL_REGISTRY, UI_STORE, RECENT_COLORS, CANVAS_DOCUMENT, SCENE_RENDERER, TEXT_MEASURE, CLIPBOARD_CONTROLLER, DOCUMENT_FILE } from './di-tokens';
+import { ImageCache } from '../util/imageCache';
+import { SHAPE_REGISTRY, TOOL_REGISTRY, UI_STORE, RECENT_COLORS, CANVAS_DOCUMENT, SCENE_RENDERER, TEXT_MEASURE, CLIPBOARD_CONTROLLER, DOCUMENT_FILE, IMAGE_CACHE } from './di-tokens';
 import '../index.css';
 
 // Composition root: build the object graph once, in dependency order, then hand
 // each instance to Angular DI. No module-level singletons anywhere else.
-const shapeRegistry = new ShapeRegistry();
+const imageCache = new ImageCache();
+const shapeRegistry = new ShapeRegistry(imageCache);
 const toolRegistry = new ToolRegistry(shapeRegistry);
 const uiStore = new UIStore(toolRegistry);
 const recentColorsStore = new RecentColorsStore();
@@ -28,6 +30,7 @@ const clipboardController = new ClipboardController(
     canvasDocument,
     shapeRegistry,
     () => String(canvasDocument.awareness.clientID),
+    imageCache,
 );
 const documentFile = new DocumentFile(shapeRegistry);
 
@@ -42,5 +45,6 @@ bootstrapApplication(AppComponent, {
         { provide: TEXT_MEASURE, useValue: textMeasure },
         { provide: CLIPBOARD_CONTROLLER, useValue: clipboardController },
         { provide: DOCUMENT_FILE, useValue: documentFile },
+        { provide: IMAGE_CACHE, useValue: imageCache },
     ],
 }).catch((err) => console.error(err));

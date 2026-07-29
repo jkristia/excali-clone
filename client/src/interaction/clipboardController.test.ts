@@ -3,9 +3,11 @@ import { ClipboardController } from './clipboardController';
 import { UIStore } from '../state/uiStore';
 import { ToolRegistry } from '../tools/toolRegistry';
 import { ShapeRegistry } from '../shapes/shapeRegistry';
+import { ImageCache } from '../util/imageCache';
 import type { CanvasDocument } from '../document/canvasDocument';
 import type { Shape } from '../model/shapeTypes';
 import { rect, ellipse } from '../test-support/shapeFactories';
+import { FakeImage } from '../test-support/fakeImage';
 
 /** Minimal in-memory stand-in for CanvasDocument's shape store. */
 class FakeDoc {
@@ -32,12 +34,25 @@ class FakeDoc {
     }
 }
 
+/** A minimal `ClipboardItem`-shaped object — just enough for `pasteImage` to find an
+ *  `image/*` entry and read its `Blob`. */
+class FakeClipboardItem {
+    constructor(public readonly types: string[], private readonly blob: Blob) { }
+    public async getType(): Promise<Blob> {
+        return this.blob;
+    }
+}
+
 /** In-memory stand-in for the OS clipboard, installed as `navigator.clipboard`. The
- *  same instance shared by two controllers models two tabs backed by one OS clipboard. */
+ *  same instance shared by two controllers models two tabs backed by one OS clipboard.
+ *  `image`, when set, is what `read()` returns — modeling an image on the OS clipboard
+ *  (as opposed to `text`, the app's own tagged shape envelope). */
 class FakeClipboard {
     public text = '';
+    public image: FakeClipboardItem | null = null;
     public failWrite = false;
     public failRead = false;
+    public failBinaryRead = false;
 
     public async writeText(text: string): Promise<void> {
         if (this.failWrite) throw new Error('clipboard write denied');
@@ -47,6 +62,10 @@ class FakeClipboard {
         if (this.failRead) throw new Error('clipboard read denied');
         return this.text;
     }
+    public async read(): Promise<FakeClipboardItem[]> {
+        if (this.failBinaryRead) throw new Error('binary clipboard read denied');
+        return this.image ? [this.image] : [];
+    }
 }
 
 const shapeRegistry = new ShapeRegistry();
@@ -54,22 +73,27 @@ let uiStore: UIStore;
 let doc: FakeDoc;
 let clipboard: ClipboardController;
 let fakeClipboard: FakeClipboard;
+let imageCache: ImageCache;
 
-function makeClipboard(author = 'me', docArg: FakeDoc = doc, store: UIStore = uiStore): ClipboardController {
+function makeClipboard(author = 'me', docArg: FakeDoc = doc, store: UIStore = uiStore, cache: ImageCache = imageCache): ClipboardController {
     return new ClipboardController(
         store,
         docArg as unknown as CanvasDocument,
         shapeRegistry,
         () => author,
+        cache,
     );
 }
 
 beforeEach(() => {
     uiStore = new UIStore(new ToolRegistry(shapeRegistry));
     doc = new FakeDoc();
+    imageCache = new ImageCache();
     clipboard = makeClipboard();
     fakeClipboard = new FakeClipboard();
     vi.stubGlobal('navigator', { clipboard: fakeClipboard });
+    vi.stubGlobal('Image', FakeImage);
+    FakeImage.instances = [];
 });
 
 afterEach(() => {
@@ -323,6 +347,78 @@ describe('ClipboardController', () => {
             await clipboard.paste(0, 0);
             const pasted = doc.added[doc.added.length - 1];
             expect(pasted[0].x).toBe(-10);
+        });
+    });
+
+    describe('pasting an image from the OS clipboard', () => {
+        it('inserts a fresh ImageShape centered at the anchor, sized to the decoded image', async () => {
+            const blob = new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' });
+            fakeClipboard.image = new FakeClipboardItem(['image/png'], blob);
+
+            const pastePromise = clipboard.paste(50, 50);
+            await vi.waitFor(() => expect(FakeImage.instances).toHaveLength(1));
+            FakeImage.instances[0].onload?.(); // FakeImage defaults to a 100x50 decode
+            await pastePromise;
+
+            expect(doc.added).toHaveLength(1);
+            const pasted = doc.added[0];
+            expect(pasted).toHaveLength(1);
+            expect(pasted[0].type).toBe('image');
+            expect(pasted[0]).toMatchObject({ w: 100, h: 50, x: 0, y: 25 }); // centered at (50,50)
+            expect(uiStore.getState().selection).toEqual([pasted[0].id]);
+        });
+
+        it('takes priority over a stale in-memory shape buffer', async () => {
+            doc.seed([rect({ id: 'r1', x: 0, y: 0, w: 20, h: 20 })]);
+            uiStore.getState().setSelection(['r1']);
+            await clipboard.copy(); // populates the in-memory shape buffer
+
+            const blob = new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' });
+            fakeClipboard.image = new FakeClipboardItem(['image/png'], blob);
+
+            const pastePromise = clipboard.paste(0, 0);
+            await vi.waitFor(() => expect(FakeImage.instances).toHaveLength(1));
+            FakeImage.instances[0].onload?.();
+            await pastePromise;
+
+            expect(doc.added[0][0].type).toBe('image'); // not the buffered rectangle
+        });
+
+        it('falls back to the shape-paste path when no image is on the OS clipboard', async () => {
+            doc.seed([rect({ id: 'r1', x: 0, y: 0, w: 20, h: 20 })]);
+            uiStore.getState().setSelection(['r1']);
+            await clipboard.copy();
+
+            await clipboard.paste(0, 0); // fakeClipboard.image is null
+
+            expect(doc.added[0][0].type).toBe('rectangle');
+            expect(FakeImage.instances).toHaveLength(0);
+        });
+
+        it('falls back to the shape-paste path when the binary clipboard read is denied', async () => {
+            doc.seed([rect({ id: 'r1', x: 0, y: 0, w: 20, h: 20 })]);
+            uiStore.getState().setSelection(['r1']);
+            await clipboard.copy();
+
+            fakeClipboard.failBinaryRead = true;
+            await clipboard.paste(0, 0);
+
+            expect(doc.added[doc.added.length - 1][0].type).toBe('rectangle');
+        });
+
+        it('falls back to the shape-paste path when clipboard.read is unsupported', async () => {
+            doc.seed([rect({ id: 'r1', x: 0, y: 0, w: 20, h: 20 })]);
+            uiStore.getState().setSelection(['r1']);
+            await clipboard.copy();
+
+            // A clipboard that only supports readText/writeText (no binary read).
+            vi.stubGlobal('navigator', {
+                clipboard: { readText: () => fakeClipboard.readText(), writeText: (t: string) => fakeClipboard.writeText(t) },
+            });
+
+            await clipboard.paste(0, 0);
+
+            expect(doc.added[doc.added.length - 1][0].type).toBe('rectangle');
         });
     });
 });
